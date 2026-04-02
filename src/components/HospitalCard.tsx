@@ -22,7 +22,7 @@ export function HospitalCard({ hospital }: HospitalCardProps) {
     <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:bg-white hover:shadow-sm transition-all">
       {/* Row 1: name + type + rating */}
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-slate-800 font-semibold text-sm flex-1 truncate">{hospital.name}</span>
+        <span className="text-slate-800 font-semibold text-sm flex-1 break-words">{hospital.name}</span>
         <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${TYPE_STYLES[hospital.type]}`}>
           {hospital.type}
         </span>
@@ -69,7 +69,7 @@ export function HospitalCard({ hospital }: HospitalCardProps) {
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <button
           onClick={() => setShowMap(true)}
           className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl px-4 py-2 text-sm flex items-center justify-center gap-1.5 transition-colors"

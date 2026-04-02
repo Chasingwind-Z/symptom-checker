@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Clock, AlertTriangle, AlertOctagon, ArrowRight } from 'lucide-react';
 import { HospitalCard } from './HospitalCard';
 import { RiskGauge } from './RiskGauge';
-import type { DiagnosisResult, Hospital, RiskLevel, SymptomReport } from '../types';
+import { ReportExport } from './ReportExport';
+import type { DiagnosisResult, Hospital, Message, RiskLevel, SymptomReport } from '../types';
 
 const REGIONS = ['华北', '华南', '华东', '西南', '西北'] as const;
 
@@ -31,6 +32,7 @@ function saveReport(result: DiagnosisResult): void {
 interface ResultCardProps {
   result: DiagnosisResult;
   hospitals: Hospital[];
+  messages: Message[];
   onReport?: () => void;
 }
 
@@ -89,7 +91,7 @@ const LEVEL_CONFIG: Record<
   },
 };
 
-export function ResultCard({ result, hospitals, onReport }: ResultCardProps) {
+export function ResultCard({ result, hospitals, messages, onReport }: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
   const [checked, setChecked] = useState<[boolean, boolean, boolean]>([false, false, false]);
@@ -116,7 +118,7 @@ export function ResultCard({ result, hospitals, onReport }: ResultCardProps) {
 
       <div className="p-6">
         {/* Risk Gauge */}
-        <div className="flex justify-center mt-6 mb-2">
+        <div className="flex justify-center mt-6 mb-2 w-full max-w-xs mx-auto">
           <RiskGauge level={result.level} />
         </div>
 
@@ -141,7 +143,7 @@ export function ResultCard({ result, hospitals, onReport }: ResultCardProps) {
                     </svg>
                   )}
                 </button>
-                <span className={`text-sm transition-all duration-200 ${checked[i] ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                <span className={`text-sm md:text-base transition-all duration-200 ${checked[i] ? 'line-through text-slate-400' : 'text-slate-700'}`}>
                   {item}
                 </span>
               </li>
@@ -203,8 +205,13 @@ export function ResultCard({ result, hospitals, onReport }: ResultCardProps) {
           </div>
         )}
 
+        {/* Export */}
+        <div className="flex justify-center mt-5">
+          <ReportExport result={result} messages={messages} />
+        </div>
+
         {/* Disclaimer */}
-        <p className="text-slate-400 text-xs text-center mt-5 leading-relaxed">{result.disclaimer}</p>
+        <p className="text-slate-400 text-xs text-center mt-3 leading-relaxed">{result.disclaimer}</p>
 
         {/* Anonymous report prompt */}
         <div className="border-t border-slate-100 mt-5 pt-4">

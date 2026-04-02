@@ -79,23 +79,23 @@ export function CommunityStats() {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-4">
       {/* 三个统计指标 */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-white border border-slate-100 rounded-xl p-3 text-center">
-          <p className="text-xl font-bold text-slate-800">{total}</p>
-          <p className="text-xs text-slate-400 mt-0.5">今日上报人数</p>
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        <div className="bg-white border border-slate-100 rounded-xl p-2 md:p-3 text-center">
+          <p className="text-lg md:text-xl font-bold text-slate-800">{total}</p>
+          <p className="text-xs text-slate-400 mt-0.5">今日上报</p>
         </div>
-        <div className="bg-white border border-slate-100 rounded-xl p-3 text-center">
-          <p className="text-xl font-bold text-slate-800">12</p>
+        <div className="bg-white border border-slate-100 rounded-xl p-2 md:p-3 text-center">
+          <p className="text-lg md:text-xl font-bold text-slate-800">12</p>
           <p className="text-xs text-slate-400 mt-0.5">覆盖区域</p>
         </div>
-        <div className="bg-white border border-slate-100 rounded-xl p-3 text-center">
-          <p className="text-xl font-bold text-blue-500">发烧</p>
+        <div className="bg-white border border-slate-100 rounded-xl p-2 md:p-3 text-center">
+          <p className="text-lg md:text-xl font-bold text-blue-500">发烧</p>
           <p className="text-xs text-slate-400 mt-0.5">最多症状</p>
         </div>
       </div>
 
       {/* 横向柱状图 */}
-      <div style={{ height: 200 }}>
+      <div className="h-40 md:h-48">
         <Bar data={chartData} options={options} />
       </div>
 

@@ -54,7 +54,7 @@ export function MapModal({ hospital, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl overflow-hidden w-full max-w-lg shadow-2xl"
+        className="bg-white rounded-2xl overflow-hidden w-full max-w-lg mx-3 md:mx-4 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -70,7 +70,7 @@ export function MapModal({ hospital, onClose }: Props) {
           </button>
         </div>
 
-        <div ref={mapRef} style={{ height: '300px', width: '100%' }} />
+        <div ref={mapRef} style={{ height: window.innerWidth < 768 ? '250px' : '300px', width: '100%' }} />
 
         <div className="px-5 py-4 bg-slate-50 space-y-2">
           <div className="flex items-center gap-2 text-sm text-slate-600">

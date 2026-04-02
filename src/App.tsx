@@ -61,7 +61,7 @@ export default function App() {
 
       {/* Scrollable content area */}
       <div
-        className="flex-1 overflow-y-auto px-4"
+        className="flex-1 overflow-y-auto px-3 md:px-6"
         style={{ paddingTop: '16px', paddingBottom: '96px' }}
       >
         <div className="max-w-2xl mx-auto w-full">
@@ -119,6 +119,7 @@ export default function App() {
                 <ResultCard
                   result={diagnosisResult}
                   hospitals={hospitals}
+                  messages={messages}
                   onReport={() => setReportCount(getReportCount())}
                 />
               )}
