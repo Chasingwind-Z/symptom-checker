@@ -239,7 +239,7 @@ function InfoCard({ title, icon, color, content }: { title: string; icon: string
   )
 }
 
-function SectionBlock({ title, icon, color, children }: { title: string; icon: string; color: string; children: React.ReactNode }) {
+function SectionBlock({ title, icon, children }: { title: string; icon: string; color?: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>

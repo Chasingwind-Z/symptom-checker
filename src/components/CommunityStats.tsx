@@ -63,7 +63,7 @@ export function CommunityStats() {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (ctx: { parsed: { x: number } }) => ` ${ctx.parsed.x} 人`,
+          label: (ctx: { parsed: { x: number | null } }) => ` ${ctx.parsed.x ?? 0} 人`,
         },
       },
     },
