@@ -1,10 +1,22 @@
 # 健康助手 - AI 症状自查分级就诊系统
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-在线体验-blue?style=for-the-badge)](https://symptom-checker-ahvsmkovl-chasingwinds-projects.vercel.app/)
+[![GitHub Stars](https://img.shields.io/github/stars/Chasingwind-Z/symptom-checker?style=for-the-badge)](https://github.com/Chasingwind-Z/symptom-checker)
+
 > 描述症状，AI 帮你判断是否需要就医，推荐附近医院
+
+## 在线体验
+
+无需本地部署，直接访问：
+👉 https://symptom-checker-ahvsmkovl-chasingwinds-projects.vercel.app/
 
 ## 功能演示
 
-（这里留空，后续你自己录屏后添加 GIF）
+🔗 **在线体验：** https://symptom-checker-ahvsmkovl-chasingwinds-projects.vercel.app/
+
+> 体验时请使用 Chrome 或 Safari 浏览器，支持语音输入功能
+
+（GIF 演示录屏后添加）
 
 ## 核心功能
 
