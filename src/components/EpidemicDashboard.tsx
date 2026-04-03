@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Activity, AlertOctagon, AlertTriangle, ArrowLeft, BarChart2, Bot, Map, TrendingUp } from 'lucide-react'
 import { Line } from 'react-chartjs-2'
 import {
@@ -18,7 +18,7 @@ import {
   getAIWarningText,
   mergeLocalReports,
 } from '../lib/epidemicDataEngine'
-import type { CityOverview, DistrictRiskData } from '../lib/epidemicDataEngine'
+import type { DistrictRiskData } from '../lib/epidemicDataEngine'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Legend, Tooltip, Filler)
 
@@ -31,11 +31,13 @@ const getRiskColor = (level: string) =>
 
 export function EpidemicDashboard({ onBack }: Props) {
   const [currentTime, setCurrentTime] = useState<string>('')
-  const [cityOverview, setCityOverview] = useState<CityOverview>(getCityOverview())
-  const [districtData, setDistrictData] = useState<DistrictRiskData[]>([])
+  const cityOverview = useMemo(() => getCityOverview(), [])
+  const districtData = useMemo<DistrictRiskData[]>(() => mergeLocalReports(getDistrictRiskData()), [])
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const circlesRef = useRef<any[]>([])
 
   // 时钟
@@ -52,19 +54,14 @@ export function EpidemicDashboard({ onBack }: Props) {
     return () => clearInterval(timer)
   }, [])
 
-  // 初始化区域数据
-  useEffect(() => {
-    const raw = getDistrictRiskData()
-    const merged = mergeLocalReports(raw)
-    setDistrictData(merged)
-  }, [])
-
   // 绘制地图覆盖物
   useEffect(() => {
     if (districtData.length === 0) return
 
     const initMap = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!mapContainerRef.current || !(window as any).AMap) return
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const AMap = (window as any).AMap
 
       circlesRef.current.forEach(c => c.setMap?.(null))
@@ -126,11 +123,13 @@ export function EpidemicDashboard({ onBack }: Props) {
       })
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((window as any).AMap) {
       initMap()
     } else {
       const key = import.meta.env.VITE_AMAP_JS_KEY as string
       const securityKey = import.meta.env.VITE_AMAP_JS_SECURITY_KEY as string
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any)._AMapSecurityConfig = { securityJsCode: securityKey }
 
       const existing = document.getElementById('amap-script')
@@ -420,8 +419,8 @@ export function EpidemicDashboard({ onBack }: Props) {
             const trendSymbol = d.trend === 'up' ? '↑' : d.trend === 'down' ? '↓' : '→'
             return `${emoji} ${d.district} · 风险指数 ${Math.round(d.riskScore)} · ${d.topSymptoms[0]} ${trendSymbol}${d.trendPercent}%`
           })
-          .join('　　|　　')
-        const fullContent = `${marqueeContent}　　|　　${marqueeContent}`
+          .join('   |')
+        const fullContent = `${marqueeContent}   |${marqueeContent}`
         return (
           <div className="border-t border-white/10 py-2 px-6 overflow-hidden">
             <div className="flex overflow-hidden">
