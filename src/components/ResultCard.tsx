@@ -34,6 +34,7 @@ interface ResultCardProps {
   hospitals: Hospital[];
   messages: Message[];
   onReport?: () => void;
+  onToggleMap?: () => void;
 }
 
 const LEVEL_CONFIG: Record<
@@ -91,7 +92,7 @@ const LEVEL_CONFIG: Record<
   },
 };
 
-export function ResultCard({ result, hospitals, messages, onReport }: ResultCardProps) {
+export function ResultCard({ result, hospitals, messages, onReport, onToggleMap }: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
   const [checked, setChecked] = useState<[boolean, boolean, boolean]>([false, false, false]);
@@ -239,7 +240,25 @@ export function ResultCard({ result, hospitals, messages, onReport }: ResultCard
             </div>
           )}
           {reportState === 'done' && (
-            <p className="text-emerald-500 text-xs text-center">感谢您的上报，已匿名提交。</p>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mt-3">
+              <div className="flex items-start gap-3">
+                <CheckCircle size={18} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-emerald-800 font-medium text-sm">感谢您的数据贡献</p>
+                  <p className="text-emerald-600 text-xs mt-1 leading-relaxed">
+                    您的症状数据已匿名上报。与其他用户数据汇聚后，将帮助监测社区疾病传播趋势，比医院诊断数据早 5-7 天发现疫情苗头。
+                  </p>
+                  {onToggleMap && (
+                    <button
+                      onClick={onToggleMap}
+                      className="text-emerald-600 text-xs mt-2 hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      查看社区疾病预警地图 →
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

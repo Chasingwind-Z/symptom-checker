@@ -10,6 +10,7 @@ import { ResultCard } from './components/ResultCard';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { StatsBanner } from './components/StatsBanner';
+import { EpidemicDashboard } from './components/EpidemicDashboard';
 import type { Hospital } from './types';
 
 function getReportCount(): number {
@@ -27,6 +28,7 @@ export default function App() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [reportCount, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [currentPage, setCurrentPage] = useState<'chat' | 'map'>('chat');
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,9 +49,13 @@ export default function App() {
   }, [diagnosisResult]);
 
 
+  if (currentPage === 'map') {
+    return <EpidemicDashboard onBack={() => setCurrentPage('chat')} />
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col">
-      <Header onReset={resetChat} />
+      <Header onReset={resetChat} onToggleMap={() => setCurrentPage('map')} />
       <StatsBanner />
 
       {/* Report count banner */}
@@ -66,7 +72,12 @@ export default function App() {
       >
         <div className="max-w-2xl mx-auto w-full">
           {/* Welcome screen — only when no messages yet */}
-          {messages.length === 0 && <WelcomeScreen onSend={sendMessage} />}
+          {messages.length === 0 && (
+            <WelcomeScreen
+              onSendMessage={sendMessage}
+              onToggleMap={() => setCurrentPage('map')}
+            />
+          )}
 
           {/* Message list */}
           {messages.length > 0 && (
@@ -121,6 +132,7 @@ export default function App() {
                   hospitals={hospitals}
                   messages={messages}
                   onReport={() => setReportCount(getReportCount())}
+                  onToggleMap={() => setCurrentPage('map')}
                 />
               )}
             </div>
