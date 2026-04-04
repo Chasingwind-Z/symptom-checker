@@ -28,7 +28,7 @@ const ELDERLY_KEYWORDS = ['老人', '老年', '父母', '爸爸', '妈妈', '爷
 const PEDIATRIC_KEYWORDS = ['孩子', '小孩', '儿子', '女儿', '宝宝', '婴儿', '幼儿', '岁的孩', '儿童', '小朋友'];
 
 export function loadSkills(userMessage: string): string {
-  const parts: string[] = [BASE_TRIAGE, EMERGENCY_FLAGS];
+  const parts: string[] = [];
 
   if (ELDERLY_KEYWORDS.some((kw) => userMessage.includes(kw))) {
     parts.push(ELDERLY_PROTOCOL);

@@ -7,15 +7,19 @@ interface ChatBubbleProps {
   message: Message;
   isStreaming?: boolean;
   onQuickReply?: (text: string) => void;
+  diagnosisResult?: boolean;
 }
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
 
-/** Strip ```json ... ``` blocks, return only the prose before them */
+/** Strip ```json ... ``` blocks and {"suggestions": [...]} from display */
 function stripJsonBlock(content: string): string {
-  return content.replace(/```json[\s\S]*?```/g, '').trim();
+  return content
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
+    .trim();
 }
 
 /** Detect if the AI turn is a follow-up question (has ? and no JSON block) */
@@ -34,36 +38,17 @@ function getQuestionIcon(content: string) {
   return <HelpCircle size={18} className="text-blue-500" />;
 }
 
-/** Generate quick-reply options based on question content */
-function getQuickReplies(content: string): string[] {
-  if (content.includes('多久') || content.includes('几天') || content.includes('持续') || content.includes('时间')) {
-    return ['刚刚开始', '1天以内', '2-3天', '超过一周'];
-  }
-  if (content.includes('程度') || content.includes('严重') || content.includes('评分')) {
-    return ['轻微，还好', '中等，有些难受', '比较严重', '非常严重'];
-  }
-  if (content.includes('年龄') || content.includes('多大')) {
-    return ['18岁以下', '18-40岁', '40-60岁', '60岁以上'];
-  }
-  if (content.includes('基础疾病') || content.includes('慢性病') || content.includes('病史')) {
-    return ['没有基础疾病', '高血压', '糖尿病', '心脏病'];
-  }
-  if (content.includes('伴随') || content.includes('其他症状')) {
-    return ['没有其他症状', '有发烧', '有头痛', '有恶心'];
-  }
-  return [];
-}
-
-export function ChatBubble({ message, isStreaming, onQuickReply }: ChatBubbleProps) {
+export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult }: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const displayContent = isUser ? message.content : stripJsonBlock(message.content);
   const hasJsonBlock = message.content.includes('```json');
 
   // Summary card: AI final reply that contains a JSON diagnosis block
   const isSummary = !isUser && hasJsonBlock && !isStreaming;
-  // Question card: AI follow-up question (no JSON block)
-  const useCardStyle = !isUser && !hasJsonBlock && isQuestion(message.content) && !isStreaming;
-  const quickReplies = useCardStyle ? getQuickReplies(message.content) : [];
+  // Question card: AI follow-up question (has ? or has suggestions)
+  const hasSuggestions = !isUser && message.suggestions && message.suggestions.length > 0;
+  const useCardStyle = !isUser && !hasJsonBlock && !isStreaming &&
+    (isQuestion(message.content) || hasSuggestions);
 
   if (isSummary) {
     return (
@@ -106,15 +91,15 @@ export function ChatBubble({ message, isStreaming, onQuickReply }: ChatBubblePro
             </div>
           </div>
 
-          {quickReplies.length > 0 && onQuickReply && (
-            <div className="flex flex-wrap gap-1.5 pl-9">
-              {quickReplies.map((reply) => (
+          {hasSuggestions && onQuickReply && !diagnosisResult && (
+            <div className="flex flex-wrap gap-2 mt-3 pl-9">
+              {message.suggestions!.map((suggestion, i) => (
                 <button
-                  key={reply}
-                  onClick={() => onQuickReply(reply)}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-xs px-3 py-1 rounded-full transition-colors"
+                  key={i}
+                  onClick={() => onQuickReply(suggestion)}
+                  className="text-sm px-3 py-1.5 rounded-full border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
                 >
-                  {reply}
+                  {suggestion}
                 </button>
               ))}
             </div>

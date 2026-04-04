@@ -10,6 +10,7 @@ import { ResultCard } from './components/ResultCard';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { StatsBanner } from './components/StatsBanner';
+import { WeatherBar } from './components/WeatherBar';
 import { EpidemicDashboard } from './components/EpidemicDashboard';
 import type { Hospital } from './types';
 
@@ -22,7 +23,7 @@ function getReportCount(): number {
 }
 
 export default function App() {
-  const { messages, isLoading, streamingContent, diagnosisResult, isSearchingKB, sendMessage, resetChat } =
+  const { messages, isLoading, streamingContent, diagnosisResult, isSearchingKB, weatherData, sendMessage, resetChat } =
     useChat();
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -57,6 +58,7 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col">
       <Header onReset={resetChat} onToggleMap={() => setCurrentPage('map')} />
       <StatsBanner />
+      <WeatherBar weather={weatherData} />
 
       {/* Report count banner */}
       {reportCount > 0 && (
@@ -89,6 +91,7 @@ export default function App() {
                   key={msg.id}
                   message={msg}
                   onQuickReply={sendMessage}
+                  diagnosisResult={!!diagnosisResult}
                 />
               ))}
 
@@ -103,6 +106,7 @@ export default function App() {
                   }}
                   isStreaming
                   onQuickReply={sendMessage}
+                  diagnosisResult={!!diagnosisResult}
                 />
               )}
 
