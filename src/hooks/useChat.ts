@@ -103,8 +103,15 @@ export function useChat() {
         setLocationData(loc);
         const weather = await fetchWeather(loc.lat, loc.lon);
         if (weather) setWeatherData(weather);
-      } catch {
-        // 定位失败，不显示天气，不报错
+      } catch (e) {
+        console.warn('[WeatherBar] 定位失败，尝试使用默认位置:', e);
+        // 定位失败时使用 IP 大致位置或默认北京坐标
+        try {
+          const weather = await fetchWeather(39.92, 116.41);
+          if (weather) setWeatherData(weather);
+        } catch {
+          // 天气获取也失败，静默不显示
+        }
       }
     };
     initWeather();

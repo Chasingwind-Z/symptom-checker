@@ -38,17 +38,41 @@ export async function fetchWeather(
 ): Promise<WeatherData | null> {
   const key = import.meta.env.VITE_QWEATHER_KEY as string | undefined
   const host = (import.meta.env.VITE_QWEATHER_HOST as string | undefined) || 'devapi.qweather.com'
-  if (!key) return null
+  if (!key) {
+    console.warn('[Weather] API key missing, skip')
+    return null
+  }
+
+  const lonStr = lon.toFixed(2)
+  const latStr = lat.toFixed(2)
+  const params = `location=${lonStr},${latStr}&key=${key}`
+
+  // In dev mode, use Vite proxy to avoid browser CORS/proxy issues
+  const baseUrl = import.meta.env.DEV
+    ? `/api/qweather`
+    : `https://${host}`
+  const url = `${baseUrl}/v7/weather/now?${params}`
+
+  console.log('[Weather] fetching via', import.meta.env.DEV ? 'proxy' : 'direct')
 
   try {
-    const res = await fetch(
-      `https://${host}/v7/weather/now` +
-        `?location=${lon},${lat}&key=${key}`
-    )
-    const data = await res.json()
-    const now = data.now
-    if (!now) return null
+    const res = await fetch(url)
+    console.log('[Weather] status:', res.status)
 
+    if (!res.ok) {
+      console.warn('[Weather] HTTP error:', res.status, res.statusText)
+      return null
+    }
+
+    const data = await res.json()
+    console.log('[Weather] API code:', data.code)
+
+    if (data.code !== '200' || !data.now) {
+      console.warn('[Weather] API error, code:', data.code)
+      return null
+    }
+
+    const now = data.now
     return {
       temp: now.temp + '°C',
       feelsLike: now.feelsLike + '°C',
@@ -56,7 +80,8 @@ export async function fetchWeather(
       humidity: now.humidity + '%',
       suggestion: getWeatherSuggestion(now),
     }
-  } catch {
+  } catch (err) {
+    console.error('[Weather] fetch failed:', err)
     return null
   }
 }
