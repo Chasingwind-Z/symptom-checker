@@ -17,7 +17,7 @@ export function WelcomeScreen({ onSendMessage, onToggleMap }: WelcomeScreenProps
   const overview = getCityOverview()
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-2xl mx-auto px-4 py-4">
       {/* 顶部 Hero */}
       <div className="text-center mb-6">
         <div className="flex justify-center items-center gap-3 mb-4">

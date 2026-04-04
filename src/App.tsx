@@ -31,11 +31,6 @@ export default function App() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'chat' | 'map'>('chat');
 
-  // Debug: track weatherData state changes
-  useEffect(() => {
-    console.log('[App] weatherData changed:', weatherData);
-  }, [weatherData]);
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
@@ -67,15 +62,15 @@ export default function App() {
 
       {/* Report count banner */}
       {reportCount > 0 && (
-        <div className="bg-blue-50 border-b border-blue-100 py-1.5 px-4 text-center text-xs text-blue-500">
-          已有 <span className="font-semibold">{reportCount}</span> 人上报症状
+        <div className="bg-emerald-50 border-b border-emerald-100 py-1.5 px-4 text-center text-xs text-emerald-600">
+          📊 已有 <span className="font-semibold">{reportCount}</span> 人上报症状
         </div>
       )}
 
       {/* Scrollable content area */}
       <div
         className="flex-1 overflow-y-auto px-3 md:px-6"
-        style={{ paddingTop: '16px', paddingBottom: '96px' }}
+        style={{ paddingTop: '8px', paddingBottom: '96px' }}
       >
         <div className="max-w-2xl mx-auto w-full">
           {/* Welcome screen — only when no messages yet */}
