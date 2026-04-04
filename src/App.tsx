@@ -9,8 +9,7 @@ import { ChatInput } from './components/ChatInput';
 import { ResultCard } from './components/ResultCard';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
-import { StatsBanner } from './components/StatsBanner';
-import { WeatherBar } from './components/WeatherBar';
+import { InfoBar } from './components/WeatherBar';
 import { EpidemicDashboard } from './components/EpidemicDashboard';
 import type { Hospital } from './types';
 
@@ -57,15 +56,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col pt-16">
       <Header onReset={resetChat} onToggleMap={() => setCurrentPage('map')} />
-      <StatsBanner />
-      <WeatherBar weather={weatherData} />
-
-      {/* Report count banner */}
-      {reportCount > 0 && (
-        <div className="bg-emerald-50 border-b border-emerald-100 py-1.5 px-4 text-center text-xs text-emerald-600">
-          📊 已有 <span className="font-semibold">{reportCount}</span> 人上报症状
-        </div>
-      )}
+      <InfoBar weather={weatherData} />
 
       {/* Scrollable content area */}
       <div
