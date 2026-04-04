@@ -31,6 +31,11 @@ export default function App() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'chat' | 'map'>('chat');
 
+  // Debug: track weatherData state changes
+  useEffect(() => {
+    console.log('[App] weatherData changed:', weatherData);
+  }, [weatherData]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
@@ -55,7 +60,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col pt-16">
       <Header onReset={resetChat} onToggleMap={() => setCurrentPage('map')} />
       <StatsBanner />
       <WeatherBar weather={weatherData} />
