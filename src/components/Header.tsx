@@ -37,12 +37,12 @@ export function Header({
 }: HeaderProps) {
   const isSignedIn = Boolean(sessionEmail);
   const accountLabel = isSignedIn
-    ? '已登录同步'
+    ? '同步已开启'
     : cloudMode === 'cloud-ready'
-      ? '登录后可同步'
+      ? '可开启同步'
       : cloudMode === 'error'
         ? '当前使用本机记录'
-        : '游客模式';
+        : '本机模式';
   const accountClassName = isSignedIn
     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
     : cloudMode === 'cloud-ready'
@@ -58,8 +58,8 @@ export function Header({
           <Stethoscope size={16} className="text-white" />
         </div>
         <span className="text-slate-800 font-semibold text-lg">健康助手</span>
-        <span className="bg-blue-50 text-blue-600 border border-blue-100 text-xs px-2 py-0.5 rounded-full">
-          AI 驱动
+        <span className="bg-slate-100 text-slate-600 border border-slate-200 text-xs px-2 py-0.5 rounded-full">
+          症状自查
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -69,7 +69,7 @@ export function Header({
               <button
                 onClick={onOpenHome}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
-                  currentView === 'workspace'
+                    currentView === 'workspace'
                     ? 'text-slate-600 hover:bg-white'
                     : 'bg-white text-slate-800 shadow-sm'
                 }`}
@@ -88,7 +88,7 @@ export function Header({
                 }`}
               >
                 <UserRound size={13} />
-                {isSignedIn ? '我的档案' : '登录同步'}
+                健康空间
               </button>
             )}
           </div>
@@ -104,7 +104,7 @@ export function Header({
           <button
             onClick={onOpenWorkspace}
             className="md:hidden inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 transition-colors"
-            title={isSignedIn ? '我的档案' : '登录同步'}
+            title="健康空间"
           >
             <UserRound size={15} />
           </button>

@@ -73,13 +73,13 @@ const TOOL_EVIDENCE_META: Record<
   },
   get_epidemic_snapshot: {
     title: '区域风险快照',
-    source: '近期自查与趋势信号',
+    source: '近期趋势参考',
     tint: 'bg-amber-50 border-amber-100 text-amber-700',
     icon: <DatabaseZap size={14} />,
   },
   search_web: {
     title: '公开资料补充',
-    source: 'Tavily / 官方资讯',
+    source: '公开网页与官方资讯',
     tint: 'bg-emerald-50 border-emerald-100 text-emerald-700',
     icon: <Globe size={14} />,
   },
@@ -467,7 +467,7 @@ export function ResultCard({ result, hospitals, messages, onReport, onToggleMap 
       .map((item) => {
         const url = typeof item.url === 'string' ? item.url : '';
         return {
-          title: typeof item.title === 'string' ? item.title : '来源摘录',
+          title: typeof item.title === 'string' ? item.title : '公开资料摘录',
           url,
           snippet:
             typeof item.snippet === 'string'
@@ -480,12 +480,12 @@ export function ResultCard({ result, hospitals, messages, onReport, onToggleMap 
       })
       .filter((item) => item.title || item.snippet || item.url);
 
-    const webNote =
-      webTool?.status === 'error'
-        ? webTool.summary ?? '联网来源暂不可用，当前判断仍以本地知识与实时信号为主。'
-        : webTool && sourceItems.length === 0
-        ? webTool.summary ?? '暂未检索到可展示的外部来源。'
-        : undefined;
+      const webNote =
+        webTool?.status === 'error'
+          ? webTool.summary ?? '联网资料暂不可用，当前仍以本地知识与实时信号为主。'
+          : webTool && sourceItems.length === 0
+          ? webTool.summary ?? '暂未检索到可展示的公开来源。'
+          : undefined;
 
     return {
       evidenceCards: cards,
@@ -590,7 +590,7 @@ export function ResultCard({ result, hospitals, messages, onReport, onToggleMap 
             <div>
               <p className="text-sm font-semibold text-slate-800">判断依据与证据</p>
               <p className="text-[11px] text-slate-500 mt-1">
-                结论结合症状规则、本地知识检索、风险信号与外部工具结果综合生成
+                结论结合症状规则、本地知识检索、风险信号与公开资料综合生成
               </p>
             </div>
             <span className="text-[11px] text-slate-400">
@@ -627,7 +627,7 @@ export function ResultCard({ result, hospitals, messages, onReport, onToggleMap 
                 <div>
                   <div className="flex items-center gap-2">
                     <Globe size={14} className="text-emerald-600" />
-                    <span className="text-xs font-semibold text-slate-800">来源摘录</span>
+                    <span className="text-xs font-semibold text-slate-800">外部公开资料摘录</span>
                   </div>
                   <p className="text-[11px] text-slate-500 mt-1">
                     若已触发联网检索，会在此展示外部来源摘要
@@ -712,15 +712,15 @@ export function ResultCard({ result, hospitals, messages, onReport, onToggleMap 
         </div>
 
         <div className="mb-5">
-          <OfficialSourceComparison
-            records={officialSources}
-            syncStatus={officialSourceSyncStatus}
-            subtitle={
-              webSources.length > 0
-                ? '用于和联网检索结果做权威对照，帮助快速判断哪些建议来自官方/公共卫生机构。'
-                : '即使联网检索暂不可用，也会展示内置的官方/权威公开资料摘要，保证页面稳定可信。'
-            }
-          />
+            <OfficialSourceComparison
+              records={officialSources}
+              syncStatus={officialSourceSyncStatus}
+              subtitle={
+                webSources.length > 0
+                  ? '用于和联网检索结果做权威对照，帮助快速判断哪些建议来自官方或公共卫生机构。'
+                  : '即使联网检索暂不可用，也会展示内置的官方公开资料摘要，保证页面稳定可信。'
+              }
+            />
         </div>
 
         {/* Action */}

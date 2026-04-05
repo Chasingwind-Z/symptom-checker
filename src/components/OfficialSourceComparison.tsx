@@ -11,17 +11,17 @@ interface OfficialSourceComparisonProps {
 }
 
 function getModeBadge(syncStatus?: OfficialSourceSyncStatus): string {
-  if (!syncStatus) return '稳定兜底';
+  if (!syncStatus) return '本地资料';
 
   if (syncStatus.mode === 'server-live') {
-    return '云端已同步';
+    return '云端同步';
   }
 
   if (syncStatus.mode === 'server-cache') {
-    return '最近缓存';
+    return '最近同步';
   }
 
-  return '内置兜底';
+  return '本地资料';
 }
 
 function getFreshnessBadge(syncStatus?: OfficialSourceSyncStatus): string {
@@ -35,15 +35,15 @@ function getFreshnessBadge(syncStatus?: OfficialSourceSyncStatus): string {
     case 'stale':
       return '待刷新';
     default:
-      return 'seeded';
+      return '人工维护';
   }
 }
 
 export function OfficialSourceComparison({
   records,
   syncStatus,
-  title = '官方信源对照卡',
-  subtitle = '优先展示官方/权威公开资料；若云端未配置或网络不可用，会自动回退到人工维护摘要。',
+  title = '官方公开资料对照卡',
+  subtitle = '优先展示官方公开资料；如云端暂不可用，会自动保留人工整理的本地摘要。',
   theme = 'light',
 }: OfficialSourceComparisonProps) {
   const isDark = theme === 'dark';

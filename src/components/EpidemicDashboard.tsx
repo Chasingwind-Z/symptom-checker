@@ -264,14 +264,14 @@ export function EpidemicDashboard({ onBack }: Props) {
           <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse mr-3 flex-shrink-0" />
           <span className="text-white font-bold text-xl">城市健康趋势参考</span>
           <span className="text-white/40 text-xs ml-4 tracking-widest hidden md:block">
-            PUBLIC HEALTH SNAPSHOT · 公开资料 + 匿名信号
+            公共健康趋势 · 官方公开资料 + 匿名信号
           </span>
         </div>
 
         <div className="flex items-center gap-4">
           <span className="text-white/60 text-sm font-mono">{currentTime}</span>
           <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full">
-            参考口径：匿名症状信号 + 公开资料摘要
+            参考口径：匿名症状信号 + 官方公开资料摘要
           </span>
           <button
             onClick={onBack}
@@ -514,7 +514,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                 {signalDistrict && (
                   <p className="text-[11px] text-white/60 leading-relaxed mb-3">
                     以 <span className="text-white/85">{signalDistrict.district}</span> 为当前观察窗口，
-                    当前先用透明规则补充外部趋势参考，后续可继续接入真实搜索/舆情数据源。
+                    当前先用可解释的规则补充外部趋势参考，后续可继续接入真实搜索与舆情数据源。
                   </p>
                 )}
                 <div className="space-y-2.5">
@@ -530,7 +530,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   ))}
                 </div>
                 <p className="text-[10px] text-white/35 mt-3">
-                  注：当前为 seeded / 透明样本，用于补充交叉验证，不替代真实互联网趋势源。
+                  注：当前为本地整理样本，用于补充交叉验证，不替代真实互联网趋势源。
                 </p>
               </div>
             </div>
@@ -759,12 +759,12 @@ export function EpidemicDashboard({ onBack }: Props) {
                 <span className="text-white font-medium text-sm">AI 预警研判</span>
                 <span className="text-white/30 text-xs ml-auto">基于脱敏指标生成</span>
               </div>
-              <p className="text-white/75 text-xs leading-relaxed whitespace-pre-line">
-                {warningText}
-              </p>
-              <p className="text-white/35 text-[11px] mt-3">
-                注：该研判用于辅助解释风险变化，不替代疾控部门正式结论。
-              </p>
+                  <p className="text-white/75 text-xs leading-relaxed whitespace-pre-line">
+                    {warningText}
+                  </p>
+                  <p className="text-white/35 text-[11px] mt-3">
+                    注：该研判用于辅助解释风险变化，不替代疾控部门正式结论。
+                  </p>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
                 <span className="text-white/30 text-xs">生成时间：{today}</span>
                 <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full">
@@ -777,7 +777,7 @@ export function EpidemicDashboard({ onBack }: Props) {
               records={dashboardSources}
               syncStatus={dashboardSyncStatus}
               theme="dark"
-              subtitle="优先展示疾控、卫健委与 WHO 的公开资料；若云端同步未启用，会自动保留内置摘要卡。"
+              subtitle="优先展示疾控、卫健委与 WHO 的公开资料；云端暂不可用时，会自动保留人工整理的本地摘要。"
             />
           </div>
         </div>

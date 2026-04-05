@@ -48,7 +48,7 @@ interface OfficialSourceGatewayPayload {
 const OFFICIAL_SOURCE_CACHE_PREFIX = 'symptom_official_source_sync_v2';
 const OFFICIAL_SOURCE_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_MAX_ITEMS = 3;
-const DEFAULT_SOURCE_LABEL = '官方信源对照';
+const DEFAULT_SOURCE_LABEL = '官方公开资料对照';
 const gatewayAvailable = hasGatewayRoute('official-source-fetch');
 
 const officialSourceMemoryCache = new Map<string, OfficialSourceBundle>();
@@ -57,15 +57,15 @@ const officialSourceRequestCache = new Map<string, Promise<OfficialSourceBundle>
 const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   {
     id: 'china-cdc-flu-weekly',
-    title: '流感样病例监测周报',
+    title: '中国疾控中心：流感样病例监测与呼吸道传播提示',
     sourceLabel: '中国疾病预防控制中心',
-    sourceType: '官方监测',
-    status: '公开摘要',
+    sourceType: '疾控公开资料',
+    status: '官方原文',
     lastUpdated: '2025-01-12T09:00:00+08:00',
     summary:
-      '适合对照发热、咳嗽、咽痛等症状的季节性活跃度；若持续高热或呼吸困难，仍应线下就医。',
+      '适合对照发热、咳嗽、咽痛等症状的季节性变化；若出现持续高热、气促或精神状态变差，应尽快线下就医。',
     url: 'https://www.chinacdc.cn/jkzt/crb/',
-    linkLabel: '查看疾控专题',
+    linkLabel: '打开疾控专题',
     topics: ['发热', '咳嗽', '咽痛', '流感', '呼吸道', '鼻塞'],
     departments: ['呼吸内科', '感染科', '全科医学科'],
     levels: ['green', 'yellow', 'orange'],
@@ -74,15 +74,15 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   },
   {
     id: 'nhc-fever-guidance',
-    title: '发热门诊与呼吸道就诊提示',
+    title: '国家卫健委：发热门诊与呼吸道就诊提示',
     sourceLabel: '国家卫生健康委员会',
-    sourceType: '官方发布',
-    status: '就医指引',
+    sourceType: '卫健委公开提示',
+    status: '就医参考',
     lastUpdated: '2025-01-08T10:00:00+08:00',
     summary:
-      '当出现高热不退、气促、基础病加重或老人儿童持续不适时，应优先前往发热门诊或急诊评估。',
+      '当出现高热不退、气促、基础病加重，或老人、儿童持续不适时，建议优先前往发热门诊或急诊评估。',
     url: 'https://www.nhc.gov.cn/',
-    linkLabel: '查看卫健委入口',
+    linkLabel: '打开卫健委官网',
     topics: ['高热', '呼吸困难', '发热', '咳嗽', '胸闷'],
     departments: ['呼吸内科', '急诊科', '感染科'],
     levels: ['yellow', 'orange', 'red'],
@@ -90,15 +90,15 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   },
   {
     id: 'beijing-winter-reminder',
-    title: '北京市冬春季呼吸道感染防护提醒',
+    title: '北京市卫健委：冬春季呼吸道感染防护与分流就医提示',
     sourceLabel: '北京市卫生健康委员会',
     sourceType: '地方卫健委',
-    status: '本地提醒',
+    status: '本地参考',
     lastUpdated: '2025-01-11T08:30:00+08:00',
     summary:
-      '结合本地就诊高峰、校园与通勤场景，提醒做好口罩、通风和分流就医，适合北京用户对照查看。',
+      '结合本地就诊高峰、校园和通勤场景，提示做好口罩、通风与分流就医，适合北京用户对照查看。',
     url: 'https://wjw.beijing.gov.cn/',
-    linkLabel: '查看北京卫健委',
+    linkLabel: '打开北京卫健委',
     topics: ['呼吸道', '发热', '咳嗽', '学校', '北京'],
     departments: ['呼吸内科', '儿科', '全科医学科'],
     levels: ['green', 'yellow', 'orange'],
@@ -107,15 +107,15 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   },
   {
     id: 'who-seasonal-influenza',
-    title: 'WHO 季节性流感与呼吸道风险提示',
+    title: 'WHO：季节性流感与急性呼吸道感染背景资料',
     sourceLabel: 'World Health Organization',
-    sourceType: '国际机构',
-    status: '背景对照',
+    sourceType: '国际机构背景资料',
+    status: '背景参考',
     lastUpdated: '2024-12-19T12:00:00+08:00',
     summary:
-      '提供全球季节性流感和急性呼吸道感染的公共卫生背景，用于辅助理解传播趋势，不替代个体诊断。',
+      '用于理解全球季节性流感和急性呼吸道感染的公共卫生背景，帮助判断趋势，但不替代个体诊断。',
     url: 'https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)',
-    linkLabel: '查看 WHO 页面',
+    linkLabel: '打开 WHO 页面',
     topics: ['流感', '呼吸道', '发热', '疲劳', '咳嗽'],
     departments: ['呼吸内科', '感染科'],
     levels: ['green', 'yellow', 'orange'],
@@ -124,15 +124,15 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   },
   {
     id: 'china-cdc-gastroenteritis',
-    title: '急性胃肠炎 / 诺如病毒防护提示',
+    title: '中国疾控中心：急性胃肠炎与诺如病毒防护要点',
     sourceLabel: '中国疾病预防控制中心',
-    sourceType: '官方科普',
-    status: '症状对照',
+    sourceType: '疾控科普',
+    status: '症状参考',
     lastUpdated: '2024-11-28T09:30:00+08:00',
     summary:
-      '若腹泻、呕吐、腹痛伴脱水风险，应及时补液并留意是否需要消化内科或急诊进一步评估。',
+      '若腹泻、呕吐、腹痛伴脱水风险，应及时补液，并留意是否需要消化内科或急诊进一步评估。',
     url: 'https://www.chinacdc.cn/',
-    linkLabel: '查看疾控中心',
+    linkLabel: '打开疾控官网',
     topics: ['腹泻', '呕吐', '腹痛', '恶心', '肠胃'],
     departments: ['消化内科', '急诊科'],
     levels: ['green', 'yellow', 'orange'],
@@ -140,7 +140,7 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   },
   {
     id: 'stroke-fast',
-    title: '卒中 FAST 识别与 120 提示',
+    title: '国家卫健委：卒中 FAST 识别与 120 提示',
     sourceLabel: '国家卫生健康委脑卒中防治相关公开指南',
     sourceType: '权威指南',
     status: '急症识别',
@@ -148,7 +148,7 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     summary:
       '若出现口角歪斜、单侧无力、言语不清等急性神经系统症状，应立即拨打 120，不建议等待观察。',
     url: 'https://www.nhc.gov.cn/',
-    linkLabel: '查看急救信息',
+    linkLabel: '打开急救信息',
     topics: ['头晕', '头痛', '言语不清', '肢体无力', '卒中'],
     departments: ['神经内科', '急诊科'],
     levels: ['orange', 'red'],
@@ -156,7 +156,7 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   },
   {
     id: 'chest-pain-emergency',
-    title: '胸痛 / 心梗急救就医提示',
+    title: '国家胸痛中心：胸痛与心梗急救就医提示',
     sourceLabel: '国家胸痛中心建设相关公开指南',
     sourceType: '权威指南',
     status: '急症通道',
@@ -164,7 +164,7 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     summary:
       '胸痛持续、伴大汗或呼吸困难时，应尽快启动急诊绿色通道，不建议自行驾车或延误观察。',
     url: 'https://www.nhc.gov.cn/',
-    linkLabel: '查看官方入口',
+    linkLabel: '打开官方入口',
     topics: ['胸痛', '胸闷', '心慌', '呼吸困难', '大汗'],
     departments: ['心内科', '急诊科'],
     levels: ['orange', 'red'],
@@ -262,7 +262,7 @@ function createSyncStatus(
       overrides.freshness ?? deriveFreshness(lastSyncTime || latestRecordTime, fallbackActive),
     sourceLabel: overrides.sourceLabel ?? DEFAULT_SOURCE_LABEL,
     summary: overrides.summary ?? '已准备官方公开资料摘要。',
-    note: overrides.note ?? '仅供与本次问诊结果交叉参考，不替代线下医生诊断。',
+    note: overrides.note ?? '仅展示公开来源摘要，供与本次问诊结果交叉参考，不替代线下医生诊断。',
     lastSyncTime,
     latestRecordTime,
     fallbackActive,
@@ -338,11 +338,11 @@ function readPersistedBundle(contextKey: string): OfficialSourceBundle | null {
           summary:
             typeof parsed.syncStatus?.summary === 'string'
               ? parsed.syncStatus.summary
-              : '显示最近一次同步的官方摘要缓存。',
+              : '显示最近一次同步的官方公开资料摘要。',
           note:
             typeof parsed.syncStatus?.note === 'string'
               ? parsed.syncStatus.note
-              : '如当前网络不可用，会继续展示最近一次成功同步的官方参考摘要。',
+              : '当前网络不可用时，会继续展示最近一次成功同步的官方参考摘要。',
           lastSyncTime:
             typeof parsed.syncStatus?.lastSyncTime === 'string' ? parsed.syncStatus.lastSyncTime : '',
           latestRecordTime,
@@ -479,17 +479,17 @@ function createSeededBundle(
     syncStatus: createSyncStatus(state, {
       mode: 'seeded-local',
       freshness: 'seeded',
-      sourceLabel: overrides.sourceLabel ?? '内置官方资料卡',
-      summary:
-        overrides.summary ??
-        (gatewayAvailable
-          ? '正在尝试同步云端官方参考；当前先展示内置公开资料摘要。'
-          : '当前未配置云端官方同步，展示人工维护的公开资料摘要。'),
-      note:
-        overrides.note ??
-        (gatewayAvailable
-          ? '如果 Server Gateway / Supabase Edge Function 已部署，会自动刷新为云端摘要；否则继续保留稳定兜底。'
-          : '当前为 local-first 模式：优先保证页面稳定，再按需接入官方云端检索。'),
+      sourceLabel: overrides.sourceLabel ?? '官方资料卡',
+        summary:
+          overrides.summary ??
+          (gatewayAvailable
+            ? '正在同步云端官方公开资料，当前先展示人工整理的公开摘要。'
+            : '当前未启用云端同步，展示人工整理的官方公开资料摘要。'),
+        note:
+          overrides.note ??
+          (gatewayAvailable
+            ? '若云端网关可用，会自动更新为更完整的官方公开资料；否则继续保留稳定兜底。'
+            : '当前以本地整理资料为主，优先保证页面稳定与可读性。'),
       lastSyncTime: overrides.lastSyncTime ?? '',
       latestRecordTime,
       fallbackActive: overrides.fallbackActive ?? true,
@@ -641,7 +641,7 @@ function createInitialBundle(context: OfficialSourceContext): OfficialSourceBund
       syncStatus: createSyncStatus('loading', {
         ...cached.syncStatus,
         mode: cached.syncStatus.mode === 'server-live' ? 'server-cache' : cached.syncStatus.mode,
-        summary: '正在刷新官方参考摘要，先展示最近一次同步结果。',
+        summary: '正在刷新官方公开资料摘要，先展示最近一次同步结果。',
         note: '若本次刷新失败，会继续保留最近一次成功同步的公开资料摘要。',
         fallbackActive: true,
         freshness: 'stale',
@@ -751,7 +751,7 @@ export async function syncOfficialSourceBundle(
             fallbackActive: true,
             freshness: 'stale',
             summary: '云端刷新失败，当前展示最近一次同步结果。',
-            note: '网络或服务端暂不可用，已保留最近一次成功同步的官方参考摘要。',
+            note: '网络或服务端暂不可用，已保留最近一次成功同步的官方公开资料摘要。',
             error: message,
           }),
         };
@@ -763,7 +763,7 @@ export async function syncOfficialSourceBundle(
       const fallback = createSeededBundle(normalized, {
         state: 'error',
         summary: '云端官方同步暂不可用，已切回内置公开资料摘要。',
-        note: '当前未能完成服务端刷新，不影响继续查看人工维护的权威公开资料卡。',
+        note: '当前未能完成服务端刷新，不影响继续查看人工维护的官方公开资料卡。',
         error: message,
       });
       officialSourceMemoryCache.set(contextKey, fallback);

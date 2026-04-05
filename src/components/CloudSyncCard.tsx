@@ -156,10 +156,10 @@ export function CloudSyncCard({
                     : 'text-slate-700'
               }`}
             >
-              {isSignedIn ? '已开启同步' : isCloudConfigured ? '登录后可同步' : '游客模式'}
+              {isSignedIn ? '同步已开启' : isCloudConfigured ? '可开启同步' : '本机记录'}
             </span>
           </div>
-          <p className="text-sm font-semibold text-slate-800">我的健康空间</p>
+          <p className="text-sm font-semibold text-slate-800">健康空间</p>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed">{helperText}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -196,16 +196,16 @@ export function CloudSyncCard({
           <p className="text-sm font-semibold text-slate-800 mt-2">{statusLabel}</p>
         </div>
 
-        <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3">
+          <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3">
             <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
               <Mail size={12} />
               账号状态
             </div>
             <p className="text-sm font-semibold text-slate-800 mt-2">
-              {sessionEmail || (isCloudConfigured ? '未登录，可邮件同步' : '当前为游客模式')}
+              {sessionEmail || (isCloudConfigured ? '未登录，可开启邮件同步' : '仅保存本机记录')}
             </p>
             <p className="text-[11px] text-slate-500 mt-1">
-              {isSignedIn ? '档案与历史可跨设备同步' : isCloudConfigured ? '可发送邮箱登录链接' : '可直接开始问诊，结果会先保存在本机'}
+              {isSignedIn ? '档案与历史可跨设备同步' : isCloudConfigured ? '可发送邮箱登录链接' : '不影响直接问诊'}
             </p>
           </div>
 
@@ -256,7 +256,7 @@ export function CloudSyncCard({
                 <div>
                   <p className="text-sm font-semibold text-slate-800">账号与同步</p>
                   <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    默认使用邮箱 magic link，无需额外记密码；登录后档案和问诊摘要会自动尝试同步。
+                    登录后档案和问诊摘要会自动同步，不需要额外密码。
                   </p>
                 </div>
                 <ShieldCheck size={16} className="text-cyan-600" />
@@ -305,11 +305,11 @@ export function CloudSyncCard({
                         placeholder="请输入常用邮箱，如 name@example.com"
                         className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300"
                       />
-                      <button
-                        type="button"
-                        onClick={handleSendMagicLink}
-                        disabled={isSendingMagicLink}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors"
+                  <button
+                    type="button"
+                    onClick={handleSendMagicLink}
+                    disabled={isSendingMagicLink}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors"
                       >
                         <Mail size={13} />
                         {isSendingMagicLink ? '发送中…' : '发送登录链接'}
@@ -317,20 +317,12 @@ export function CloudSyncCard({
                     </div>
                   </label>
                   <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                    首次使用请在 Supabase Auth → URL Configuration 中加入当前站点地址，例如
-                    {' '}
-                    <span className="font-medium text-slate-700">http://localhost:5173</span>
-                    。
+                    收到邮件后按提示打开即可继续使用。
                   </p>
                 </div>
               ) : (
                 <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white/80 px-3 py-3 text-[11px] text-slate-600 leading-relaxed">
-                  <p className="font-medium text-slate-800">要开启登录与同步，只需补 3 步：</p>
-                  <ul className="mt-2 space-y-1 list-disc pl-4">
-                    <li>在 `.env` 填写 `VITE_SUPABASE_URL` 与 `VITE_SUPABASE_ANON_KEY`。</li>
-                    <li>在 Supabase Auth 中启用 Email provider，并添加本地/线上 redirect URL。</li>
-                    <li>执行现有 migration，让 `profiles`、`cases`、`case_messages` 表可用。</li>
-                  </ul>
+                  云端同步暂未启用时，也可以继续使用本机记录和问诊功能。
                 </div>
               )}
 
