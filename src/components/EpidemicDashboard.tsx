@@ -19,7 +19,7 @@ import {
   mergeLocalReports,
 } from '../lib/epidemicDataEngine'
 import { OfficialSourceComparison } from './OfficialSourceComparison'
-import { useDashboardOfficialSources } from '../lib/officialSources'
+import * as officialSourceHelpers from '../lib/officialSources'
 import type { DistrictRiskData } from '../lib/epidemicDataEngine'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Legend, Tooltip, Filler)
@@ -178,7 +178,7 @@ export function EpidemicDashboard({ onBack }: Props) {
   const warningText = districtData.length > 0 ? getAIWarningText(districtData) : ''
   const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   const focusDistrict = sortedDistricts[0] ?? null
-  const { records: dashboardSources, syncStatus: dashboardSyncStatus } = useDashboardOfficialSources(
+  const { records: dashboardSources, syncStatus: dashboardSyncStatus } = officialSourceHelpers.useDashboardOfficialSources(
     activeDistrict?.topSymptoms ?? focusDistrict?.topSymptoms ?? []
   )
   const breakdownItems = activeDistrict
@@ -271,7 +271,7 @@ export function EpidemicDashboard({ onBack }: Props) {
         <div className="flex items-center gap-4">
           <span className="text-white/60 text-sm font-mono">{currentTime}</span>
           <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full">
-            参考口径：匿名症状信号 + 官方公开资料摘要
+            低样本阶段 · 官方摘要 + 季节/天气 + 匿名样本估计
           </span>
           <button
             onClick={onBack}
@@ -360,6 +360,9 @@ export function EpidemicDashboard({ onBack }: Props) {
               </div>
             </div>
             <div className="hidden xl:flex items-center gap-2 flex-wrap justify-end">
+              <span className="bg-white/8 border border-white/10 text-white/65 text-[11px] px-2.5 py-1 rounded-full">
+                当前口径：透明估计模型
+              </span>
               {focusDistrict.alertReasons.slice(0, 2).map(reason => (
                 <span
                   key={reason}
@@ -401,6 +404,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                     { color: '#F59E0B', label: '中风险' },
                     { color: '#F97316', label: '高风险' },
                     { color: '#EF4444', label: '紧急' },
+                    { color: '#67E8F9', label: '低样本估计' },
                   ].map(item => (
                     <div key={item.label} className="flex items-center gap-1">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
@@ -431,7 +435,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                     </div>
                     <p className="text-[11px] text-white/65 mt-1 leading-relaxed">
                       {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，趋势{formatTrendDelta(focusDistrict.trend, focusDistrict.trendPercent)}，
-                      适合联动下方信号卡做交叉验证。
+                      当前为低样本阶段趋势估计，适合联动下方信号卡和官方资料做交叉验证。
                     </p>
                   </div>
                 )}
@@ -514,7 +518,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                 {signalDistrict && (
                   <p className="text-[11px] text-white/60 leading-relaxed mb-3">
                     以 <span className="text-white/85">{signalDistrict.district}</span> 为当前观察窗口，
-                    当前先用可解释的规则补充外部趋势参考，后续可继续接入真实搜索与舆情数据源。
+                    当前先用官方公开资料、天气季节因子和匿名样本估计来补充趋势参考，后续可继续接入真实搜索与舆情数据源。
                   </p>
                 )}
                 <div className="space-y-2.5">

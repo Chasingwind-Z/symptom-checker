@@ -4,6 +4,7 @@ import {
   CloudOff,
   Download,
   LayoutGrid,
+  LogIn,
   MapPin,
   RefreshCw,
   Stethoscope,
@@ -39,7 +40,7 @@ export function Header({
   const accountLabel = isSignedIn
     ? '同步已开启'
     : cloudMode === 'cloud-ready'
-      ? '可开启同步'
+      ? '登录同步'
       : cloudMode === 'error'
         ? '当前使用本机记录'
         : '本机模式';
@@ -101,13 +102,24 @@ export function Header({
           <span className="max-w-[180px] truncate">{isSignedIn ? sessionEmail : accountLabel}</span>
         </div>
         {onOpenWorkspace && (
-          <button
-            onClick={onOpenWorkspace}
-            className="md:hidden inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 transition-colors"
-            title="健康空间"
-          >
-            <UserRound size={15} />
-          </button>
+          <>
+            <button
+              onClick={onOpenWorkspace}
+              className="md:hidden inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50 transition-colors"
+              title={isSignedIn ? '健康空间' : '登录与健康空间'}
+            >
+              {isSignedIn ? <UserRound size={15} /> : <LogIn size={15} />}
+            </button>
+            {!isSignedIn && (
+              <button
+                onClick={onOpenWorkspace}
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs text-cyan-700 hover:bg-cyan-100 transition-colors"
+              >
+                <LogIn size={13} />
+                登录 / 同步
+              </button>
+            )}
+          </>
         )}
         {isAppInstalled && (
           <span className="hidden sm:inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700">

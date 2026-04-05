@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from './hooks/useChat';
 import { getRecommendedHospitals } from './lib/mockHospitals';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
+import { buildCombinedMedicalNotes } from './lib/personalization';
 import { Header } from './components/Header';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { ChatBubble } from './components/ChatBubble';
@@ -28,6 +29,16 @@ function getReportCount(): number {
 export default function App() {
   const workspace = useHealthWorkspace();
   const pwa = usePwaInstall();
+  const chatMemoryContext = useMemo(
+    () => ({
+      profile: {
+        ...workspace.profile,
+        medicalNotes: buildCombinedMedicalNotes(workspace.profile),
+      },
+      recentCases: workspace.recentCases,
+    }),
+    [workspace.profile, workspace.recentCases]
+  );
   const {
     messages,
     isLoading,
@@ -39,10 +50,7 @@ export default function App() {
     weatherData,
     sendMessage,
     resetChat,
-  } = useChat({
-    profile: workspace.profile,
-    recentCases: workspace.recentCases,
-  });
+  } = useChat(chatMemoryContext);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const [, setReportCount] = useState<number>(getReportCount);
@@ -145,6 +153,7 @@ export default function App() {
                 onRefresh={workspace.refresh}
                 isRefreshing={workspace.isRefreshing}
                 onSaveProfile={workspace.updateProfile}
+                onApplyDemoPersona={workspace.loadDemoPersona}
               />
             </div>
           )}
@@ -215,6 +224,8 @@ export default function App() {
                   result={diagnosisResult}
                   hospitals={hospitals}
                   messages={messages}
+                  profile={workspace.profile}
+                  recentCases={workspace.recentCases}
                   onReport={() => setReportCount(getReportCount())}
                   onToggleMap={() => setCurrentPage('map')}
                 />

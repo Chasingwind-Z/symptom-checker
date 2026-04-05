@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  applyDemoPersona,
   getDefaultProfileDraft,
   loadHealthWorkspace,
   saveProfileDraft,
@@ -52,6 +53,7 @@ export function useHealthWorkspace() {
       const nextDraft = {
         ...workspace.profile,
         ...patch,
+        profileMode: 'custom' as const,
       };
 
       const result = await saveProfileDraft(nextDraft);
@@ -66,10 +68,20 @@ export function useHealthWorkspace() {
     [workspace.profile]
   );
 
+  const loadDemoPersona = useCallback(
+    async (personaId: string) => {
+      const result = await applyDemoPersona(personaId);
+      await refresh();
+      return result;
+    },
+    [refresh]
+  );
+
   return {
     ...workspace,
     isRefreshing,
     refresh,
     updateProfile,
+    loadDemoPersona,
   };
 }

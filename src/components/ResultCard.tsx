@@ -10,13 +10,17 @@ import {
   DatabaseZap,
   ExternalLink,
   Globe,
+  Pill,
   ShieldCheck,
+  UserRoundSearch,
 } from 'lucide-react';
 import { HospitalCard } from './HospitalCard';
 import { OfficialSourceComparison } from './OfficialSourceComparison';
 import { RiskGauge } from './RiskGauge';
 import { ReportExport } from './ReportExport';
-import { useOfficialSourceComparison } from '../lib/officialSources';
+import * as officialSourceHelpers from '../lib/officialSources';
+import { getMedicationGuidance, getPersonalizedInsights } from '../lib/personalization';
+import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import type { DiagnosisResult, Hospital, Message, RiskLevel, SymptomReport, ToolCall } from '../types';
 
 const DISTRICTS = [
@@ -167,6 +171,8 @@ interface ResultCardProps {
   result: DiagnosisResult;
   hospitals: Hospital[];
   messages: Message[];
+  profile?: ProfileDraft;
+  recentCases?: CaseHistoryItem[];
   onReport?: () => void;
   onToggleMap?: () => void;
 }
@@ -226,7 +232,15 @@ const LEVEL_CONFIG: Record<
   },
 };
 
-export function ResultCard({ result, hospitals, messages, onReport, onToggleMap }: ResultCardProps) {
+export function ResultCard({
+  result,
+  hospitals,
+  messages,
+  profile,
+  recentCases = [],
+  onReport,
+  onToggleMap,
+}: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
   const [checked, setChecked] = useState<[boolean, boolean, boolean]>([false, false, false]);
@@ -508,7 +522,12 @@ export function ResultCard({ result, hospitals, messages, onReport, onToggleMap 
     };
   }, [messages, result]);
   const { records: officialSources, syncStatus: officialSourceSyncStatus } =
-    useOfficialSourceComparison(officialSourceContext);
+    officialSourceHelpers.useOfficialSourceComparison(officialSourceContext);
+  const personalizedInsights = useMemo(
+    () => getPersonalizedInsights({ profile, recentCases, diagnosis: result }),
+    [profile, recentCases, result]
+  );
+  const medicationAdvice = useMemo(() => getMedicationGuidance(result, profile), [result, profile]);
 
   function toggleCheck(i: 0 | 1 | 2) {
     setChecked((prev) => {
@@ -728,6 +747,88 @@ export function ResultCard({ result, hospitals, messages, onReport, onToggleMap 
           <ArrowRight size={16} className={`mt-0.5 flex-shrink-0 ${config.text}`} />
           <span className="text-slate-700 font-medium text-sm">{result.action}</span>
         </div>
+
+        {(personalizedInsights.length > 0 || medicationAdvice.length > 0) && (
+          <div className="mb-5 grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
+            {personalizedInsights.length > 0 && (
+              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <UserRoundSearch size={15} className="text-cyan-700" />
+                  <p className="text-sm font-semibold text-slate-800">个性化判断补充</p>
+                </div>
+                <div className="mt-3 space-y-2.5">
+                  {personalizedInsights.map((insight) => {
+                    const toneClass =
+                      insight.tone === 'emerald'
+                        ? 'border-emerald-100 bg-emerald-50'
+                        : insight.tone === 'amber'
+                        ? 'border-amber-100 bg-amber-50'
+                        : insight.tone === 'violet'
+                        ? 'border-violet-100 bg-violet-50'
+                        : insight.tone === 'rose'
+                        ? 'border-rose-100 bg-rose-50'
+                        : 'border-cyan-100 bg-white';
+
+                    return (
+                      <div key={insight.id} className={`rounded-xl border px-3 py-3 ${toneClass}`}>
+                        <p className="text-sm font-medium text-slate-800">{insight.title}</p>
+                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">{insight.summary}</p>
+                        <ul className="mt-2 space-y-1.5">
+                          {insight.details.map((detail) => (
+                            <li key={detail} className="flex gap-2 text-[11px] text-slate-600 leading-relaxed">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-400" />
+                              <span>{detail}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {medicationAdvice.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Pill size={15} className="text-violet-700" />
+                  <p className="text-sm font-semibold text-slate-800">药品与家庭处理参考</p>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  优先给出更安全的 OTC / 家庭处理方向；若风险较高，会明确提醒尽快线下就医。
+                </p>
+                <div className="mt-3 space-y-2.5">
+                  {medicationAdvice.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`rounded-xl border px-3 py-3 ${
+                        item.suitable
+                          ? 'border-slate-200 bg-white'
+                          : 'border-amber-100 bg-amber-50/80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] ${
+                            item.suitable
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {item.suitable ? '可短期参考' : '需谨慎'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{item.useCase}</p>
+                      <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">原因：{item.reason}</p>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">提醒：{item.caution}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Departments */}
         {result.departments.length > 0 && (

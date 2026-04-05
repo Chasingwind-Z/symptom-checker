@@ -2,6 +2,7 @@ import {
   Baby,
   Brain,
   HeartPulse,
+  LogIn,
   MessageCircle,
   ShieldPlus,
   Thermometer,
@@ -77,10 +78,10 @@ export function WelcomeScreen({ onSendMessage, onToggleMap, onOpenWorkspace }: W
           </button>
           <button
             onClick={onOpenWorkspace}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-medium text-cyan-700 hover:bg-cyan-100 transition-colors"
           >
-            <ShieldPlus size={16} />
-            我的健康空间
+            <LogIn size={16} />
+            登录 / 健康空间
           </button>
           <button
             onClick={onToggleMap}
@@ -142,6 +143,9 @@ export function WelcomeScreen({ onSendMessage, onToggleMap, onOpenWorkspace }: W
               <p className="text-sm font-semibold text-slate-800">登录后可使用健康空间</p>
               <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 保存档案、同步历史记录、跨设备继续上次问诊，都集中放在空间里，不影响游客直接使用。
+              </p>
+              <p className="text-[11px] text-cyan-700 mt-2">
+                也可以先载入虚拟体验画像，直接查看个性化推荐和随访效果。
               </p>
             </div>
           </div>

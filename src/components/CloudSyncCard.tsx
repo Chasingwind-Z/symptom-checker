@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   BadgeCheck,
+  Sparkles,
   ChevronDown,
   ChevronUp,
   Cloud,
@@ -14,6 +15,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import type { CaseHistoryItem, HealthWorkspaceSnapshot, ProfileDraft } from '../lib/healthData';
+import { getDemoPersonaSummaries } from '../lib/personalization';
 import { sendMagicLink, signOutSupabase } from '../lib/supabase';
 
 interface CloudSyncCardProps {
@@ -26,6 +28,7 @@ interface CloudSyncCardProps {
   onRefresh: () => Promise<void> | void;
   isRefreshing?: boolean;
   onSaveProfile?: (patch: Partial<ProfileDraft>) => Promise<unknown>;
+  onApplyDemoPersona?: (personaId: string) => Promise<unknown>;
 }
 
 const TRIAGE_LABELS: Record<CaseHistoryItem['triageLevel'], string> = {
@@ -54,6 +57,7 @@ export function CloudSyncCard({
   onRefresh,
   isRefreshing = false,
   onSaveProfile,
+  onApplyDemoPersona,
 }: CloudSyncCardProps) {
   const latestCase = recentCases[0];
   const [isExpanded, setIsExpanded] = useState(false);
@@ -67,6 +71,8 @@ export function CloudSyncCard({
   });
   const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isApplyingPersona, setIsApplyingPersona] = useState<string | null>(null);
+  const demoPersonas = getDemoPersonaSummaries();
 
   useEffect(() => {
     setDraft(profile);
@@ -77,7 +83,14 @@ export function CloudSyncCard({
   }, [sessionEmail]);
 
   const hasProfileInfo = Boolean(
-    profile.displayName || profile.birthYear || profile.gender || profile.medicalNotes
+    profile.displayName ||
+      profile.birthYear ||
+      profile.gender ||
+      profile.medicalNotes ||
+      profile.chronicConditions ||
+      profile.allergies ||
+      profile.currentMedications ||
+      profile.careFocus
   );
   const profileCompletion =
     Math.round(
@@ -87,8 +100,12 @@ export function CloudSyncCard({
         profile.birthYear,
         profile.gender,
         profile.medicalNotes,
+        profile.chronicConditions,
+        profile.allergies,
+        profile.currentMedications,
+        profile.careFocus,
       ].filter(Boolean).length /
-        5) *
+        9) *
         100
     ) || 0;
   const cloudCaseCount = recentCases.filter((item) => item.source === 'supabase').length;
@@ -131,6 +148,19 @@ export function CloudSyncCard({
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function handleApplyPersona(personaId: string) {
+    if (!onApplyDemoPersona) return;
+    setIsApplyingPersona(personaId);
+    const result = (await onApplyDemoPersona(personaId)) as
+      | { ok?: boolean; helperText?: string; statusLabel?: string }
+      | undefined;
+    setAuthState({
+      kind: result?.ok === false ? 'error' : 'success',
+      message: result?.helperText ?? '体验画像已加载，可继续修改成自己的情况。',
+    });
+    setIsApplyingPersona(null);
   }
 
   return (
@@ -218,7 +248,8 @@ export function CloudSyncCard({
             {profile.displayName || (hasProfileInfo ? '资料待补全' : '未设置昵称')} · {profileCompletion}%
           </p>
           <p className="text-[11px] text-slate-500 mt-1">
-            {profile.city || '中国大陆'} · {profile.gender || '待补充资料'}
+            {profile.city || '中国大陆'} ·{' '}
+            {profile.chronicConditions || profile.gender || '待补充资料'}
           </p>
         </div>
 
@@ -337,6 +368,47 @@ export function CloudSyncCard({
               )}
             </div>
 
+            {!isSignedIn && (
+              <div className="rounded-2xl border border-violet-100 bg-violet-50/60 px-3 py-3">
+                <div className="flex items-start justify-between gap-2 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">一键载入体验画像</p>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      为了更直观看到个性化推荐和健康空间效果，可以先加载一份虚拟用户资料。
+                    </p>
+                  </div>
+                  <Sparkles size={16} className="text-violet-600" />
+                </div>
+
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {demoPersonas.map((persona) => (
+                    <button
+                      key={persona.id}
+                      type="button"
+                      disabled={Boolean(isApplyingPersona)}
+                      onClick={() => handleApplyPersona(persona.id)}
+                      className="rounded-2xl border border-violet-100 bg-white px-3 py-3 text-left hover:bg-violet-50 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <p className="text-xs font-semibold text-slate-800">{persona.label}</p>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        {isApplyingPersona === persona.id ? '载入中…' : persona.subtitle}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {persona.tags.slice(0, 2).map((tag) => (
+                          <span
+                            key={`${persona.id}-${tag}`}
+                            className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div>
@@ -422,18 +494,62 @@ export function CloudSyncCard({
                 </label>
               </div>
 
-              <label className="mt-2.5 flex flex-col gap-1 text-[11px] text-slate-500">
-                慢病 / 过敏 / 备注
-                <textarea
-                  value={draft.medicalNotes}
-                  onChange={(event) =>
-                    setDraft((prev) => ({ ...prev, medicalNotes: event.target.value }))
-                  }
-                  rows={3}
-                  placeholder="如：高血压、糖尿病、青霉素过敏"
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300 resize-none"
-                />
-              </label>
+                <label className="mt-2.5 flex flex-col gap-1 text-[11px] text-slate-500">
+                  慢病 / 既往史
+                  <textarea
+                    value={draft.chronicConditions}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, chronicConditions: event.target.value }))
+                    }
+                    rows={3}
+                    placeholder="如：高血压、糖尿病、哮喘"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300 resize-none"
+                  />
+                </label>
+
+                <label className="mt-2.5 flex flex-col gap-1 text-[11px] text-slate-500">
+                  过敏史 / 当前用药
+                  <textarea
+                    value={`${draft.allergies}${draft.currentMedications ? `${draft.allergies ? '\n' : ''}${draft.currentMedications}` : ''}`}
+                    onChange={(event) => {
+                      const lines = event.target.value.split('\n');
+                      setDraft((prev) => ({
+                        ...prev,
+                        allergies: lines[0] ?? '',
+                        currentMedications: lines.slice(1).join('\n'),
+                      }));
+                    }}
+                    rows={3}
+                    placeholder="第一行写过敏史，如：青霉素；下面可写当前长期用药"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300 resize-none"
+                  />
+                </label>
+
+                <label className="mt-2.5 flex flex-col gap-1 text-[11px] text-slate-500">
+                  关注重点 / 本次更想解决什么
+                  <textarea
+                    value={draft.careFocus}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, careFocus: event.target.value }))
+                    }
+                    rows={2}
+                    placeholder="如：我更想知道今晚需不需要去医院、哪些药适合我"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300 resize-none"
+                  />
+                </label>
+
+                <label className="mt-2.5 flex flex-col gap-1 text-[11px] text-slate-500">
+                  其他备注
+                  <textarea
+                    value={draft.medicalNotes}
+                    onChange={(event) =>
+                      setDraft((prev) => ({ ...prev, medicalNotes: event.target.value }))
+                    }
+                    rows={2}
+                    placeholder="如：最近休息差、家里有孩子、担心交叉感染"
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300 resize-none"
+                  />
+                </label>
 
               {saveState === 'done' && (
                 <p className="mt-2 text-[11px] text-emerald-600">

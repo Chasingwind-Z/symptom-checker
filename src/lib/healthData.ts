@@ -1,9 +1,15 @@
 import type { DiagnosisResult, Message } from '../types';
 import { getSupabaseBootstrapStatus, getSupabaseClient } from './supabase';
+import {
+  buildCombinedMedicalNotes,
+  getDefaultDemoPersonaWorkspace,
+  getDemoPersonaWorkspace,
+} from './personalization';
 
 const PROFILE_DRAFT_STORAGE_KEY = 'symptom_profile_draft_v1';
 const CASE_HISTORY_STORAGE_KEY = 'symptom_case_history_v1';
 const WORKSPACE_UPDATED_EVENT = 'symptom-workspace-updated';
+const GUEST_DEMO_SEED_KEY = 'symptom_guest_demo_seeded_v1';
 
 export interface ProfileDraft {
   displayName: string;
@@ -11,6 +17,11 @@ export interface ProfileDraft {
   birthYear: number | null;
   gender: string;
   medicalNotes: string;
+  chronicConditions: string;
+  allergies: string;
+  currentMedications: string;
+  careFocus: string;
+  profileMode: 'custom' | 'demo';
 }
 
 export interface CaseHistoryItem {
@@ -44,6 +55,11 @@ const DEFAULT_PROFILE_DRAFT: ProfileDraft = {
   birthYear: null,
   gender: '',
   medicalNotes: '',
+  chronicConditions: '',
+  allergies: '',
+  currentMedications: '',
+  careFocus: '',
+  profileMode: 'custom',
 };
 
 function dispatchWorkspaceUpdated() {
@@ -66,6 +82,39 @@ function writeLocalJson<T>(storageKey: string, value: T) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(storageKey, JSON.stringify(value));
   dispatchWorkspaceUpdated();
+}
+
+function isProfileEffectivelyEmpty(profile: ProfileDraft): boolean {
+  return ![
+    profile.displayName,
+    profile.birthYear,
+    profile.gender,
+    profile.medicalNotes,
+    profile.chronicConditions,
+    profile.allergies,
+    profile.currentMedications,
+    profile.careFocus,
+  ].some(Boolean);
+}
+
+function ensureGuestDemoSeeded() {
+  if (typeof window === 'undefined') return false;
+
+  const currentProfile = readLocalJson<ProfileDraft>(PROFILE_DRAFT_STORAGE_KEY, DEFAULT_PROFILE_DRAFT);
+  const currentCases = readLocalJson<CaseHistoryItem[]>(CASE_HISTORY_STORAGE_KEY, []);
+  const alreadySeeded = localStorage.getItem(GUEST_DEMO_SEED_KEY) === 'done';
+
+  if (alreadySeeded || !isProfileEffectivelyEmpty(currentProfile) || currentCases.length > 0) {
+    return false;
+  }
+
+  const demoWorkspace = getDefaultDemoPersonaWorkspace();
+  if (!demoWorkspace) return false;
+
+  writeLocalJson(PROFILE_DRAFT_STORAGE_KEY, demoWorkspace.profile);
+  writeLocalJson(CASE_HISTORY_STORAGE_KEY, demoWorkspace.recentCases);
+  localStorage.setItem(GUEST_DEMO_SEED_KEY, 'done');
+  return true;
 }
 
 function toPreview(text: string, fallback: string) {
@@ -126,7 +175,12 @@ export function readLocalCaseHistory(): CaseHistoryItem[] {
 }
 
 export async function saveProfileDraft(draft: ProfileDraft) {
-  writeLocalJson(PROFILE_DRAFT_STORAGE_KEY, draft);
+  const normalizedDraft: ProfileDraft = {
+    ...DEFAULT_PROFILE_DRAFT,
+    ...draft,
+    profileMode: draft.profileMode ?? 'custom',
+  };
+  writeLocalJson(PROFILE_DRAFT_STORAGE_KEY, normalizedDraft);
 
   const client = getSupabaseClient();
   if (!client) {
@@ -150,15 +204,17 @@ export async function saveProfileDraft(draft: ProfileDraft) {
     };
   }
 
+  const medicalNotes = buildCombinedMedicalNotes(normalizedDraft);
+
   const dataClient = client;
   const { error } = await dataClient.from('profiles').upsert(
     {
       id: user.id,
-      display_name: draft.displayName || null,
-      city: draft.city || null,
-      birth_year: draft.birthYear,
-      gender: draft.gender || null,
-      medical_notes: draft.medicalNotes || null,
+      display_name: normalizedDraft.displayName || null,
+      city: normalizedDraft.city || null,
+      birth_year: normalizedDraft.birthYear,
+      gender: normalizedDraft.gender || null,
+      medical_notes: medicalNotes || null,
       locale: 'zh-CN',
       preferred_language: 'zh-CN',
       last_seen_at: new Date().toISOString(),
@@ -179,6 +235,30 @@ export async function saveProfileDraft(draft: ProfileDraft) {
     storedIn: 'supabase' as const,
     statusLabel: '档案已同步到云端',
     helperText: '下次登录同一邮箱时，可继续查看这份资料与最近问诊记录。',
+  };
+}
+
+export async function applyDemoPersona(personaId: string) {
+  const demoWorkspace = getDemoPersonaWorkspace(personaId);
+  if (!demoWorkspace) {
+    return {
+      ok: false,
+      statusLabel: '体验档案未找到',
+      helperText: '请稍后重试或选择其他体验画像。',
+    };
+  }
+
+  writeLocalJson(PROFILE_DRAFT_STORAGE_KEY, demoWorkspace.profile);
+  writeLocalJson(CASE_HISTORY_STORAGE_KEY, demoWorkspace.recentCases);
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(GUEST_DEMO_SEED_KEY, 'done');
+  }
+
+  return {
+    ok: true,
+    statusLabel: `已切换到体验画像：${demoWorkspace.label}`,
+    helperText: '你可以直接继续问诊，也可以把这份资料改成自己的真实情况后再保存。',
   };
 }
 
@@ -282,6 +362,7 @@ export async function persistCaseRecord(input: PersistCaseRecordInput) {
 }
 
 export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSnapshot> {
+  const seededDemo = ensureGuestDemoSeeded();
   const bootstrap = getSupabaseBootstrapStatus();
   const localProfile = readLocalProfileDraft();
   const localCases = readLocalCaseHistory().slice(0, limit);
@@ -290,8 +371,12 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
   if (!client) {
     return {
       mode: bootstrap.state === 'error' ? 'error' : 'local',
-      statusLabel: bootstrap.label,
-      helperText: bootstrap.helperText,
+      statusLabel:
+        localProfile.profileMode === 'demo' && seededDemo ? '已载入体验画像（本机记录）' : bootstrap.label,
+      helperText:
+        localProfile.profileMode === 'demo'
+          ? '已为你预置一份可编辑的体验档案与示例问诊记录，用来展示个性化推荐效果。'
+          : bootstrap.helperText,
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,
@@ -317,8 +402,12 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
   if (!user) {
     return {
       mode: 'cloud-ready',
-      statusLabel: '登录后可同步档案',
-      helperText: '你可以先以游客方式使用；登录后档案和历史记录会自动跟随邮箱账号同步。',
+      statusLabel:
+        localProfile.profileMode === 'demo' ? '可登录后同步这份体验档案' : '登录后可同步档案',
+      helperText:
+        localProfile.profileMode === 'demo'
+          ? '当前已经带上一份可编辑体验画像；登录后可继续保留或改成自己的资料再同步。'
+          : '你可以先以游客方式使用；登录后档案和历史记录会自动跟随邮箱账号同步。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,
@@ -347,6 +436,11 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
         birthYear: profileResponse.data.birth_year ?? localProfile.birthYear,
         gender: profileResponse.data.gender ?? localProfile.gender,
         medicalNotes: profileResponse.data.medical_notes ?? localProfile.medicalNotes,
+        chronicConditions: localProfile.chronicConditions,
+        allergies: localProfile.allergies,
+        currentMedications: localProfile.currentMedications,
+        careFocus: localProfile.careFocus,
+        profileMode: localProfile.profileMode,
       }
     : localProfile;
 

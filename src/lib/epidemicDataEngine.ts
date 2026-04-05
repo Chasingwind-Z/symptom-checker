@@ -114,6 +114,32 @@ function getLastUpdatedLabel(): string {
   })
 }
 
+function getSeasonalSignal() {
+  const month = new Date().getMonth() + 1
+
+  if (month >= 11 || month <= 2) {
+    return {
+      respiratoryBoost: 1.18,
+      giBoost: 0.92,
+      label: '呼吸道季节信号偏强',
+    }
+  }
+
+  if (month >= 6 && month <= 8) {
+    return {
+      respiratoryBoost: 0.94,
+      giBoost: 1.14,
+      label: '胃肠道季节信号偏强',
+    }
+  }
+
+  return {
+    respiratoryBoost: 1,
+    giBoost: 1,
+    label: '季节信号平稳',
+  }
+}
+
 function sumRiskBreakdown(breakdown: RiskBreakdown): number {
   return breakdown.symptomReports + breakdown.trendChange + breakdown.environment + breakdown.followUp
 }
@@ -163,6 +189,7 @@ function createDistrictRiskData(params: {
   sourceNote?: string
 }): DistrictRiskData {
   const riskScore = Math.round(sumRiskBreakdown(params.riskBreakdown) * 10) / 10
+  const seasonalSignal = getSeasonalSignal()
 
   return {
     district: params.district,
@@ -187,9 +214,9 @@ function createDistrictRiskData(params: {
     ),
     sourceNote:
       params.sourceNote ??
-      '匿名症状上报 + 公开资料摘要 + 环境因素参考（用于健康趋势参考，不代表官方实时通报）',
+      `当前口径综合了官方公开资料摘要、季节/天气因子与匿名症状样本；处于低样本阶段时会退回到透明估计模型（${seasonalSignal.label}）。`,
     lastUpdated: getLastUpdatedLabel(),
-    dataLabel: params.dataLabel ?? '趋势参考 / 可叠加近期问诊信号',
+    dataLabel: params.dataLabel ?? `趋势参考 · ${seasonalSignal.label}`,
   }
 }
 
@@ -203,6 +230,7 @@ function classifyRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical
 function generateDistrictData(district: string, daySeed: number): DistrictRiskData {
   const dSeed = getDistrictSeed(district)
   const base = daySeed + dSeed
+  const seasonalSignal = getSeasonalSignal()
 
   // 海淀区固定为 critical，朝阳区固定为 high，其余随机 15-55
   if (district === '海淀区') {
@@ -214,9 +242,9 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
     return createDistrictRiskData({
       district,
       totalReports: Math.round(seededRandom(base, 6) * 80 + 120),
-      feverDrugIndex: 82,
-      coughDrugIndex: 71,
-      giDrugIndex: Math.round(seededRandom(base, 3) * 30 + 30),
+      feverDrugIndex: Math.round(82 * seasonalSignal.respiratoryBoost),
+      coughDrugIndex: Math.round(71 * seasonalSignal.respiratoryBoost),
+      giDrugIndex: Math.round((seededRandom(base, 3) * 30 + 30) * seasonalSignal.giBoost),
       trend: 'up',
       trendPercent: 41,
       topSymptoms: ['发热', '咳嗽', '乏力'],
@@ -239,9 +267,9 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
     return createDistrictRiskData({
       district,
       totalReports: Math.round(seededRandom(base, 6) * 60 + 90),
-      feverDrugIndex: 67,
-      coughDrugIndex: Math.round(seededRandom(base, 2) * 20 + 40),
-      giDrugIndex: 58,
+      feverDrugIndex: Math.round(67 * seasonalSignal.respiratoryBoost),
+      coughDrugIndex: Math.round((seededRandom(base, 2) * 20 + 40) * seasonalSignal.respiratoryBoost),
+      giDrugIndex: Math.round(58 * seasonalSignal.giBoost),
       trend: 'up',
       trendPercent: 23,
       topSymptoms: ['发热', '腹泻', '恶心'],
@@ -256,9 +284,9 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
   }
 
   // 其余区域随机分布在 15-55
-  const feverDrugIndex = Math.round(seededRandom(base, 1) * 50 + 10)
-  const coughDrugIndex = Math.round(seededRandom(base, 2) * 50 + 10)
-  const giDrugIndex = Math.round(seededRandom(base, 3) * 50 + 10)
+  const feverDrugIndex = Math.round((seededRandom(base, 1) * 50 + 10) * seasonalSignal.respiratoryBoost)
+  const coughDrugIndex = Math.round((seededRandom(base, 2) * 50 + 10) * seasonalSignal.respiratoryBoost)
+  const giDrugIndex = Math.round((seededRandom(base, 3) * 50 + 10) * seasonalSignal.giBoost)
 
   const trendRaw = seededRandom(base, 4)
   let trend: 'up' | 'stable' | 'down'
