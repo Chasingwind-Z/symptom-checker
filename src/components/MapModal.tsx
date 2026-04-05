@@ -7,6 +7,36 @@ interface Props {
   onClose: () => void
 }
 
+interface AMapMarkerInstance {
+  setMap: (map: AMapMapInstance) => void
+}
+
+interface AMapMapInstance {
+  destroy?: () => void
+}
+
+interface AMapConstructor {
+  Map: new (
+    container: HTMLDivElement,
+    options: {
+      zoom: number
+      center: [number, number]
+      mapStyle: string
+    }
+  ) => AMapMapInstance
+  Marker: new (options: {
+    position: [number, number]
+    title: string
+  }) => AMapMarkerInstance
+}
+
+interface AMapWindow extends Window {
+  AMap?: AMapConstructor
+  _AMapSecurityConfig?: {
+    securityJsCode: string
+  }
+}
+
 export function MapModal({ hospital, onClose }: Props) {
   const mapRef = useRef<HTMLDivElement>(null)
 
@@ -15,8 +45,9 @@ export function MapModal({ hospital, onClose }: Props) {
     const securityKey = import.meta.env.VITE_AMAP_JS_SECURITY_KEY as string
 
     const initMap = () => {
-      if (!mapRef.current || !(window as any).AMap) return
-      const AMap = (window as any).AMap
+      const amapWindow = window as AMapWindow
+      if (!mapRef.current || !amapWindow.AMap) return
+      const AMap = amapWindow.AMap
       const map = new AMap.Map(mapRef.current, {
         zoom: 15,
         center: [hospital.longitude, hospital.latitude],
@@ -29,11 +60,13 @@ export function MapModal({ hospital, onClose }: Props) {
       marker.setMap(map)
     }
 
-    if ((window as any).AMap) {
+    const amapWindow = window as AMapWindow
+
+    if (amapWindow.AMap) {
       initMap()
     } else {
       // 高德 JS API 2.0 需要在加载前设置安全密钥
-      ;(window as any)._AMapSecurityConfig = { securityJsCode: securityKey }
+      amapWindow._AMapSecurityConfig = { securityJsCode: securityKey }
 
       const existing = document.getElementById('amap-script')
       if (existing) {

@@ -18,6 +18,8 @@ import {
   getAIWarningText,
   mergeLocalReports,
 } from '../lib/epidemicDataEngine'
+import { OfficialSourceComparison } from './OfficialSourceComparison'
+import { useDashboardOfficialSources } from '../lib/officialSources'
 import type { DistrictRiskData } from '../lib/epidemicDataEngine'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Legend, Tooltip, Filler)
@@ -28,6 +30,15 @@ interface Props {
 
 const getRiskColor = (level: string) =>
   ({ low: '#10B981', medium: '#F59E0B', high: '#F97316', critical: '#EF4444' }[level] ?? '#10B981')
+
+const getRiskLabel = (level: DistrictRiskData['riskLevel']) =>
+  ({ low: '低风险', medium: '中风险', high: '高风险', critical: '紧急关注' }[level])
+
+const getTrendLabel = (trend: DistrictRiskData['trend']) =>
+  ({ up: '持续上升', stable: '高位平稳', down: '回落观察' }[trend])
+
+const formatTrendDelta = (trend: DistrictRiskData['trend'], percent: number) =>
+  trend === 'down' ? `-${percent}%` : trend === 'stable' ? `±${Math.max(2, Math.round(percent * 0.4))}%` : `+${percent}%`
 
 export function EpidemicDashboard({ onBack }: Props) {
   const [currentTime, setCurrentTime] = useState<string>('')
@@ -158,12 +169,92 @@ export function EpidemicDashboard({ onBack }: Props) {
     }
   }, [])
 
-  const trendDistrict = selectedDistrict || districtData[0]?.district
-  const trendData = trendDistrict ? getDrugTrendData(trendDistrict) : null
+  const sortedDistricts = [...districtData].sort((a, b) => b.riskScore - a.riskScore)
+  const activeDistrictName = selectedDistrict ?? sortedDistricts[0]?.district ?? null
+  const activeDistrict = activeDistrictName
+    ? districtData.find(district => district.district === activeDistrictName) ?? null
+    : null
+  const trendData = activeDistrictName ? getDrugTrendData(activeDistrictName) : null
   const warningText = districtData.length > 0 ? getAIWarningText(districtData) : ''
   const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
-
-  const sortedDistricts = [...districtData].sort((a, b) => b.riskScore - a.riskScore)
+  const focusDistrict = sortedDistricts[0] ?? null
+  const { records: dashboardSources, syncStatus: dashboardSyncStatus } = useDashboardOfficialSources(
+    activeDistrict?.topSymptoms ?? focusDistrict?.topSymptoms ?? []
+  )
+  const breakdownItems = activeDistrict
+    ? [
+        {
+          label: '症状上报',
+          value: activeDistrict.riskBreakdown.symptomReports,
+          color: '#38BDF8',
+          description: '来自匿名问诊与购药热度的核心信号',
+        },
+        {
+          label: '趋势变化',
+          value: activeDistrict.riskBreakdown.trendChange,
+          color: '#A78BFA',
+          description: '观察近 7 日曲线是否持续抬升',
+        },
+        {
+          label: '环境因素',
+          value: activeDistrict.riskBreakdown.environment,
+          color: '#34D399',
+          description: '天气/通勤等协同因子（脱敏样本）',
+        },
+        {
+          label: '最近回访',
+          value: activeDistrict.riskBreakdown.followUp,
+          color: '#F59E0B',
+          description: '结合近期复测与回访提醒进行加权',
+        },
+      ]
+    : []
+  const hotspotSummary = sortedDistricts.slice(0, 3)
+  const recentAlerts = sortedDistricts
+    .filter(district => district.riskLevel !== 'low')
+    .slice(0, 4)
+    .map((district, index) => ({
+      district: district.district,
+      time: `${String(8 + index * 3).padStart(2, '0')}:${index % 2 === 0 ? '20' : '50'}`,
+      levelLabel:
+        district.riskLevel === 'critical'
+          ? '升级核查'
+          : district.riskLevel === 'high'
+          ? '重点回看'
+          : '例行观察',
+      detail: district.alertReasons[0] ?? `${district.topSymptoms.slice(0, 2).join('、')}相关信号波动`,
+    }))
+  const signalDistrict = activeDistrict ?? focusDistrict
+  const trendSignalItems = signalDistrict
+    ? [
+        {
+          label: '搜索热度',
+          value: 100 + signalDistrict.trendPercent * 2 + Math.round(signalDistrict.riskScore / 3),
+          delta:
+            signalDistrict.trend === 'down'
+              ? `-${Math.max(3, Math.round(signalDistrict.trendPercent * 0.45))}%`
+              : `+${Math.max(4, Math.round(signalDistrict.trendPercent * 0.8))}%`,
+          note: `关键词：${signalDistrict.topSymptoms.slice(0, 2).join(' / ')}`,
+        },
+        {
+          label: '舆情提及',
+          value: 40 + Math.round(signalDistrict.totalReports * 0.35),
+          delta:
+            signalDistrict.trend === 'down'
+              ? '热度回落'
+              : signalDistrict.trend === 'stable'
+              ? '高位持平'
+              : '讨论升温',
+          note: `${signalDistrict.district}通勤圈、社区群反馈较集中`,
+        },
+        {
+          label: '药店咨询',
+          value: 20 + Math.round((signalDistrict.feverDrugIndex + signalDistrict.coughDrugIndex) / 4),
+          delta: `${Math.round((signalDistrict.feverDrugIndex + signalDistrict.coughDrugIndex) / 2)} 指数`,
+          note: '夜间退烧/止咳咨询占比抬升（脱敏样本）',
+        },
+      ]
+    : []
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col">
@@ -180,7 +271,7 @@ export function EpidemicDashboard({ onBack }: Props) {
         <div className="flex items-center gap-4">
           <span className="text-white/60 text-sm font-mono">{currentTime}</span>
           <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full">
-            数据来源：匿名购药行为分析
+            数据口径：匿名问诊 + OTC 购药 + 环境协同
           </span>
           <button
             onClick={onBack}
@@ -200,7 +291,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-white">{cityOverview.totalReports}</p>
-                <p className="text-white/50 text-xs mt-1">今日上报症状数</p>
+                <p className="text-white/50 text-xs mt-1">近 24 小时匿名健康信号</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                 <Activity size={18} className="text-blue-400" />
@@ -236,7 +327,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xl font-bold text-white">{cityOverview.dominantSymptom}</p>
-                <p className="text-white/50 text-xs mt-1">本周主要症状</p>
+                <p className="text-white/50 text-xs mt-1">本周高频症状信号</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <TrendingUp size={18} className="text-green-400" />
@@ -245,46 +336,223 @@ export function EpidemicDashboard({ onBack }: Props) {
           </div>
         </div>
 
+        {focusDistrict && (
+          <div className="mb-4 rounded-2xl border border-amber-400/20 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent px-4 py-3 flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-400/15 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={16} className="text-amber-300" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-amber-100 text-sm font-semibold">重点关注</span>
+                  <span className="bg-amber-400/15 text-amber-200 text-[11px] px-2 py-0.5 rounded-full">
+                    {focusDistrict.district}
+                  </span>
+                  <span className="text-white/35 text-[11px]">
+                    风险分 {Math.round(focusDistrict.riskScore)} · {getRiskLabel(focusDistrict.riskLevel)}
+                  </span>
+                </div>
+                <p className="text-white/75 text-xs mt-1 leading-relaxed">
+                  近 7 日{focusDistrict.topSymptoms.slice(0, 2).join('、')}相关匿名信号持续抬升，
+                  当前主要由症状上报 {focusDistrict.riskBreakdown.symptomReports} 分和趋势变化{' '}
+                  {focusDistrict.riskBreakdown.trendChange} 分驱动，建议优先关注社区问诊与接诊资源分配。
+                </p>
+              </div>
+            </div>
+            <div className="hidden xl:flex items-center gap-2 flex-wrap justify-end">
+              {focusDistrict.alertReasons.slice(0, 2).map(reason => (
+                <span
+                  key={reason}
+                  className="bg-white/8 border border-white/10 text-white/65 text-[11px] px-2.5 py-1 rounded-full"
+                >
+                  {reason}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 主体内容区 */}
         <div className="flex-1 grid grid-cols-5 gap-6 min-h-0">
           {/* 左侧地图区 */}
-          <div className="col-span-3 bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col">
-            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Map size={16} className="text-white/60" />
-                <span className="text-white font-medium text-sm">各区风险热力分布</span>
+          <div className="col-span-3 flex flex-col gap-4 min-h-0">
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col min-h-0 flex-1">
+              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Map size={16} className="text-white/60" />
+                  <span className="text-white font-medium text-sm">各区风险热力分布</span>
+                  <span className="text-white/30 text-[11px] hidden md:inline">点击区域查看解释卡</span>
+                  {activeDistrict && (
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full border"
+                      style={{
+                        color: getRiskColor(activeDistrict.riskLevel),
+                        background: `${getRiskColor(activeDistrict.riskLevel)}18`,
+                        borderColor: `${getRiskColor(activeDistrict.riskLevel)}33`,
+                      }}
+                    >
+                      当前聚焦：{activeDistrict.district}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 flex-wrap justify-end">
+                  {[
+                    { color: '#10B981', label: '低风险' },
+                    { color: '#F59E0B', label: '中风险' },
+                    { color: '#F97316', label: '高风险' },
+                    { color: '#EF4444', label: '紧急' },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center gap-1">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                      <span className="text-white/40 text-xs">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                {[
-                  { color: '#10B981', label: '低风险' },
-                  { color: '#F59E0B', label: '中风险' },
-                  { color: '#F97316', label: '高风险' },
-                  { color: '#EF4444', label: '紧急' },
-                ].map(item => (
-                  <div key={item.label} className="flex items-center gap-1">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
-                    <span className="text-white/40 text-xs">{item.label}</span>
+              <div className="relative flex-1 min-h-[360px]">
+                <div ref={mapContainerRef} className="h-full w-full min-h-[360px]" />
+                {focusDistrict && (
+                  <div className="absolute left-4 bottom-4 max-w-xs rounded-2xl border border-white/10 bg-slate-950/75 backdrop-blur px-3 py-2.5 shadow-2xl">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-white/85 text-xs font-medium">热点摘要</span>
+                      <span className="text-[10px] text-white/40">Top 1 区域</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-sm font-semibold text-white">{focusDistrict.district}</span>
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full"
+                        style={{
+                          color: getRiskColor(focusDistrict.riskLevel),
+                          background: `${getRiskColor(focusDistrict.riskLevel)}18`,
+                        }}
+                      >
+                        {getRiskLabel(focusDistrict.riskLevel)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/65 mt-1 leading-relaxed">
+                      {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，趋势{formatTrendDelta(focusDistrict.trend, focusDistrict.trendPercent)}，
+                      适合联动下方信号卡做交叉验证。
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
-            <div ref={mapContainerRef} style={{ height: '440px', width: '100%' }} />
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle size={16} className="text-amber-300" />
+                  <span className="text-white font-medium text-sm">热点区域摘要</span>
+                </div>
+                <div className="space-y-2.5">
+                  {hotspotSummary.map((district, index) => (
+                    <div key={district.district} className="rounded-xl bg-slate-950/45 border border-white/10 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-white/35">#{index + 1}</span>
+                          <span className="text-white/85 text-sm">{district.district}</span>
+                        </div>
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full"
+                          style={{ color: getRiskColor(district.riskLevel), background: `${getRiskColor(district.riskLevel)}18` }}
+                        >
+                          {Math.round(district.riskScore)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/60 mt-1 leading-relaxed">{district.alertReasons[0]}</p>
+                      <div className="flex items-center gap-2 flex-wrap mt-2">
+                        {district.topSymptoms.slice(0, 2).map(symptom => (
+                          <span
+                            key={symptom}
+                            className="border border-cyan-400/15 bg-cyan-500/10 px-2 py-0.5 rounded-full text-[10px] text-cyan-200"
+                          >
+                            {symptom}
+                          </span>
+                        ))}
+                        <span className="text-[10px] text-white/40">{formatTrendDelta(district.trend, district.trendPercent)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity size={16} className="text-cyan-300" />
+                  <span className="text-white font-medium text-sm">最近预警动态</span>
+                </div>
+                <div className="space-y-3">
+                  {recentAlerts.map(alert => (
+                    <div key={`${alert.district}-${alert.time}`} className="flex items-start gap-3">
+                      <div className="mt-0.5 flex flex-col items-center">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                        <span className="w-px h-8 bg-white/10 mt-1" />
+                      </div>
+                      <div className="flex-1 pb-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-white/85 text-xs">{alert.district}</span>
+                          <span className="text-[10px] text-white/35">{alert.time}</span>
+                        </div>
+                        <p className="text-[11px] text-cyan-200 mt-1">{alert.levelLabel}</p>
+                        <p className="text-[11px] text-white/55 leading-relaxed mt-0.5">{alert.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/40 via-slate-950/50 to-blue-950/40 p-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp size={16} className="text-cyan-300" />
+                    <span className="text-white font-medium text-sm">搜索热度 / 舆情信号</span>
+                  </div>
+                  <span className="bg-cyan-500/15 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full">
+                    趋势参考
+                  </span>
+                </div>
+                {signalDistrict && (
+                  <p className="text-[11px] text-white/60 leading-relaxed mb-3">
+                    以 <span className="text-white/85">{signalDistrict.district}</span> 为当前观察窗口，
+                    当前先用透明规则补充外部趋势参考，后续可继续接入真实搜索/舆情数据源。
+                  </p>
+                )}
+                <div className="space-y-2.5">
+                  {trendSignalItems.map(item => (
+                    <div key={item.label} className="rounded-xl border border-white/10 bg-slate-950/45 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-white/75 text-xs">{item.label}</span>
+                        <span className="text-cyan-200 text-xs font-semibold">{item.value}</span>
+                      </div>
+                      <p className="text-[11px] text-cyan-300 mt-1">{item.delta}</p>
+                      <p className="text-[11px] text-white/50 mt-1 leading-relaxed">{item.note}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-white/35 mt-3">
+                  注：当前为 seeded / 透明样本，用于补充交叉验证，不替代真实互联网趋势源。
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* 右侧数据面板 */}
-          <div className="col-span-2 flex flex-col gap-4 min-h-0">
+          <div className="col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1">
             {/* 区块1：风险排行榜 */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-4" style={{ maxHeight: '220px', overflowY: 'auto' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <BarChart2 size={16} className="text-white/60" />
-                <span className="text-white font-medium text-sm">区域风险排行</span>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <BarChart2 size={16} className="text-white/60" />
+                  <span className="text-white font-medium text-sm">区域风险排行</span>
+                </div>
+                <span className="text-white/30 text-[11px]">点击区域查看明细</span>
               </div>
               {sortedDistricts.map((d, i) => (
                 <div
                   key={d.district}
                   onClick={() => setSelectedDistrict(d.district)}
                   className={`flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
-                    selectedDistrict === d.district ? 'bg-white/15' : 'hover:bg-white/10'
+                    activeDistrictName === d.district ? 'bg-white/15' : 'hover:bg-white/10'
                   }`}
                 >
                   <span className="text-white/30 text-xs w-4">{i + 1}</span>
@@ -311,12 +579,109 @@ export function EpidemicDashboard({ onBack }: Props) {
               ))}
             </div>
 
-            {/* 区块2：7日趋势图 */}
+            {/* 区块2：选中区域解释卡 */}
+            {activeDistrict && (
+              <div className="bg-white/5 border border-cyan-500/20 rounded-2xl p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <BarChart2 size={16} className="text-white/60" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white font-medium text-sm">{activeDistrict.district} · 风险解释卡</span>
+                      <span
+                        className="text-[11px] px-2 py-0.5 rounded-full"
+                        style={{
+                          color: getRiskColor(activeDistrict.riskLevel),
+                          background: `${getRiskColor(activeDistrict.riskLevel)}20`,
+                        }}
+                      >
+                        {getRiskLabel(activeDistrict.riskLevel)}
+                      </span>
+                    </div>
+                    <p className="text-white/35 text-[11px] mt-1">
+                      风险分 = 症状上报 + 趋势变化 + 环境因素 + 最近回访
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div className="rounded-xl bg-slate-950/40 border border-white/10 p-3">
+                    <p className="text-white/40 text-[11px]">综合风险分</p>
+                    <p className="text-2xl font-bold text-white mt-1">{Math.round(activeDistrict.riskScore)}</p>
+                    <p className="text-xs mt-1" style={{ color: getRiskColor(activeDistrict.riskLevel) }}>
+                      {getTrendLabel(activeDistrict.trend)} · {activeDistrict.trendPercent}%
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-slate-950/40 border border-white/10 p-3">
+                    <p className="text-white/40 text-[11px]">最近主要症状</p>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {activeDistrict.topSymptoms.map(symptom => (
+                        <span
+                          key={symptom}
+                          className="bg-cyan-500/10 text-cyan-200 text-[11px] px-2 py-0.5 rounded-full border border-cyan-400/15"
+                        >
+                          {symptom}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  {breakdownItems.map(item => (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-white/75">{item.label}</span>
+                        <span className="text-white/45">{item.value} 分</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-1">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(100, item.value * 3.5)}%`,
+                            background: item.color,
+                          }}
+                        />
+                      </div>
+                      <p className="text-white/35 text-[11px] mt-1">{item.description}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <p className="text-white/45 text-[11px] mb-1.5">告警原因</p>
+                  <div className="space-y-1.5">
+                    {activeDistrict.alertReasons.map(reason => (
+                      <div key={reason} className="flex items-start gap-2 text-xs text-white/75">
+                        <span className="text-cyan-300 mt-0.5">•</span>
+                        <span>{reason}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 rounded-xl bg-slate-950/40 border border-white/10 p-2.5">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-cyan-200 text-[11px]">数据来源说明</span>
+                      <span className="bg-white/10 text-white/60 text-[10px] px-2 py-0.5 rounded-full">
+                        {activeDistrict.dataLabel}
+                      </span>
+                    </div>
+                    <p className="text-white/60 text-[11px] leading-relaxed mt-1">
+                      {activeDistrict.sourceNote}
+                    </p>
+                    <p className="text-white/35 text-[10px] mt-1">
+                      更新时间：{activeDistrict.lastUpdated}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 区块3：7日趋势图 */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={16} className="text-white/60" />
                 <span className="text-white font-medium text-sm">
-                  {selectedDistrict ? `${selectedDistrict} · 7日购药趋势` : '点击区域查看趋势'}
+                  {activeDistrictName ? `${activeDistrictName} · 7日购药趋势` : '点击区域查看趋势'}
                 </span>
               </div>
               <div style={{ height: '140px' }}>
@@ -387,15 +752,18 @@ export function EpidemicDashboard({ onBack }: Props) {
               </div>
             </div>
 
-            {/* 区块3：AI预警分析 */}
-            <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-blue-500/20 rounded-2xl p-4 flex-1">
+            {/* 区块4：AI预警分析 */}
+            <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-blue-500/20 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Bot size={16} className="text-blue-400" />
                 <span className="text-white font-medium text-sm">AI 预警研判</span>
-                <span className="text-white/30 text-xs ml-auto">由大语言模型生成</span>
+                <span className="text-white/30 text-xs ml-auto">基于脱敏指标生成</span>
               </div>
               <p className="text-white/75 text-xs leading-relaxed whitespace-pre-line">
                 {warningText}
+              </p>
+              <p className="text-white/35 text-[11px] mt-3">
+                注：该研判用于辅助解释风险变化，不替代疾控部门正式结论。
               </p>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
                 <span className="text-white/30 text-xs">生成时间：{today}</span>
@@ -404,6 +772,13 @@ export function EpidemicDashboard({ onBack }: Props) {
                 </span>
               </div>
             </div>
+
+            <OfficialSourceComparison
+              records={dashboardSources}
+              syncStatus={dashboardSyncStatus}
+              theme="dark"
+              subtitle="优先展示疾控、卫健委与 WHO 的公开资料；若云端同步未启用，会自动保留内置摘要卡。"
+            />
           </div>
         </div>
       </div>

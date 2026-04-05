@@ -1,14 +1,10 @@
-export interface SymptomInfo {
-  name: string;
-  aliases: string[];
-  danger_signs: string[];
-  departments: string[];
-  self_care: string[];
-  when_to_worry: string;
-  default_min_level: "轻度" | "中度" | "重度";
+import type { RiskLevel, SymptomInfo } from '../types';
+
+interface RawSymptomInfo extends Omit<SymptomInfo, 'id' | 'default_min_level'> {
+  default_min_level: '轻度' | '中度' | '重度';
 }
 
-export const symptomKB: SymptomInfo[] = [
+const rawSymptomKB: RawSymptomInfo[] = [
   {
     name: "发烧",
     aliases: ["发烧", "发热", "高烧", "低烧", "体温升高", "退烧", "烧退"],
@@ -190,6 +186,27 @@ export const symptomKB: SymptomInfo[] = [
     default_min_level: "重度",
   },
 ];
+
+function toRiskLevel(value: RawSymptomInfo['default_min_level']): RiskLevel {
+  switch (value) {
+    case '重度':
+      return 'orange';
+    case '中度':
+      return 'yellow';
+    default:
+      return 'green';
+  }
+}
+
+function toSymptomId(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+export const symptomKB: SymptomInfo[] = rawSymptomKB.map((item) => ({
+  ...item,
+  id: toSymptomId(item.name),
+  default_min_level: toRiskLevel(item.default_min_level),
+}));
 
 export function searchSymptomKB(userInput: string): SymptomInfo[] {
   if (!userInput || userInput.trim() === "") {

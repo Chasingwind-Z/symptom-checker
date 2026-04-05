@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
-import { User, Cross, Clock, BarChart2, HelpCircle, ClipboardList } from 'lucide-react';
+import { User, Cross, Clock, BarChart2, HelpCircle, ClipboardList, Image as ImageIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import type { Message } from '../types';
+import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
+import { ToolCallIndicator } from './ToolCallIndicator';
 
 interface ChatBubbleProps {
   message: Message;
@@ -42,6 +44,54 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
   const isUser = message.role === 'user';
   const displayContent = isUser ? message.content : stripJsonBlock(message.content);
   const hasJsonBlock = message.content.includes('```json');
+  const attachmentGallery =
+    message.attachments && message.attachments.length > 0 ? (
+      <div className="mt-3 space-y-2">
+        {message.attachments.map((attachment) => (
+          <div
+            key={attachment.id}
+            className={`overflow-hidden rounded-xl border ${
+              isUser ? 'border-white/15 bg-white/10' : 'border-slate-200 bg-slate-50'
+            }`}
+          >
+            <img
+              src={attachment.previewUrl}
+              alt={attachment.name}
+              className="max-h-52 w-full object-cover"
+            />
+            <div
+              className={`flex items-center gap-2 px-3 py-2 text-[11px] ${
+                isUser ? 'text-blue-50/90' : 'text-slate-500'
+              }`}
+            >
+              <ImageIcon size={12} className="flex-shrink-0" />
+              <span className="truncate">{attachment.name}</span>
+              <span
+                className={`ml-auto rounded-full px-2 py-0.5 ${
+                  isUser
+                    ? 'bg-white/10 text-blue-50'
+                    : 'border border-slate-200 bg-white text-slate-500'
+                }`}
+              >
+                仅作辅助参考
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : null;
+  const agentSummary =
+    !isUser && message.agentRoute ? (
+      <div className="mb-2">
+        <AgentOrchestrationPanel route={message.agentRoute} compact />
+      </div>
+    ) : null;
+  const toolCallSummary =
+    !isUser && message.toolCalls && message.toolCalls.length > 0 ? (
+      <div className="mb-2">
+        <ToolCallIndicator toolCalls={message.toolCalls} compact />
+      </div>
+    ) : null;
 
   // Summary card: AI final reply that contains a JSON diagnosis block
   const isSummary = !isUser && hasJsonBlock && !isStreaming;
@@ -64,7 +114,10 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
               <ClipboardList size={18} className="text-emerald-500" />
             </div>
             <div className="text-slate-700 text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5">
+              {agentSummary}
+              {toolCallSummary}
               <ReactMarkdown>{displayContent}</ReactMarkdown>
+              {attachmentGallery}
             </div>
           </div>
         </div>
@@ -87,7 +140,10 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
               {getQuestionIcon(displayContent)}
             </div>
             <div className="text-slate-700 text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5">
+              {agentSummary}
+              {toolCallSummary}
               <ReactMarkdown>{displayContent}</ReactMarkdown>
+              {attachmentGallery}
             </div>
           </div>
 
@@ -124,7 +180,9 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
         </div>
         <div className="max-w-[80%] flex flex-col items-start">
           <div className="bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed shadow-sm break-words prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5">
+            {agentSummary}
             <ReactMarkdown>{stripJsonBlock(displayContent)}</ReactMarkdown>
+            {attachmentGallery}
             <span className="inline-block w-0.5 h-4 bg-blue-400 animate-pulse ml-0.5 align-middle" />
           </div>
           <span className="text-slate-400 text-xs mt-1 px-1">{formatTime(message.timestamp)}</span>
@@ -160,9 +218,12 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
               ? 'bg-blue-500 text-white rounded-2xl rounded-tr-sm whitespace-pre-wrap'
               : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm shadow-sm prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5'
           }`}
-        >
-          {isUser ? displayContent : <ReactMarkdown>{displayContent}</ReactMarkdown>}
-        </div>
+          >
+            {!isUser && agentSummary}
+            {!isUser && toolCallSummary}
+            {isUser ? displayContent : <ReactMarkdown>{displayContent}</ReactMarkdown>}
+            {attachmentGallery}
+          </div>
         <span className="text-slate-400 text-xs mt-1 px-1">
           {formatTime(message.timestamp)}
         </span>

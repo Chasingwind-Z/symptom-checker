@@ -6,9 +6,27 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
   const qweatherHost = env.VITE_QWEATHER_HOST || 'devapi.qweather.com'
+  const reactRefreshPreamble = {
+    name: 'react-refresh-preamble-fix',
+    apply: 'serve' as const,
+    transformIndexHtml(html: string) {
+      const preamble = `
+    <script type="module">
+      import RefreshRuntime from "/@react-refresh"
+      RefreshRuntime.injectIntoGlobalHook(window)
+      window.$RefreshReg$ = () => {}
+      window.$RefreshSig$ = () => (type) => type
+      window.__vite_plugin_react_preamble_installed__ = true
+    </script>`
+
+      return html.includes('__vite_plugin_react_preamble_installed__')
+        ? html
+        : html.replace('<head>', `<head>${preamble}`)
+    },
+  }
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), reactRefreshPreamble],
     server: {
       proxy: {
         '/api/qweather': {

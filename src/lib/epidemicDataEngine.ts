@@ -5,6 +5,24 @@ export interface SymptomReport {
   level: string
   timestamp: number
   ageGroup?: '儿童' | '青年' | '中年' | '老年'
+  followUpStatus?: '明显好转' | '略有好转' | '没有变化' | '更严重了'
+  summary?: string
+}
+
+interface FollowUpSignal {
+  id: string
+  district: string
+  level: string
+  createdAt: number
+  response?: '明显好转' | '略有好转' | '没有变化' | '更严重了'
+  respondedAt?: number
+}
+
+export interface RiskBreakdown {
+  symptomReports: number
+  trendChange: number
+  environment: number
+  followUp: number
 }
 
 export interface DistrictRiskData {
@@ -20,6 +38,11 @@ export interface DistrictRiskData {
   trendPercent: number
   topSymptoms: string[]
   weeklyData: number[]
+  riskBreakdown: RiskBreakdown
+  alertReasons: string[]
+  sourceNote: string
+  lastUpdated: string
+  dataLabel: string
 }
 
 export interface CityOverview {
@@ -82,6 +105,94 @@ function getDistrictSeed(district: string): number {
   return district.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
 }
 
+function getLastUpdatedLabel(): string {
+  return new Date().toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function sumRiskBreakdown(breakdown: RiskBreakdown): number {
+  return breakdown.symptomReports + breakdown.trendChange + breakdown.environment + breakdown.followUp
+}
+
+function buildAlertReasons(
+  district: string,
+  breakdown: RiskBreakdown,
+  topSymptoms: string[],
+  trend: 'up' | 'stable' | 'down',
+  trendPercent: number
+): string[] {
+  const reasons = [`${topSymptoms.slice(0, 2).join('、')}相关匿名信号较平日明显抬升`]
+
+  if (trend === 'up') {
+    reasons.push(`近 7 日趋势上行 ${trendPercent}%`)
+  } else if (trend === 'stable') {
+    reasons.push('近 7 日趋势保持高位波动')
+  } else {
+    reasons.push('整体热度有所回落，仍需持续观察')
+  }
+
+  if (breakdown.environment >= 10) {
+    reasons.push('天气/环境协同因子正在放大传播条件')
+  } else if (breakdown.followUp >= 8) {
+    reasons.push('最近回访与复测提醒权重偏高')
+  }
+
+  if (district === '海淀区') {
+    reasons.push('园区与高校周边热度同步抬升')
+  }
+
+  return reasons.slice(0, 3)
+}
+
+function createDistrictRiskData(params: {
+  district: string
+  totalReports: number
+  feverDrugIndex: number
+  coughDrugIndex: number
+  giDrugIndex: number
+  trend: 'up' | 'stable' | 'down'
+  trendPercent: number
+  topSymptoms: string[]
+  weeklyData: number[]
+  riskBreakdown: RiskBreakdown
+  dataLabel?: string
+  sourceNote?: string
+}): DistrictRiskData {
+  const riskScore = Math.round(sumRiskBreakdown(params.riskBreakdown) * 10) / 10
+
+  return {
+    district: params.district,
+    center: DISTRICT_CENTERS[params.district],
+    totalReports: params.totalReports,
+    feverDrugIndex: params.feverDrugIndex,
+    coughDrugIndex: params.coughDrugIndex,
+    giDrugIndex: params.giDrugIndex,
+    riskScore,
+    riskLevel: classifyRiskLevel(riskScore),
+    trend: params.trend,
+    trendPercent: params.trendPercent,
+    topSymptoms: params.topSymptoms,
+    weeklyData: params.weeklyData,
+    riskBreakdown: params.riskBreakdown,
+    alertReasons: buildAlertReasons(
+      params.district,
+      params.riskBreakdown,
+      params.topSymptoms,
+      params.trend,
+      params.trendPercent
+    ),
+    sourceNote:
+      params.sourceNote ??
+      '匿名问诊上报 + OTC 购药热度 + 天气/环境协同因子（环境项为脱敏样本）',
+    lastUpdated: getLastUpdatedLabel(),
+    dataLabel: params.dataLabel ?? '透明推演 / 可叠加实时问诊',
+  }
+}
+
 function classifyRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical' {
   if (score <= 30) return 'low'
   if (score <= 55) return 'medium'
@@ -100,20 +211,23 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
       const pastSeed = getDaySeedOffset(-d) + dSeed
       weeklyData.push(Math.round(60 + seededRandom(pastSeed, 7) * 25))
     }
-    return {
+    return createDistrictRiskData({
       district,
-      center: DISTRICT_CENTERS[district],
       totalReports: Math.round(seededRandom(base, 6) * 80 + 120),
       feverDrugIndex: 82,
       coughDrugIndex: 71,
       giDrugIndex: Math.round(seededRandom(base, 3) * 30 + 30),
-      riskScore: 81,
-      riskLevel: 'critical',
       trend: 'up',
       trendPercent: 41,
-      topSymptoms: ['退烧药', '止咳药', '抗病毒药'],
+      topSymptoms: ['发热', '咳嗽', '乏力'],
       weeklyData,
-    }
+      riskBreakdown: {
+        symptomReports: 37,
+        trendChange: 18,
+        environment: 11,
+        followUp: 15,
+      },
+    })
   }
 
   if (district === '朝阳区') {
@@ -122,33 +236,29 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
       const pastSeed = getDaySeedOffset(-d) + dSeed
       weeklyData.push(Math.round(45 + seededRandom(pastSeed, 7) * 25))
     }
-    return {
+    return createDistrictRiskData({
       district,
-      center: DISTRICT_CENTERS[district],
       totalReports: Math.round(seededRandom(base, 6) * 60 + 90),
       feverDrugIndex: 67,
       coughDrugIndex: Math.round(seededRandom(base, 2) * 20 + 40),
       giDrugIndex: 58,
-      riskScore: 65,
-      riskLevel: 'high',
       trend: 'up',
       trendPercent: 23,
-      topSymptoms: ['退烧药', '肠胃药', '止泻药'],
+      topSymptoms: ['发热', '腹泻', '恶心'],
       weeklyData,
-    }
+      riskBreakdown: {
+        symptomReports: 30,
+        trendChange: 13,
+        environment: 9,
+        followUp: 13,
+      },
+    })
   }
 
   // 其余区域随机分布在 15-55
   const feverDrugIndex = Math.round(seededRandom(base, 1) * 50 + 10)
   const coughDrugIndex = Math.round(seededRandom(base, 2) * 50 + 10)
   const giDrugIndex = Math.round(seededRandom(base, 3) * 50 + 10)
-
-  const riskScore = Math.min(
-    55,
-    Math.round(feverDrugIndex * 0.4 + coughDrugIndex * 0.35 + giDrugIndex * 0.25)
-  )
-
-  const riskLevel = classifyRiskLevel(riskScore)
 
   const trendRaw = seededRandom(base, 4)
   let trend: 'up' | 'stable' | 'down'
@@ -181,20 +291,35 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
     weeklyData.push(ps)
   }
 
-  return {
+  const riskBreakdown: RiskBreakdown = {
+    symptomReports: Math.round(
+      totalReports * 0.07 +
+        feverDrugIndex * 0.18 +
+        coughDrugIndex * 0.12 +
+        giDrugIndex * 0.1
+    ),
+    trendChange:
+      trend === 'up'
+        ? Math.min(18, 6 + Math.round(trendPercent * 0.45))
+        : trend === 'stable'
+        ? Math.min(11, 4 + Math.round(trendPercent * 0.18))
+        : Math.max(2, 5 - Math.round(trendPercent * 0.12)),
+    environment: Math.round(seededRandom(base, 8) * 7 + 3 + (coughDrugIndex > 45 ? 2 : 0)),
+    followUp: Math.round(seededRandom(base, 9) * 6 + 2 + (totalReports > 80 ? 2 : 0)),
+  }
+
+  return createDistrictRiskData({
     district,
-    center: DISTRICT_CENTERS[district],
     totalReports,
     feverDrugIndex,
     coughDrugIndex,
     giDrugIndex,
-    riskScore,
-    riskLevel,
     trend,
     trendPercent,
     topSymptoms,
     weeklyData,
-  }
+    riskBreakdown,
+  })
 }
 
 function getDaySeedOffset(offset: number): number {
@@ -209,8 +334,25 @@ export function getDistrictRiskData(): DistrictRiskData[] {
 }
 
 export function getCityOverview(): CityOverview {
-  const daySeed = getDaySeed()
-  const totalReports = Math.round(400 + seededRandom(daySeed, 99) * 200)
+  const districts = mergeLocalReports(getDistrictRiskData())
+  const totalReports = districts.reduce((sum, district) => sum + district.totalReports, 0)
+  const alertDistricts = districts.filter(
+    district => district.riskLevel === 'high' || district.riskLevel === 'critical'
+  ).length
+  const criticalDistricts = districts.filter(district => district.riskLevel === 'critical').length
+
+  const symptomCounter: Record<string, number> = {}
+  districts.forEach((district) => {
+    district.topSymptoms.forEach((symptom) => {
+      symptomCounter[symptom] = (symptomCounter[symptom] ?? 0) + 1
+    })
+  })
+
+  const dominantSymptom =
+    Object.entries(symptomCounter).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '发热'
+
+  const risingCount = districts.filter(district => district.trend === 'up').length
+  const fallingCount = districts.filter(district => district.trend === 'down').length
 
   const now = new Date()
   const lastUpdated = now.toLocaleString('zh-CN', {
@@ -222,10 +364,10 @@ export function getCityOverview(): CityOverview {
 
   return {
     totalReports,
-    alertDistricts: 4,
-    criticalDistricts: 1,
-    dominantSymptom: '发烧',
-    weeklyTrend: 'rising',
+    alertDistricts,
+    criticalDistricts,
+    dominantSymptom,
+    weeklyTrend: risingCount >= fallingCount ? 'rising' : 'falling',
     lastUpdated,
   }
 }
@@ -260,47 +402,113 @@ export function getDrugTrendData(district: string): {
 export function getAIWarningText(data: DistrictRiskData[]): string {
   const topTwo = [...data].sort((a, b) => b.riskScore - a.riskScore).slice(0, 2)
   const top1 = topTwo[0]
-  const top2 = topTwo[1]
+  const top2 = topTwo[1] ?? top1
 
-  const coughRise = top1.coughDrugIndex > 50
-    ? Math.round(top1.coughDrugIndex * 0.4)
-    : 18
+  return `系统说明：区级风险分由“匿名问诊上报、OTC 购药热度、7 日趋势、天气/环境协同因子”综合测算，其中环境项为脱敏样本。
 
-  return `⚠️ 高风险预警：本周${top1.district}退烧药购买指数达到 ${Math.round(top1.feverDrugIndex)}，较上周上涨 ${top1.trendPercent}%，止咳药同步上升 ${coughRise}%。结合历史数据模型判断，该区域极可能正处于流感样疾病早期传播阶段。
+⚠️ 重点关注：${top1.district}当前风险分 ${Math.round(top1.riskScore)}，其中症状上报贡献 ${top1.riskBreakdown.symptomReports} 分、趋势变化贡献 ${top1.riskBreakdown.trendChange} 分。主要信号集中在${top1.topSymptoms.join('、')}。
 
-📍 次级关注：${top2.district}${top2.topSymptoms[1] || '肠胃'}类药品购买量出现异常，建议关注消化道疾病聚集性风险。
+📍 次级观察：${top2.district}最近以${top2.topSymptoms[0]}、${top2.topSymptoms[1] || '咳嗽'}为主，最近回访权重 ${top2.riskBreakdown.followUp} 分，建议持续跟踪社区问诊与药店补货节奏。
 
-🏥 行动建议：建议${top1.district}各社区卫生中心提前备充退烧、止咳类药物库存，适当扩充发热门诊接诊能力。预计未来 3-5 天相关就诊量将增加 20-35%。`
+🏥 建议动作：优先向${top1.district}社区卫生服务中心推送库存与接诊提醒，并对学校、园区、地铁商圈周边进行 3-5 天重点观察。`
+}
+
+function getTopSymptomsFromReports(reports: SymptomReport[]): string[] {
+  const symptomCounter: Record<string, number> = {}
+
+  reports.forEach((report) => {
+    report.symptoms.forEach((symptom) => {
+      symptomCounter[symptom] = (symptomCounter[symptom] ?? 0) + 1
+    })
+  })
+
+  return Object.entries(symptomCounter)
+    .sort((a, b) => b[1] - a[1])
+    .map(([symptom]) => symptom)
 }
 
 export function mergeLocalReports(data: DistrictRiskData[]): DistrictRiskData[] {
   if (typeof window === 'undefined') return data
 
   let reports: SymptomReport[] = []
+  let followUpSignals: FollowUpSignal[] = []
   try {
     const raw = localStorage.getItem('symptom_reports')
     if (raw) reports = JSON.parse(raw) as SymptomReport[]
+    const followUpRaw = localStorage.getItem('symptom_followup_cases')
+    if (followUpRaw) followUpSignals = JSON.parse(followUpRaw) as FollowUpSignal[]
   } catch {
     return data
   }
 
-  const countByDistrict: Record<string, number> = {}
+  const reportsByDistrict: Record<string, SymptomReport[]> = {}
   for (const report of reports) {
     if (report.district) {
-      countByDistrict[report.district] = (countByDistrict[report.district] ?? 0) + 1
+      reportsByDistrict[report.district] = [...(reportsByDistrict[report.district] ?? []), report]
+    }
+  }
+
+  const followUpsByDistrict: Record<string, FollowUpSignal[]> = {}
+  for (const signal of followUpSignals) {
+    if (signal.district) {
+      followUpsByDistrict[signal.district] = [...(followUpsByDistrict[signal.district] ?? []), signal]
     }
   }
 
   return data.map((d) => {
-    const extra = countByDistrict[d.district] ?? 0
-    if (extra === 0) return d
+    const districtReports = reportsByDistrict[d.district] ?? []
+    const districtFollowUps = followUpsByDistrict[d.district] ?? []
+    const extra = districtReports.length
+    const unresolvedFollowUps = districtFollowUps.filter(
+      (item) => !item.response || item.response === '没有变化' || item.response === '更严重了'
+    ).length
+    const worsenedFollowUps = districtFollowUps.filter((item) => item.response === '更严重了').length
 
-    const newScore = Math.min(100, d.riskScore + extra * 0.5)
+    if (extra === 0 && unresolvedFollowUps === 0) return d
+
+    const recentReports = districtReports.filter((report) => {
+      if (!report.timestamp) return true
+      return Date.now() - report.timestamp <= 1000 * 60 * 60 * 48
+    }).length
+    const followUpCases = districtReports.filter(
+      report => report.level === 'orange' || report.level === 'red'
+    ).length
+    const reportSymptoms = getTopSymptomsFromReports(districtReports)
+    const riskBreakdown: RiskBreakdown = {
+      symptomReports: Math.round((d.riskBreakdown.symptomReports + extra * 1.6) * 10) / 10,
+      trendChange: d.riskBreakdown.trendChange,
+      environment: d.riskBreakdown.environment,
+      followUp:
+        Math.round((
+          d.riskBreakdown.followUp +
+          recentReports * 1.2 +
+          followUpCases * 1.8 +
+          unresolvedFollowUps * 1.5 +
+          worsenedFollowUps * 2.2
+        ) * 10) /
+        10,
+    }
+    const newScore = Math.min(100, Math.round(sumRiskBreakdown(riskBreakdown) * 10) / 10)
+
     return {
       ...d,
+      riskBreakdown,
       riskScore: Math.round(newScore * 10) / 10,
       riskLevel: classifyRiskLevel(newScore),
       totalReports: d.totalReports + extra,
+      topSymptoms: [...new Set([...reportSymptoms, ...d.topSymptoms])].slice(0, 3),
+      alertReasons: [
+        `近 48 小时新增 ${recentReports || extra} 条匿名分诊上报`,
+        unresolvedFollowUps > 0
+          ? `${unresolvedFollowUps} 条回访仍未明显好转`
+          : followUpCases > 0
+          ? `${followUpCases} 条为中高风险回访`
+          : '近期回访提醒权重小幅抬升',
+        ...d.alertReasons,
+      ].slice(0, 3),
+      sourceNote: `匿名问诊上报与回访信号已实时叠加（近 48 小时 ${recentReports || extra} 条上报，${unresolvedFollowUps} 条待恢复回访） + ${d.sourceNote}`,
+      lastUpdated: getLastUpdatedLabel(),
+      dataLabel: '实时叠加 / 透明推演',
     }
   })
 }

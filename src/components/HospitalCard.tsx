@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { MapPin, Phone, Star, Clock, Navigation } from 'lucide-react';
+import { Cross, MapPin, Phone, Star, Clock, Navigation } from 'lucide-react';
 import type { Hospital } from '../types';
 import { MapModal } from './MapModal';
 
 interface HospitalCardProps {
   hospital: Hospital;
+}
+
+interface QuickActionProps {
+  label: string;
+  icon: React.ReactNode;
+  href?: string;
+  onClick?: () => void;
+  primary?: boolean;
+  disabled?: boolean;
 }
 
 const TYPE_STYLES: Record<Hospital['type'], string> = {
@@ -14,12 +23,60 @@ const TYPE_STYLES: Record<Hospital['type'], string> = {
   '专科医院': 'bg-purple-50 text-purple-600 border border-purple-200',
 };
 
-export function HospitalCard({ hospital }: HospitalCardProps) {
-  const [showMap, setShowMap] = useState(false);
-  const amapUrl = `https://uri.amap.com/search?keyword=${encodeURIComponent(hospital.name)}`;
+function QuickAction({ label, icon, href, onClick, primary = false, disabled = false }: QuickActionProps) {
+  const baseClassName =
+    'flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-200';
+  const variantClassName = primary
+    ? disabled
+      ? 'bg-blue-200 text-white cursor-not-allowed'
+      : 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm shadow-blue-100'
+    : disabled
+      ? 'bg-slate-100 text-slate-300 border border-slate-200 cursor-not-allowed'
+      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300';
+
+  if (href && !disabled) {
+    return (
+      <a
+        href={href}
+        target={href.startsWith('tel:') ? undefined : '_blank'}
+        rel={href.startsWith('tel:') ? undefined : 'noopener noreferrer'}
+        className={`${baseClassName} ${variantClassName}`}
+      >
+        {icon}
+        <span>{label}</span>
+      </a>
+    );
+  }
 
   return (
-    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:bg-white hover:shadow-sm transition-all">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`${baseClassName} ${variantClassName}`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+export function HospitalCard({ hospital }: HospitalCardProps) {
+  const [showMap, setShowMap] = useState(false);
+  const hasPhone = hospital.phone.trim().length > 0 && !hospital.phone.includes('暂无');
+  const phoneHref = hasPhone ? `tel:${hospital.phone.replace(/\s+/g, '')}` : undefined;
+  const navUrl = `https://uri.amap.com/navigation?to=${encodeURIComponent(
+    `${hospital.longitude},${hospital.latitude},${hospital.name}`
+  )}&mode=car&src=symptom-checker&coordinate=gaode&callnative=1`;
+  const mapUrl = `https://uri.amap.com/marker?position=${hospital.longitude},${hospital.latitude}&name=${encodeURIComponent(
+    hospital.name
+  )}&src=symptom-checker&coordinate=gaode&callnative=1`;
+  const pharmacyUrl = `https://uri.amap.com/search?keyword=${encodeURIComponent(
+    '附近药房'
+  )}&center=${hospital.longitude},${hospital.latitude}&src=symptom-checker&coordinate=gaode&callnative=1`;
+
+  return (
+    <div className="bg-gradient-to-br from-slate-50 to-white border border-slate-100 rounded-2xl p-4 hover:bg-white hover:shadow-sm transition-all">
       {/* Row 1: name + type + rating */}
       <div className="flex items-center gap-2 mb-2">
         <span className="text-slate-800 font-semibold text-sm flex-1 break-words">{hospital.name}</span>
@@ -63,29 +120,41 @@ export function HospitalCard({ hospital }: HospitalCardProps) {
       {/* Row 4: phone */}
       <div className="flex items-center gap-1.5 mb-3">
         <Phone size={12} className="text-slate-400 flex-shrink-0" />
-        <a href={`tel:${hospital.phone}`} className="text-blue-500 text-sm hover:text-blue-600 transition-colors">
-          {hospital.phone}
-        </a>
+        {hasPhone ? (
+          <>
+            <a href={phoneHref} className="text-blue-500 text-sm hover:text-blue-600 transition-colors">
+              {hospital.phone}
+            </a>
+            <span className="text-[11px] text-slate-400">可先电话确认接诊</span>
+          </>
+        ) : (
+          <span className="text-slate-400 text-sm">暂无电话</span>
+        )}
       </div>
 
-      {/* Buttons */}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <button
-          onClick={() => setShowMap(true)}
-          className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl px-4 py-2 text-sm flex items-center justify-center gap-1.5 transition-colors"
-        >
-          <MapPin size={14} />
-          查看地图
-        </button>
-        <a
-          href={amapUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 bg-blue-500 text-white rounded-xl px-4 py-2 text-sm flex items-center justify-center gap-1.5 hover:bg-blue-600 transition-colors"
-        >
-          <Navigation size={14} />
-          立即前往
-        </a>
+      {/* Quick actions */}
+      <div className="rounded-xl bg-slate-100/80 p-2.5">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-[11px] font-medium text-slate-500">就诊快捷操作</span>
+          <span className="text-[11px] text-slate-400">导航 · 电话 · 地图</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <QuickAction label="一键导航" icon={<Navigation size={14} />} href={navUrl} primary />
+          <QuickAction label="拨打电话" icon={<Phone size={14} />} href={phoneHref} disabled={!hasPhone} />
+          <QuickAction label="地图查看" icon={<MapPin size={14} />} onClick={() => setShowMap(true)} />
+          <QuickAction label="附近药房" icon={<Cross size={14} />} href={pharmacyUrl} />
+        </div>
+        <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-slate-500 hover:text-blue-600 transition-colors"
+          >
+            在地图中打开完整路线
+          </a>
+          {!hospital.openNow && <span className="text-[11px] text-amber-600">到院前建议先电话确认</span>}
+        </div>
       </div>
 
       {showMap && <MapModal hospital={hospital} onClose={() => setShowMap(false)} />}

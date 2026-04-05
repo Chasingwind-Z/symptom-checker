@@ -25,7 +25,7 @@ export function SymptomTags({ onSelect }: SymptomTagsProps) {
         <button
           key={s.label}
           onClick={() => onSelect(s.text)}
-          className="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-600 hover:text-blue-600 text-sm px-3 py-1.5 rounded-full cursor-pointer transition-colors whitespace-nowrap flex-shrink-0 shadow-sm"
+          className="bg-slate-50 hover:bg-white border border-slate-200 hover:border-blue-300 text-slate-600 hover:text-blue-600 text-sm px-3 py-1.5 rounded-full cursor-pointer transition-colors whitespace-nowrap flex-shrink-0"
         >
           {s.label}
         </button>

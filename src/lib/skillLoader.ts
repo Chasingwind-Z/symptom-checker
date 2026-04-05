@@ -24,11 +24,24 @@ const PEDIATRIC_PROTOCOL = `【儿童特殊协议】
 - 避免提及成人用药
 - 行动建议中注明需要儿科或儿童医院`;
 
+const CHRONIC_PROTOCOL = `【慢病人群特殊协议】
+用户提到高血压、糖尿病、冠心病、哮喘等慢性病时启用：
+- 风险评估至少提高半级，优先关注是否与原有疾病叠加
+- 重点追问：既往基础疾病、近期是否规律用药、是否出现胸闷气短/血压波动/血糖异常
+- 行动建议优先强调尽快线下复诊或联系长期随访医生
+- 输出中注意提醒携带既往病历与常用药记录`;
+
 const ELDERLY_KEYWORDS = ['老人', '老年', '父母', '爸爸', '妈妈', '爷爷', '奶奶', '外公', '外婆', '60岁', '70岁', '80岁'];
 const PEDIATRIC_KEYWORDS = ['孩子', '小孩', '儿子', '女儿', '宝宝', '婴儿', '幼儿', '岁的孩', '儿童', '小朋友'];
+const CHRONIC_KEYWORDS = ['慢病', '慢性病', '高血压', '糖尿病', '冠心病', '心脏病', '哮喘', '慢阻肺', '肾病'];
 
 export function loadSkills(userMessage: string): string {
+  const coreHints = [BASE_TRIAGE, EMERGENCY_FLAGS];
   const parts: string[] = [];
+
+  if (!userMessage.trim()) {
+    parts.push(...coreHints);
+  }
 
   if (ELDERLY_KEYWORDS.some((kw) => userMessage.includes(kw))) {
     parts.push(ELDERLY_PROTOCOL);
@@ -36,6 +49,10 @@ export function loadSkills(userMessage: string): string {
 
   if (PEDIATRIC_KEYWORDS.some((kw) => userMessage.includes(kw))) {
     parts.push(PEDIATRIC_PROTOCOL);
+  }
+
+  if (CHRONIC_KEYWORDS.some((kw) => userMessage.includes(kw))) {
+    parts.push(CHRONIC_PROTOCOL);
   }
 
   return parts.join('\n\n');

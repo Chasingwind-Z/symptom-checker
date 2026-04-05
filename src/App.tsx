@@ -8,9 +8,13 @@ import { ChatBubble } from './components/ChatBubble';
 import { ChatInput } from './components/ChatInput';
 import { ResultCard } from './components/ResultCard';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
+import { AgentOrchestrationPanel } from './components/AgentOrchestrationPanel';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { InfoBar } from './components/WeatherBar';
 import { EpidemicDashboard } from './components/EpidemicDashboard';
+import { CloudSyncCard } from './components/CloudSyncCard';
+import { useHealthWorkspace } from './hooks/useHealthWorkspace';
+import { usePwaInstall } from './hooks/usePwaInstall';
 import type { Hospital } from './types';
 
 function getReportCount(): number {
@@ -22,11 +26,26 @@ function getReportCount(): number {
 }
 
 export default function App() {
-  const { messages, isLoading, streamingContent, diagnosisResult, isSearchingKB, weatherData, sendMessage, resetChat } =
-    useChat();
+  const workspace = useHealthWorkspace();
+  const pwa = usePwaInstall();
+  const {
+    messages,
+    isLoading,
+    streamingContent,
+    diagnosisResult,
+    isSearchingKB,
+    activeToolCalls,
+    activeAgentRoute,
+    weatherData,
+    sendMessage,
+    resetChat,
+  } = useChat({
+    profile: workspace.profile,
+    recentCases: workspace.recentCases,
+  });
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [reportCount, setReportCount] = useState<number>(getReportCount);
+  const [, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'chat' | 'map'>('chat');
 
@@ -36,7 +55,6 @@ export default function App() {
 
   useEffect(() => {
     if (!diagnosisResult) {
-      setHospitals([]);
       return;
     }
     getUserLocation()
@@ -55,21 +73,44 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col pt-16">
-      <Header onReset={resetChat} onToggleMap={() => setCurrentPage('map')} />
+      <Header
+        onReset={resetChat}
+        onToggleMap={() => setCurrentPage('map')}
+        sessionEmail={workspace.sessionEmail}
+        cloudMode={workspace.mode}
+        canInstallApp={pwa.canInstall}
+        isAppInstalled={pwa.isInstalled}
+        onInstallApp={() => {
+          void pwa.promptInstall();
+        }}
+      />
       <InfoBar weather={weatherData} />
 
       {/* Scrollable content area */}
       <div
         className="flex-1 overflow-y-auto px-3 md:px-6"
-        style={{ paddingTop: '8px', paddingBottom: '96px' }}
+        style={{ paddingTop: '8px', paddingBottom: '132px' }}
       >
         <div className="max-w-2xl mx-auto w-full">
           {/* Welcome screen — only when no messages yet */}
           {messages.length === 0 && (
-            <WelcomeScreen
-              onSendMessage={sendMessage}
-              onToggleMap={() => setCurrentPage('map')}
-            />
+            <>
+              <CloudSyncCard
+                mode={workspace.mode}
+                statusLabel={workspace.statusLabel}
+                helperText={workspace.helperText}
+                recentCases={workspace.recentCases}
+                profile={workspace.profile}
+                sessionEmail={workspace.sessionEmail}
+                onRefresh={workspace.refresh}
+                isRefreshing={workspace.isRefreshing}
+                onSaveProfile={workspace.updateProfile}
+              />
+              <WelcomeScreen
+                onSendMessage={sendMessage}
+                onToggleMap={() => setCurrentPage('map')}
+              />
+            </>
           )}
 
           {/* Message list */}
@@ -94,6 +135,7 @@ export default function App() {
                     role: 'assistant',
                     content: streamingContent,
                     timestamp: new Date(),
+                    agentRoute: activeAgentRoute ?? undefined,
                   }}
                   isStreaming
                   onQuickReply={sendMessage}
@@ -108,7 +150,11 @@ export default function App() {
                     <div className="w-4 h-4 rounded-full bg-blue-300 animate-pulse" />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <ToolCallIndicator visible={isSearchingKB} />
+                    <AgentOrchestrationPanel route={activeAgentRoute} isLive compact />
+                    <ToolCallIndicator
+                      visible={isSearchingKB || activeToolCalls.length > 0}
+                      toolCalls={activeToolCalls}
+                    />
                     <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
                       <div className="flex gap-1">
                         <span className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
