@@ -4,20 +4,45 @@
 create extension if not exists vector with schema extensions;
 
 alter table public.medical_knowledge_documents
-  add column if not exists search_text text generated always as (
-    trim(
-      concat_ws(
-        ' ',
-        title,
-        summary,
-        array_to_string(guidance, ' '),
-        array_to_string(danger_signs, ' '),
-        array_to_string(departments, ' '),
-        array_to_string(tags, ' '),
-        array_to_string(keywords, ' ')
-      )
-    )
-  ) stored;
+  add column if not exists search_text text;
+
+create or replace function public.set_medical_knowledge_search_text()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.search_text := btrim(
+    coalesce(new.title, '') || ' ' ||
+    coalesce(new.summary, '') || ' ' ||
+    coalesce(array_to_string(new.guidance, ' '), '') || ' ' ||
+    coalesce(array_to_string(new.danger_signs, ' '), '') || ' ' ||
+    coalesce(array_to_string(new.departments, ' '), '') || ' ' ||
+    coalesce(array_to_string(new.tags, ' '), '') || ' ' ||
+    coalesce(array_to_string(new.keywords, ' '), '')
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists set_medical_knowledge_search_text on public.medical_knowledge_documents;
+
+create trigger set_medical_knowledge_search_text
+before insert or update of title, summary, guidance, danger_signs, departments, tags, keywords
+on public.medical_knowledge_documents
+for each row
+execute function public.set_medical_knowledge_search_text();
+
+update public.medical_knowledge_documents
+set search_text = btrim(
+  coalesce(title, '') || ' ' ||
+  coalesce(summary, '') || ' ' ||
+  coalesce(array_to_string(guidance, ' '), '') || ' ' ||
+  coalesce(array_to_string(danger_signs, ' '), '') || ' ' ||
+  coalesce(array_to_string(departments, ' '), '') || ' ' ||
+  coalesce(array_to_string(tags, ' '), '') || ' ' ||
+  coalesce(array_to_string(keywords, ' '), '')
+)
+where search_text is null or search_text = '';
 
 alter table public.medical_knowledge_chunks
   add column if not exists search_terms text[] not null default '{}'::text[],
