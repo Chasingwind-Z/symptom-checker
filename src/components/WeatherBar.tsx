@@ -5,20 +5,6 @@ interface InfoBarProps {
   weather: WeatherData | null;
 }
 
-/** Deterministic pseudo-random from integer seed (mulberry32). */
-function seededRandom(seed: number): number {
-  let t = seed + 0x6d2b79f5;
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-}
-
-function getDailyCount(): number {
-  const now = new Date();
-  const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-  return 128 + Math.floor(seededRandom(seed) * 320);
-}
-
 function getWeatherEmoji(text: string): string {
   if (text.includes('晴')) return '☀️'
   if (text.includes('多云')) return '⛅'
@@ -32,8 +18,6 @@ function getWeatherEmoji(text: string): string {
 const TOP_SYMPTOMS = ['发烧', '咳嗽', '头痛'];
 
 export function InfoBar({ weather }: InfoBarProps) {
-  const count = getDailyCount();
-
   return (
     <div className="bg-gradient-to-r from-slate-50 via-blue-50 to-sky-50 border-b border-slate-200 px-4 py-1.5">
       <div className="flex items-center gap-3 text-xs">
@@ -55,7 +39,8 @@ export function InfoBar({ weather }: InfoBarProps) {
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
           <span className="text-slate-500">
-            今日 <span className="text-slate-700 font-medium">{count}</span> 人问诊
+            今日关注：
+            <span className="text-slate-700 font-medium"> 呼吸道不适、发热、头痛</span>
           </span>
           <span className="text-slate-200">·</span>
           <span className="text-slate-500">

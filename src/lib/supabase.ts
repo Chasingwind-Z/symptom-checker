@@ -50,23 +50,23 @@ export function getSupabaseBootstrapStatus(): SupabaseBootstrapStatus {
   if (initError) {
     return {
       state: 'error',
-      label: '云端初始化失败',
-      helperText: initError.message,
+      label: '当前改用本机记录',
+      helperText: '云端暂时不可用，不影响继续问诊与保存本地记录。',
     };
   }
 
   if (!isSupabaseConfigured) {
     return {
       state: 'unconfigured',
-      label: '本机模式（未连接云端）',
-      helperText: '缺少 VITE_SUPABASE_URL 或 VITE_SUPABASE_ANON_KEY，当前自动使用浏览器本机缓存。',
+      label: '游客模式（本机记录）',
+      helperText: '可直接开始问诊；登录后可同步档案、历史记录和随访结果。',
     };
   }
 
   return {
     state: 'ready',
-    label: '云端已就绪，可开启登录',
-    helperText: 'Supabase 客户端可用，邮箱 magic link、档案同步与问诊历史都可以接入。',
+    label: '已支持邮箱登录同步',
+    helperText: '登录后可跨设备查看健康档案、近期问诊记录与同步结果。',
   };
 }
 

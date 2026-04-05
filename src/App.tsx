@@ -15,7 +15,7 @@ import { EpidemicDashboard } from './components/EpidemicDashboard';
 import { CloudSyncCard } from './components/CloudSyncCard';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { usePwaInstall } from './hooks/usePwaInstall';
-import type { Hospital } from './types';
+import type { Hospital, SendMessageInput } from './types';
 
 function getReportCount(): number {
   try {
@@ -47,7 +47,7 @@ export default function App() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [currentPage, setCurrentPage] = useState<'chat' | 'map'>('chat');
+  const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map'>('home');
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -66,18 +66,34 @@ export default function App() {
       });
   }, [diagnosisResult]);
 
+  function handleSendMessage(input: string | SendMessageInput) {
+    setCurrentPage('chat');
+    sendMessage(input);
+  }
 
-  if (currentPage === 'map') {
-    return <EpidemicDashboard onBack={() => setCurrentPage('chat')} />
+  function handleResetChat() {
+    resetChat();
+    setCurrentPage('home');
+  }
+
+  const effectivePage = currentPage === 'home' && messages.length > 0 ? 'chat' : currentPage;
+  const showWorkspace = effectivePage === 'workspace';
+  const showWelcome = !showWorkspace && messages.length === 0;
+
+  if (effectivePage === 'map') {
+    return <EpidemicDashboard onBack={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')} />
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 flex flex-col pt-16">
       <Header
-        onReset={resetChat}
+        onReset={handleResetChat}
+        onOpenHome={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
+        onOpenWorkspace={() => setCurrentPage('workspace')}
         onToggleMap={() => setCurrentPage('map')}
         sessionEmail={workspace.sessionEmail}
         cloudMode={workspace.mode}
+        currentView={showWorkspace ? 'workspace' : effectivePage === 'home' ? 'home' : 'chat'}
         canInstallApp={pwa.canInstall}
         isAppInstalled={pwa.isInstalled}
         onInstallApp={() => {
@@ -92,9 +108,33 @@ export default function App() {
         style={{ paddingTop: '8px', paddingBottom: '132px' }}
       >
         <div className="max-w-2xl mx-auto w-full">
-          {/* Welcome screen — only when no messages yet */}
-          {messages.length === 0 && (
-            <>
+          {showWorkspace && (
+            <div className="py-5 space-y-4">
+              <section className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">账号与健康档案</p>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      这里集中管理邮箱登录、个人资料、近期问诊记录与同步状态；游客也可以先使用本机记录。
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      {messages.length > 0 ? '继续问诊' : '返回首页'}
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage('map')}
+                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    >
+                      查看疾病地图
+                    </button>
+                  </div>
+                </div>
+              </section>
+
               <CloudSyncCard
                 mode={workspace.mode}
                 statusLabel={workspace.statusLabel}
@@ -106,15 +146,18 @@ export default function App() {
                 isRefreshing={workspace.isRefreshing}
                 onSaveProfile={workspace.updateProfile}
               />
-              <WelcomeScreen
-                onSendMessage={sendMessage}
-                onToggleMap={() => setCurrentPage('map')}
-              />
-            </>
+            </div>
           )}
 
-          {/* Message list */}
-          {messages.length > 0 && (
+          {showWelcome && (
+            <WelcomeScreen
+              onSendMessage={handleSendMessage}
+              onOpenWorkspace={() => setCurrentPage('workspace')}
+              onToggleMap={() => setCurrentPage('map')}
+            />
+          )}
+
+          {!showWorkspace && messages.length > 0 && (
             <div className="mt-2">
               {/* Progress bar — in-flow, scrolls with content */}
               <DiagnosisProgress messages={messages} diagnosisResult={diagnosisResult} />
@@ -122,7 +165,7 @@ export default function App() {
                 <ChatBubble
                   key={msg.id}
                   message={msg}
-                  onQuickReply={sendMessage}
+                  onQuickReply={handleSendMessage}
                   diagnosisResult={!!diagnosisResult}
                 />
               ))}
@@ -138,7 +181,7 @@ export default function App() {
                     agentRoute: activeAgentRoute ?? undefined,
                   }}
                   isStreaming
-                  onQuickReply={sendMessage}
+                  onQuickReply={handleSendMessage}
                   diagnosisResult={!!diagnosisResult}
                 />
               )}
@@ -183,7 +226,7 @@ export default function App() {
         </div>
       </div>
 
-      <ChatInput onSend={sendMessage} isLoading={isLoading} />
+      {!showWorkspace && <ChatInput onSend={handleSendMessage} isLoading={isLoading} />}
     </div>
   );
 }

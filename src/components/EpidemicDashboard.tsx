@@ -199,7 +199,7 @@ export function EpidemicDashboard({ onBack }: Props) {
           label: '环境因素',
           value: activeDistrict.riskBreakdown.environment,
           color: '#34D399',
-          description: '天气/通勤等协同因子（脱敏样本）',
+          description: '天气与通勤等外部因素参考',
         },
         {
           label: '最近回访',
@@ -251,7 +251,7 @@ export function EpidemicDashboard({ onBack }: Props) {
           label: '药店咨询',
           value: 20 + Math.round((signalDistrict.feverDrugIndex + signalDistrict.coughDrugIndex) / 4),
           delta: `${Math.round((signalDistrict.feverDrugIndex + signalDistrict.coughDrugIndex) / 2)} 指数`,
-          note: '夜间退烧/止咳咨询占比抬升（脱敏样本）',
+          note: '夜间退烧/止咳咨询占比近期上升',
         },
       ]
     : []
@@ -262,16 +262,16 @@ export function EpidemicDashboard({ onBack }: Props) {
       <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center">
           <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse mr-3 flex-shrink-0" />
-          <span className="text-white font-bold text-xl">公共卫生疾病预警平台</span>
+          <span className="text-white font-bold text-xl">城市健康趋势参考</span>
           <span className="text-white/40 text-xs ml-4 tracking-widest hidden md:block">
-            SURVEILLANCE SYSTEM · 实时监测
+            PUBLIC HEALTH SNAPSHOT · 公开资料 + 匿名信号
           </span>
         </div>
 
         <div className="flex items-center gap-4">
           <span className="text-white/60 text-sm font-mono">{currentTime}</span>
           <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full">
-            数据口径：匿名问诊 + OTC 购药 + 环境协同
+            参考口径：匿名症状信号 + 公开资料摘要
           </span>
           <button
             onClick={onBack}
@@ -291,7 +291,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-white">{cityOverview.totalReports}</p>
-                <p className="text-white/50 text-xs mt-1">近 24 小时匿名健康信号</p>
+                <p className="text-white/50 text-xs mt-1">近 24 小时症状参考信号</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                 <Activity size={18} className="text-blue-400" />
@@ -303,7 +303,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-orange-400">{cityOverview.alertDistricts}</p>
-                <p className="text-white/50 text-xs mt-1">存在异常区域</p>
+                <p className="text-white/50 text-xs mt-1">近期关注区域</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle size={18} className="text-orange-400" />
@@ -315,7 +315,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-red-400">{cityOverview.criticalDistricts}</p>
-                <p className="text-white/50 text-xs mt-1">高风险区域</p>
+                <p className="text-white/50 text-xs mt-1">重点留意区域</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
                 <AlertOctagon size={18} className="text-red-400" />
@@ -327,7 +327,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xl font-bold text-white">{cityOverview.dominantSymptom}</p>
-                <p className="text-white/50 text-xs mt-1">本周高频症状信号</p>
+                <p className="text-white/50 text-xs mt-1">近期高频症状</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <TrendingUp size={18} className="text-green-400" />
@@ -344,7 +344,7 @@ export function EpidemicDashboard({ onBack }: Props) {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-amber-100 text-sm font-semibold">重点关注</span>
+                  <span className="text-amber-100 text-sm font-semibold">近期关注</span>
                   <span className="bg-amber-400/15 text-amber-200 text-[11px] px-2 py-0.5 rounded-full">
                     {focusDistrict.district}
                   </span>

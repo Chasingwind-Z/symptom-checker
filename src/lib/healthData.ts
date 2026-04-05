@@ -133,7 +133,7 @@ export async function saveProfileDraft(draft: ProfileDraft) {
     return {
       storedIn: 'local' as const,
       statusLabel: '本机档案已保存',
-      helperText: '当前先保存在浏览器本机；补齐 Supabase 配置后即可开启邮箱登录与云端同步。',
+      helperText: '当前先保存在本机；登录后可自动同步到你的个人空间。',
     };
   }
 
@@ -146,7 +146,7 @@ export async function saveProfileDraft(draft: ProfileDraft) {
     return {
       storedIn: 'local' as const,
       statusLabel: '资料已保存，登录后自动上云',
-      helperText: '基础资料已缓存到本机，使用邮箱 magic link 登录后会自动同步到云端。',
+      helperText: '基础资料已先保存到本机，使用邮箱登录后会自动同步到云端。',
     };
   }
 
@@ -171,7 +171,7 @@ export async function saveProfileDraft(draft: ProfileDraft) {
     return {
       storedIn: 'local' as const,
       statusLabel: '云端同步待重试',
-      helperText: error.message,
+      helperText: '这次没有成功同步，但本机记录已保留，稍后重试即可。',
     };
   }
 
@@ -306,8 +306,8 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
   if (authError) {
     return {
       mode: 'error',
-      statusLabel: '云端状态读取失败',
-      helperText: authError.message,
+      statusLabel: '当前改用本机记录',
+      helperText: '暂时无法读取云端会话，不影响继续问诊和保存本地记录。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,
@@ -317,8 +317,8 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
   if (!user) {
     return {
       mode: 'cloud-ready',
-      statusLabel: '云端已就绪，可邮箱登录',
-      helperText: '当前仍会继续使用本机缓存；登录后档案和问诊历史会自动跟随你的邮箱账号。',
+      statusLabel: '登录后可同步档案',
+      helperText: '你可以先以游客方式使用；登录后档案和历史记录会自动跟随邮箱账号同步。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,

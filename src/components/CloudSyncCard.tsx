@@ -156,10 +156,10 @@ export function CloudSyncCard({
                     : 'text-slate-700'
               }`}
             >
-              {isSignedIn ? '云端同步已开启' : isCloudConfigured ? '邮箱登录可用' : '本机安心模式'}
+              {isSignedIn ? '已开启同步' : isCloudConfigured ? '登录后可同步' : '游客模式'}
             </span>
           </div>
-          <p className="text-sm font-semibold text-slate-800">个人健康档案 / 问诊记录中心</p>
+          <p className="text-sm font-semibold text-slate-800">我的健康空间</p>
           <p className="text-xs text-slate-500 mt-1 leading-relaxed">{helperText}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export function CloudSyncCard({
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
           >
             {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            {isExpanded ? '收起' : '展开档案'}
+            {isExpanded ? '收起详情' : '查看详情'}
           </button>
           <button
             type="button"
@@ -197,17 +197,17 @@ export function CloudSyncCard({
         </div>
 
         <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3">
-          <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-            <Mail size={12} />
-            登录状态
+            <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
+              <Mail size={12} />
+              账号状态
+            </div>
+            <p className="text-sm font-semibold text-slate-800 mt-2">
+              {sessionEmail || (isCloudConfigured ? '未登录，可邮件同步' : '当前为游客模式')}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {isSignedIn ? '档案与历史可跨设备同步' : isCloudConfigured ? '可发送邮箱登录链接' : '可直接开始问诊，结果会先保存在本机'}
+            </p>
           </div>
-          <p className="text-sm font-semibold text-slate-800 mt-2">
-            {sessionEmail || (isCloudConfigured ? '待登录' : '未配置')}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            {isSignedIn ? '档案与历史可跨设备同步' : isCloudConfigured ? '可发送邮箱登录链接' : '继续本机缓存，不影响使用'}
-          </p>
-        </div>
 
         <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3">
           <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">

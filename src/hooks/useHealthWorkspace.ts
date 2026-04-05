@@ -11,8 +11,8 @@ import { subscribeToSupabaseAuth } from '../lib/supabase';
 
 const INITIAL_WORKSPACE: HealthWorkspaceSnapshot = {
   mode: 'local',
-  statusLabel: '正在检查云端状态…',
-  helperText: '首次加载时会读取本机草稿和历史缓存。',
+  statusLabel: '正在准备个人空间…',
+  helperText: '首次打开会先读取本机草稿和最近记录。',
   profile: getDefaultProfileDraft(),
   recentCases: [],
   sessionEmail: null,

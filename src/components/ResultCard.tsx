@@ -60,8 +60,8 @@ const TOOL_EVIDENCE_META: Record<
   }
 > = {
   search_symptom_knowledge: {
-    title: 'RAG Lite 医学指导',
-    source: 'RAG Lite 本地医学知识库',
+    title: '医学知识参考',
+    source: '结构化医学知识库',
     tint: 'bg-violet-50 border-violet-100 text-violet-700',
     icon: <ShieldCheck size={14} />,
   },
@@ -73,12 +73,12 @@ const TOOL_EVIDENCE_META: Record<
   },
   get_epidemic_snapshot: {
     title: '区域风险快照',
-    source: '匿名问诊 + 热力引擎',
+    source: '近期自查与趋势信号',
     tint: 'bg-amber-50 border-amber-100 text-amber-700',
     icon: <DatabaseZap size={14} />,
   },
   search_web: {
-    title: '公开信源补充',
+    title: '公开资料补充',
     source: 'Tavily / 官方资讯',
     tint: 'bg-emerald-50 border-emerald-100 text-emerald-700',
     icon: <Globe size={14} />,

@@ -187,9 +187,9 @@ function createDistrictRiskData(params: {
     ),
     sourceNote:
       params.sourceNote ??
-      '匿名问诊上报 + OTC 购药热度 + 天气/环境协同因子（环境项为脱敏样本）',
+      '匿名症状上报 + 公开资料摘要 + 环境因素参考（用于健康趋势参考，不代表官方实时通报）',
     lastUpdated: getLastUpdatedLabel(),
-    dataLabel: params.dataLabel ?? '透明推演 / 可叠加实时问诊',
+    dataLabel: params.dataLabel ?? '趋势参考 / 可叠加近期问诊信号',
   }
 }
 
@@ -404,13 +404,11 @@ export function getAIWarningText(data: DistrictRiskData[]): string {
   const top1 = topTwo[0]
   const top2 = topTwo[1] ?? top1
 
-  return `系统说明：区级风险分由“匿名问诊上报、OTC 购药热度、7 日趋势、天气/环境协同因子”综合测算，其中环境项为脱敏样本。
+  return `以下内容为基于匿名症状信号、近 7 日变化和公开资料摘要生成的趋势参考，用于辅助观察近期健康压力，不替代官方疫情通报。
 
-⚠️ 重点关注：${top1.district}当前风险分 ${Math.round(top1.riskScore)}，其中症状上报贡献 ${top1.riskBreakdown.symptomReports} 分、趋势变化贡献 ${top1.riskBreakdown.trendChange} 分。主要信号集中在${top1.topSymptoms.join('、')}。
+近期值得优先留意的是 ${top1.district}，当前风险分 ${Math.round(top1.riskScore)}，主要集中在${top1.topSymptoms.join('、')}等信号。
 
-📍 次级观察：${top2.district}最近以${top2.topSymptoms[0]}、${top2.topSymptoms[1] || '咳嗽'}为主，最近回访权重 ${top2.riskBreakdown.followUp} 分，建议持续跟踪社区问诊与药店补货节奏。
-
-🏥 建议动作：优先向${top1.district}社区卫生服务中心推送库存与接诊提醒，并对学校、园区、地铁商圈周边进行 3-5 天重点观察。`
+同时 ${top2.district} 仍需持续观察，近期以${top2.topSymptoms[0]}、${top2.topSymptoms[1] || '咳嗽'}为主，可结合社区反馈与官方周报继续跟踪。`
 }
 
 function getTopSymptomsFromReports(reports: SymptomReport[]): string[] {
@@ -508,7 +506,7 @@ export function mergeLocalReports(data: DistrictRiskData[]): DistrictRiskData[] 
       ].slice(0, 3),
       sourceNote: `匿名问诊上报与回访信号已实时叠加（近 48 小时 ${recentReports || extra} 条上报，${unresolvedFollowUps} 条待恢复回访） + ${d.sourceNote}`,
       lastUpdated: getLastUpdatedLabel(),
-      dataLabel: '实时叠加 / 透明推演',
+      dataLabel: '近期自查信号已叠加',
     }
   })
 }
