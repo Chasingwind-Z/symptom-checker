@@ -28,6 +28,15 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss(), reactRefreshPreamble],
     server: {
+      host: 'localhost',
+      port: 5173,
+      strictPort: true,
+      hmr: {
+        host: 'localhost',
+        protocol: 'ws',
+        port: 5173,
+        clientPort: 5173,
+      },
       proxy: {
         '/api/qweather': {
           target: `https://${qweatherHost}`,
