@@ -63,14 +63,14 @@ export function Header({
             </div>
             <span>{contextLabel}</span>
           </div>
-          <h1 className="mt-0.5 truncate text-base font-semibold text-slate-900">{title}</h1>
+          <h1 className="mt-0.5 max-w-[180px] truncate text-base font-semibold text-slate-900 sm:max-w-none">{title}</h1>
           {subtitle && <p className="hidden truncate text-xs text-slate-500 md:block">{subtitle}</p>}
         </div>
 
         <div className="flex items-center gap-2">
           {riskChip && (
             <span
-              className={`hidden lg:inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium ${riskChip.style}`}
+              className={`inline-flex flex-shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium ${riskChip.style}`}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
               {riskChip.label}

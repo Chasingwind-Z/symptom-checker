@@ -21,11 +21,13 @@ import { RiskGauge } from './RiskGauge';
 import { ReportExport } from './ReportExport';
 import * as officialSourceHelpers from '../lib/officialSources';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
+import type { WeatherData } from '../lib/geolocation';
 import {
   getMedicationGuidance,
   getPersonalizedInsights,
   hasMedicationProfileContext as hasMedicationProfileContextData,
 } from '../lib/personalization';
+import { buildWeatherExperienceSummary } from '../lib/weatherExperience';
 import type { OfficialSourcePreference } from '../lib/experienceSettings';
 import type { MedicationAdvice } from '../lib/personalization';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
@@ -253,6 +255,7 @@ interface ResultCardProps {
   messages: Message[];
   profile?: ProfileDraft;
   recentCases?: CaseHistoryItem[];
+  weather?: WeatherData | null;
   officialSourceCity?: string | null;
   officialSourcePreference?: OfficialSourcePreference;
   hospitalSectionTitle?: string;
@@ -323,6 +326,7 @@ export function ResultCard({
   messages,
   profile,
   recentCases = [],
+  weather = null,
   officialSourceCity,
   officialSourcePreference = 'balanced',
   hospitalSectionTitle = '附近推荐医院',
@@ -663,10 +667,43 @@ export function ResultCard({
     result.level === 'green' || result.level === 'yellow'
       ? '想继续找 OTC / 附近药房？'
       : '如需补基础用品或复核现用药，可打开用药中心';
+  const weatherSummary = useMemo(() => buildWeatherExperienceSummary(weather), [weather]);
   const officialCityLabel = officialSourceCity?.trim() || profile?.city?.trim() || '';
   const hasOfficialSources = officialSources.length > 0;
   const showWebSourceHighlights =
     officialSourcePreference !== 'brief' && (webSources.length > 0 || Boolean(webSearchNote));
+  const summaryCards = useMemo(
+    () => [
+      {
+        eyebrow: '严不严重',
+        title: config.title,
+        description: `${RISK_LABELS[result.level]} · ${trimText(result.reason, 54)}`,
+      },
+      {
+        eyebrow: '现在先做',
+        title: ACTION_ITEMS[result.level][0],
+        description: `${ACTION_ITEMS[result.level][1]}；${ACTION_ITEMS[result.level][2]}`,
+      },
+      {
+        eyebrow: '去哪看 / 买',
+        title:
+          result.level === 'red'
+            ? '急诊优先'
+            : result.level === 'orange'
+              ? '今日门诊'
+              : result.level === 'yellow'
+                ? '48 小时内门诊 / 备药'
+                : '先观察，可随时找药房',
+        description:
+          result.level === 'red'
+            ? '优先急诊或 120，不建议把注意力放在购药上。'
+            : medicationPreviewTitles.length > 0
+              ? `可先核对 ${medicationPreviewTitles.join('、')}`
+              : hospitalSectionMeta,
+      },
+    ],
+    [config.title, hospitalSectionMeta, medicationPreviewTitles, result.level, result.reason]
+  );
   const officialSourceSection = hasOfficialSources ? (
     <div className="mb-5">
       <OfficialSourceComparison
@@ -717,6 +754,16 @@ export function ResultCard({
           <RiskGauge level={result.level} />
         </div>
 
+        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
+          {summaryCards.map((item) => (
+            <div key={item.eyebrow} className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+              <p className="text-[11px] text-slate-500">{item.eyebrow}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-900">{item.title}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{item.description}</p>
+            </div>
+          ))}
+        </div>
+
         {/* Action checklist */}
         <div className={`rounded-xl px-4 py-3 mb-4 ${config.bg}`}>
           <p className={`text-xs font-semibold mb-2 ${config.text}`}>行动清单</p>
@@ -748,6 +795,38 @@ export function ResultCard({
             <p className="text-emerald-500 text-xs font-medium mt-3 text-center">✓ 准备就绪，祝您早日康复</p>
           )}
         </div>
+
+        {weather && (
+          <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800">本地天气与出门提醒</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{weatherSummary.headline}</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">{weatherSummary.description}</p>
+              </div>
+              {onToggleMap && (
+                <button
+                  type="button"
+                  onClick={onToggleMap}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-white"
+                >
+                  <MapPin size={13} />
+                  查看附近资源
+                </button>
+              )}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {weatherSummary.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[11px] text-slate-600"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {(hasMedicationSummary || onToggleMap) && (
           <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">

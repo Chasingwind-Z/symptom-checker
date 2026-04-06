@@ -11,7 +11,7 @@ export interface ExperienceSettings {
 }
 
 export const DEFAULT_EXPERIENCE_SETTINGS: ExperienceSettings = {
-  desktopSidebarMode: 'expanded',
+  desktopSidebarMode: 'collapsed',
   locationPreference: 'device',
   officialSourcePreference: 'balanced',
   chatDensity: 'comfortable',

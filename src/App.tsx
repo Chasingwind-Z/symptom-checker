@@ -62,12 +62,12 @@ import {
 import type { ConversationSession, Hospital, SendMessageInput } from './types';
 
 const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
-  search: '搜索记录',
+  search: '统一搜索',
   profile: '健康档案',
-  history: '历史会话',
+  history: '会话线程',
   records: '记录中心',
-  medication: '用药建议',
-  settings: '偏好设置',
+  medication: '买药 / 用药',
+  settings: '问诊设置',
 };
 
 const LazyEpidemicDashboard = lazy(() =>
@@ -443,7 +443,7 @@ export default function App() {
     };
   }, [diagnosisResult, experienceSettings.locationPreference]);
 
-  const defaultWorkspaceSection: SidebarSection = 'profile';
+  const defaultWorkspaceSection: SidebarSection = 'records';
 
   const handleSendMessage = useCallback(
     (input: string | SendMessageInput) => {
@@ -465,7 +465,9 @@ export default function App() {
 
   const handleSelectConsultationMode = useCallback((modeId: ConsultationModeId) => {
     setSelectedConsultationModeId(modeId);
-    setWelcomeFocusSignal((current) => current + 1);
+    window.setTimeout(() => {
+      setWelcomeFocusSignal((current) => current + 1);
+    }, 320);
   }, []);
 
   const handleClearSelectedConsultationMode = useCallback(() => {
@@ -966,7 +968,7 @@ export default function App() {
       ? 'max-w-6xl'
       : 'max-w-5xl'
     : showWelcome
-      ? 'max-w-4xl'
+      ? 'max-w-5xl'
       : experienceSettings.chatDensity === 'compact'
         ? 'max-w-5xl'
         : 'max-w-4xl';
@@ -1002,7 +1004,7 @@ export default function App() {
       switch (workspaceSection) {
         case 'search':
           return {
-            title: '搜索记录',
+            title: '统一搜索',
             subtitle: recordSearchQuery.trim()
               ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索，并同步联动知识库与公开资料${
                    searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
@@ -1012,20 +1014,20 @@ export default function App() {
         case 'profile':
           return {
             title: '健康档案',
-            subtitle: '只保留账号、同步与基础资料，不再把记录和说明卡堆在同一页。',
+            subtitle: '管理基础资料、家庭成员和云端同步，后续问诊会自动沿用这些信息。',
           };
         case 'history':
           return {
-            title: '历史会话',
+            title: '会话线程',
             subtitle: recordSearchQuery.trim()
               ? `已按“${recordSearchQuery}”筛选历史线程${
-                  searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                }`
+                   searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                 }`
               : '所有问诊会按线程保存，方便随时回到原上下文继续咨询。',
           };
         case 'medication':
           return {
-            title: '用药建议',
+            title: '买药 / 用药',
             subtitle:
               '把最近问诊里的 OTC / 家庭处理方向前置展示出来，并保留风险提醒与回到原线程的入口。',
           };
@@ -1033,7 +1035,7 @@ export default function App() {
           return {
             title: '问诊设置',
             subtitle:
-              '调整桌面侧栏、定位使用方式、权威资料展示顺序和聊天排版；更改只保存在当前浏览器。',
+              '调整侧栏宽度、定位使用方式、资料展示顺序和聊天排版；更改只保存在当前浏览器。',
           };
         default:
           return {
@@ -1151,9 +1153,7 @@ export default function App() {
       <AppSidebar
         activeSection={showWorkspace ? workspaceSection : effectivePage === 'chat' ? 'chat' : null}
         searchQuery={recordSearchQuery}
-        onSearchQueryChange={handleRecordSearchChange}
         sessions={filteredConversationSessions}
-        totalSessionCount={conversationSessions.length}
         activeSessionId={activeSessionId}
         onOpenSession={handleOpenConversation}
         onDeleteSession={handleDeleteConversation}
@@ -1199,7 +1199,12 @@ export default function App() {
         />
 
         {!showWorkspace && (
-          <InfoBar weather={weatherData} />
+          <InfoBar
+            weather={weatherData}
+            profileCity={localCity}
+            chronicConditions={workspace.profile.chronicConditions}
+            onOpenMap={handleOpenMap}
+          />
         )}
 
         {shellBanner && (
@@ -1454,36 +1459,34 @@ export default function App() {
             )}
 
             {showWelcome && (
-              <WelcomeScreen
-                onStartConsultation={handleStartConsultation}
-                onApplyStarterText={handleApplyStarterText}
-                selectedModeId={selectedConsultationModeId}
-                onSelectMode={handleSelectConsultationMode}
-                onOpenWorkspace={handleOpenWorkspace}
-                onOpenAuth={handleOpenAuthDialog}
-                authActionLabel={authActionLabel}
-                onToggleMap={handleOpenMap}
-                sessionEmail={workspace.sessionEmail}
-                profile={workspace.profile}
-                recentCases={workspace.recentCases}
-                recentSessions={conversationSessions}
-                onOpenConversation={handleOpenConversation}
-              />
-            )}
-
-            {showWelcome && (
-              <ChatInput
-                variant="inline"
-                onSend={handleSendMessage}
-                isLoading={isLoading}
-                draftValue={welcomeDraftValue}
-                onDraftChange={setWelcomeDraftValue}
-                placeholderOverride={selectedConsultationMode?.placeholder}
-                selectedModeLabel={selectedConsultationMode?.label}
-                selectedModeSummary={selectedConsultationMode?.summary}
-                onClearSelectedMode={handleClearSelectedConsultationMode}
-                focusSignal={welcomeFocusSignal}
-              />
+              <div className="w-full space-y-3 py-6 sm:py-7">
+                <WelcomeScreen
+                  onStartConsultation={handleStartConsultation}
+                  onApplyStarterText={handleApplyStarterText}
+                  selectedModeId={selectedConsultationModeId}
+                  onSelectMode={handleSelectConsultationMode}
+                  onToggleMap={handleOpenMap}
+                  sessionEmail={workspace.sessionEmail}
+                  profile={workspace.profile}
+                  weather={weatherData}
+                  pendingFollowUpCount={pendingFollowUpRecords.length}
+                  recentCases={workspace.recentCases}
+                  recentSessions={conversationSessions}
+                  onOpenConversation={handleOpenConversation}
+                />
+                <ChatInput
+                  variant="inline"
+                  onSend={handleSendMessage}
+                  isLoading={isLoading}
+                  draftValue={welcomeDraftValue}
+                  onDraftChange={setWelcomeDraftValue}
+                  placeholderOverride={selectedConsultationMode?.placeholder}
+                  selectedModeLabel={selectedConsultationMode?.label}
+                  selectedModeSummary={selectedConsultationMode?.summary}
+                  onClearSelectedMode={handleClearSelectedConsultationMode}
+                  focusSignal={welcomeFocusSignal}
+                />
+              </div>
             )}
 
             {!showWorkspace && messages.length > 0 && (
@@ -1587,6 +1590,7 @@ export default function App() {
                       messages={messages}
                       profile={workspace.profile}
                       recentCases={workspace.recentCases}
+                      weather={weatherData}
                       officialSourceCity={localCity}
                       officialSourcePreference={experienceSettings.officialSourcePreference}
                       hospitalSectionTitle={hospitalSectionTitle}

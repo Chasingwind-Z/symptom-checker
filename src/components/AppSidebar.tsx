@@ -26,15 +26,13 @@ export type SidebarSection =
   | 'medication'
   | 'settings';
 
-export const DESKTOP_SIDEBAR_EXPANDED_WIDTH = 256;
+export const DESKTOP_SIDEBAR_EXPANDED_WIDTH = 232;
 export const DESKTOP_SIDEBAR_COLLAPSED_WIDTH = 72;
 
 interface AppSidebarProps {
   activeSection: SidebarSection | 'chat' | 'map' | null;
   searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
   sessions: ConversationSession[];
-  totalSessionCount: number;
   activeSessionId?: string | null;
   onOpenSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
@@ -68,20 +66,6 @@ interface SidebarNavButtonProps {
   icon: ComponentType<{ size?: number; className?: string }>;
   isCollapsed?: boolean;
   badge?: string;
-}
-
-interface SidebarPersonalizationItem {
-  id: string;
-  label: string;
-  title: string;
-  description: string;
-  toneClass: string;
-  badge?: string;
-  onClick: () => void;
-}
-
-function trimSidebarText(value: string, maxLength = 18) {
-  return value.length > maxLength ? `${value.slice(0, maxLength).trim()}…` : value;
 }
 
 function SidebarNavButton({
@@ -134,9 +118,7 @@ function SidebarNavButton({
 export function AppSidebar({
   activeSection,
   searchQuery,
-  onSearchQueryChange,
   sessions,
-  totalSessionCount,
   activeSessionId,
   onOpenSession,
   onDeleteSession,
@@ -172,129 +154,17 @@ export function AppSidebar({
   const accountInitial = resolvedAccountLabel.trim().charAt(0) || '游';
   const pendingBadge =
     pendingFollowUpCount > 0 ? `${Math.min(9, pendingFollowUpCount)}${pendingFollowUpCount > 9 ? '+' : ''}` : undefined;
-
-  const personalizedItems: SidebarPersonalizationItem[] = [];
-
-  if (pendingFollowUpCount > 0) {
-    personalizedItems.push({
-      id: 'follow-up-priority',
-      label: '待跟进',
-      title: `还有 ${pendingFollowUpCount} 项随访待处理`,
-      description: '优先回复最近的变化和复诊进度，系统会继续沿用原问诊上下文。',
-      toneClass: 'bg-amber-500',
-      badge: pendingBadge ?? '待办',
-      onClick: onSelectRecords,
-    });
-  }
-
-  if (featuredSession?.riskLevel === 'orange' || featuredSession?.riskLevel === 'red') {
-    personalizedItems.push({
-      id: 'high-risk-session',
-      label: '高风险',
-      title: `继续「${trimSidebarText(featuredSession.title)}」`,
-      description: '最近线程风险偏高，建议优先回看行动清单、门诊入口和后续变化。',
-      toneClass: featuredSession.riskLevel === 'red' ? 'bg-rose-500' : 'bg-orange-500',
-      badge: featuredSession.riskLevel === 'red' ? '紧急' : '较高风险',
-      onClick: () => onOpenSession(featuredSession.id),
-    });
-  }
-
-  personalizedItems.push({
-    id: 'profile',
-    label: '档案',
-    title: `档案已完成 ${profileCompletion}%`,
-    description:
-      profileCompletion >= 100
-        ? maskedSessionEmail
-          ? `已连接 ${maskedSessionEmail}，后续更新会自动同步。`
-          : '档案已基本完善，当前资料保存在本机浏览器。'
-        : maskedSessionEmail
-          ? `已连接 ${maskedSessionEmail}，再补一点资料会更省追问。`
-          : '补齐基础资料后，问诊会更少重复追问。',
-    toneClass: profileCompletion >= 100 ? 'bg-emerald-500' : 'bg-cyan-500',
-    badge: maskedSessionEmail ? '云端同步' : '本机保存',
-    onClick: onSelectProfile,
-  });
-
-  if (normalizedSearchQuery) {
-    personalizedItems.push(
-      sessions.length > 0
-        ? {
-            id: 'search-results',
-            label: '继续关注',
-            title: `找到 ${sessions.length} 段相关会话`,
-            description: '可直接打开结果，继续之前的问诊线程。',
-            toneClass: 'bg-cyan-500',
-            badge: '搜索中',
-            onClick: () => onOpenSession(sessions[0].id),
-          }
-        : totalSessionCount > 0
-          ? {
-              id: 'search-empty',
-              label: '继续关注',
-              title: '当前搜索没有匹配会话',
-              description: '点这里清空筛选，回到最近线程列表。',
-              toneClass: 'bg-slate-400',
-              onClick: () => onSearchQueryChange(''),
-            }
-          : {
-              id: 'search-first-session',
-              label: '继续关注',
-              title: '先开始一次新的问诊',
-              description: '问诊线程会自动保存在左侧，方便下次继续。',
-              toneClass: 'bg-slate-400',
-              onClick: onStartNewSession,
-            }
-    );
-  } else if (featuredSession) {
-    personalizedItems.push({
-      id: 'continue',
-      label: '继续关注',
-      title: `继续「${trimSidebarText(featuredSession.title)}」`,
-      description:
-        pendingFollowUpCount > 0
-          ? `${pendingFollowUpCount} 项待跟进，建议优先补充最近回复。`
-          : featuredSession.id === activeSessionId
-            ? '当前线程已打开，可直接接着问。'
-            : `最近线程已保存，可继续查看 ${totalSessionCount} 段历史会话。`,
-      toneClass: pendingFollowUpCount > 0 ? 'bg-amber-500' : 'bg-slate-400',
-      badge:
-        pendingFollowUpCount > 0
-          ? `${pendingFollowUpCount} 待办`
-          : featuredSession.id === activeSessionId
-            ? '当前'
-            : undefined,
-      onClick: () => onOpenSession(featuredSession.id),
-    });
-  } else {
-    personalizedItems.push({
-      id: 'continue-empty',
-      label: '继续关注',
-      title: '还没有历史会话',
-      description: '完成一次问诊后，最近线程会固定展示在这里。',
-      toneClass: 'bg-slate-400',
-      onClick: onStartNewSession,
-    });
-  }
-
-  if (localCity) {
-    personalizedItems.push({
-      id: 'local-reminder',
-      label: '本地提醒',
-      title: `当前城市：${localCity}`,
-      description: '健康地图会优先展示附近资源与建议。',
-      toneClass: 'bg-emerald-500',
-      badge: '附近资源',
-      onClick: onOpenMap,
-    });
-  }
-
-  const visiblePersonalizedItems = personalizedItems.slice(0, 2);
+  const historyBadge =
+    featuredSession?.riskLevel === 'red'
+      ? '紧急'
+      : featuredSession?.riskLevel === 'orange'
+        ? '高风险'
+        : undefined;
 
   return (
     <aside
       className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-slate-200 bg-white/92 py-3 backdrop-blur-xl transition-[width,padding] duration-300 lg:flex ${
-        isCollapsed ? 'w-[72px] px-2' : 'w-[256px] px-3'
+        isCollapsed ? 'w-[72px] px-2' : 'w-[232px] px-3'
       }`}
     >
       <div
@@ -333,6 +203,9 @@ export function AppSidebar({
       </button>
 
       <nav className={`mt-2 ${isCollapsed ? 'space-y-1.5' : 'space-y-0.5'}`}>
+        {!isCollapsed && (
+          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">问诊入口</p>
+        )}
         <SidebarNavButton
           label="当前问诊"
           isActive={activeSection === 'chat'}
@@ -341,24 +214,10 @@ export function AppSidebar({
           isCollapsed={isCollapsed}
         />
         <SidebarNavButton
-          label="搜索记录"
+          label="统一搜索"
           isActive={activeSection === 'search'}
           onClick={onSelectSearch}
           icon={Search}
-          isCollapsed={isCollapsed}
-        />
-        <SidebarNavButton
-          label="健康档案"
-          isActive={activeSection === 'profile'}
-          onClick={onSelectProfile}
-          icon={HeartPulse}
-          isCollapsed={isCollapsed}
-        />
-        <SidebarNavButton
-          label="历史会话"
-          isActive={activeSection === 'history'}
-          onClick={onSelectHistory}
-          icon={History}
           isCollapsed={isCollapsed}
         />
         <SidebarNavButton
@@ -370,7 +229,7 @@ export function AppSidebar({
           badge={pendingBadge}
         />
         <SidebarNavButton
-          label="用药建议"
+          label="买药 / 用药"
           isActive={activeSection === 'medication'}
           onClick={onSelectMedication}
           icon={Pill}
@@ -383,10 +242,30 @@ export function AppSidebar({
           onClick={onOpenMap}
           icon={MapPin}
           isCollapsed={isCollapsed}
+          badge={localCity ? '本地' : undefined}
         />
       </nav>
 
       <div className="mt-2 border-t border-slate-100 pt-2">
+        {!isCollapsed && (
+          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">资料与设置</p>
+        )}
+        <SidebarNavButton
+          label="健康档案"
+          isActive={activeSection === 'profile'}
+          onClick={onSelectProfile}
+          icon={HeartPulse}
+          isCollapsed={isCollapsed}
+          badge={profileCompletion >= 100 ? '已完成' : `${profileCompletion}%`}
+        />
+        <SidebarNavButton
+          label="会话线程"
+          isActive={activeSection === 'history'}
+          onClick={onSelectHistory}
+          icon={History}
+          isCollapsed={isCollapsed}
+          badge={historyBadge}
+        />
         <SidebarNavButton
           label="问诊设置"
           isActive={activeSection === 'settings'}
@@ -397,62 +276,28 @@ export function AppSidebar({
       </div>
 
       {!isCollapsed && (
-        <>
-          <section className="mt-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-2">
-              <p className="px-2 text-[11px] font-medium tracking-[0.08em] text-slate-500">推荐下一步</p>
-              <div className="mt-1.5 space-y-0.5">
-                {visiblePersonalizedItems.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                  onClick={item.onClick}
-                  className="flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white/90"
-                >
-                  <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${item.toneClass}`} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-medium tracking-[0.06em] text-slate-400">
-                        {item.label}
-                      </span>
-                      {item.badge && (
-                        <span className="shrink-0 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500">
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-[12px] font-medium text-slate-700">{item.title}</p>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
-                      {item.description}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <div className="mt-2 min-h-0 flex-1 overflow-hidden">
-            <ConversationHistoryPanel
-              sessions={sessions}
-              activeSessionId={activeSessionId}
-              onOpenSession={onOpenSession}
-              onDeleteSession={onDeleteSession}
-              title={normalizedSearchQuery ? '匹配会话' : '最近会话'}
-              description={
-                normalizedSearchQuery
-                  ? `按“${searchQuery}”筛选后的会话结果`
-                  : '最近更新的线程会固定展示在左侧，方便随时继续。'
-              }
-              emptyMessage={
-                normalizedSearchQuery
-                  ? '没有找到匹配的会话，试试症状、科室或建议关键词。'
-                  : '还没有历史会话。完成一次问诊后，线程会自动出现在这里。'
-              }
-              maxItems={8}
-              variant="sidebar"
-              showStartButton={false}
-            />
-          </div>
-        </>
+        <div className="mt-2 min-h-0 flex-1 overflow-hidden">
+          <ConversationHistoryPanel
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onOpenSession={onOpenSession}
+            onDeleteSession={onDeleteSession}
+            title={normalizedSearchQuery ? '匹配会话' : '最近会话'}
+            description={
+              normalizedSearchQuery
+                ? `按“${searchQuery}”筛到的线程`
+                : '最近线程会固定展示在左侧，方便随时继续。'
+            }
+            emptyMessage={
+              normalizedSearchQuery
+                ? '没有找到匹配的会话，试试症状、科室或建议关键词。'
+                : '还没有历史会话。完成一次问诊后，线程会自动出现在这里。'
+            }
+            maxItems={6}
+            variant="sidebar"
+            showStartButton={false}
+          />
+        </div>
       )}
 
       <div className="mt-2 border-t border-slate-100 px-1 pt-2">
