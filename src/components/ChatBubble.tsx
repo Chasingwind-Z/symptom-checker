@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { User, Cross, Clock, BarChart2, HelpCircle, ClipboardList, Image as ImageIcon } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { useEffect, useRef, useState } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { ToolCallIndicator } from './ToolCallIndicator';
@@ -20,7 +21,9 @@ function formatTime(date: Date): string {
 function stripJsonBlock(content: string): string {
   return content
     .replace(/```json[\s\S]*?```/g, '')
+    .replace(/```json[\s\S]*$/g, '')
     .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
+    .replace(/\{"suggestions":\s*\[[\s\S]*$/g, '')
     .trim();
 }
 
@@ -40,9 +43,181 @@ function getQuestionIcon(content: string) {
   return <HelpCircle size={18} className="text-blue-500" />;
 }
 
+const assistantMarkdownAllowedElements = [
+  'a',
+  'blockquote',
+  'br',
+  'code',
+  'em',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'li',
+  'ol',
+  'p',
+  'pre',
+  'strong',
+  'ul',
+] as const;
+
+const assistantMarkdownComponents: Components = {
+  a({ href, children }) {
+    const safeHref =
+      typeof href === 'string' && /^(https?:|mailto:|tel:)/i.test(href)
+        ? href
+        : undefined;
+
+    if (!safeHref) {
+      return <span className="font-medium text-slate-700">{children}</span>;
+    }
+
+    return (
+      <a
+        href={safeHref}
+        target="_blank"
+        rel="noreferrer"
+        className="break-all font-medium text-blue-600 underline underline-offset-2 transition-colors hover:text-blue-700"
+      >
+        {children}
+      </a>
+    );
+  },
+  p({ children }) {
+    return <p className="my-2 whitespace-pre-wrap leading-7 text-slate-700 first:mt-0 last:mb-0">{children}</p>;
+  },
+  h1({ children }) {
+    return <h3 className="mt-3 mb-1 text-sm font-semibold text-slate-900 first:mt-0">{children}</h3>;
+  },
+  h2({ children }) {
+    return <h3 className="mt-3 mb-1 text-sm font-semibold text-slate-900 first:mt-0">{children}</h3>;
+  },
+  h3({ children }) {
+    return <h4 className="mt-3 mb-1 text-sm font-semibold text-slate-900 first:mt-0">{children}</h4>;
+  },
+  h4({ children }) {
+    return <h4 className="mt-3 mb-1 text-sm font-semibold text-slate-900 first:mt-0">{children}</h4>;
+  },
+  ul({ children }) {
+    return <ul className="my-2 list-disc space-y-1.5 pl-5 marker:text-slate-400">{children}</ul>;
+  },
+  ol({ children }) {
+    return <ol className="my-2 list-decimal space-y-1.5 pl-5 marker:text-slate-400">{children}</ol>;
+  },
+  li({ children }) {
+    return <li className="pl-1 whitespace-pre-wrap leading-7 text-slate-700">{children}</li>;
+  },
+  strong({ children }) {
+    return <strong className="font-semibold text-slate-900">{children}</strong>;
+  },
+  em({ children }) {
+    return <em className="font-medium text-slate-700">{children}</em>;
+  },
+  blockquote({ children }) {
+    return <blockquote className="my-2 border-l-2 border-slate-200 pl-3 text-slate-600">{children}</blockquote>;
+  },
+  pre({ children }) {
+    return (
+      <pre className="my-2 overflow-x-auto rounded-xl bg-slate-900 px-3 py-2 text-[13px] leading-6 text-slate-100">
+        {children}
+      </pre>
+    );
+  },
+  code({ children, className, ...props }) {
+    const content = String(children).replace(/\n$/, '');
+    const isBlock = Boolean(className) || content.includes('\n');
+
+    return (
+      <code
+        {...props}
+        className={
+          isBlock
+            ? `font-mono text-[13px] text-slate-100 ${className ?? ''}`.trim()
+            : 'rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[0.92em] text-slate-700'
+        }
+      >
+        {content}
+      </code>
+    );
+  },
+};
+
+function AssistantMarkdown({ content }: { content: string }) {
+  return (
+    <div className="text-sm leading-relaxed">
+      <ReactMarkdown
+        skipHtml
+        unwrapDisallowed
+        allowedElements={assistantMarkdownAllowedElements}
+        components={assistantMarkdownComponents}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+function useAnimatedStreamingText(content: string, isStreaming: boolean): string {
+  const [displayed, setDisplayed] = useState(isStreaming ? '' : content);
+  const displayedRef = useRef(displayed);
+
+  useEffect(() => {
+    displayedRef.current = displayed;
+  }, [displayed]);
+
+  useEffect(() => {
+    if (!isStreaming) {
+      displayedRef.current = content;
+      return;
+    }
+
+    let timeoutId: number | undefined;
+
+    const tick = () => {
+      const current = displayedRef.current;
+
+      if (!content) {
+        displayedRef.current = '';
+        setDisplayed('');
+        return;
+      }
+
+      if (!content.startsWith(current)) {
+        displayedRef.current = '';
+        setDisplayed('');
+        timeoutId = window.setTimeout(tick, 14);
+        return;
+      }
+
+      if (current.length >= content.length) {
+        return;
+      }
+
+      const remaining = content.length - current.length;
+      const step = remaining > 120 ? 18 : remaining > 64 ? 10 : remaining > 24 ? 6 : 3;
+      const next = content.slice(0, current.length + step);
+
+      displayedRef.current = next;
+      setDisplayed(next);
+      timeoutId = window.setTimeout(tick, 18);
+    };
+
+    timeoutId = window.setTimeout(tick, 12);
+
+    return () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [content, isStreaming]);
+
+  return isStreaming ? displayed : content;
+}
+
 export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult }: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const displayContent = isUser ? message.content : stripJsonBlock(message.content);
+  const animatedStreamingContent = useAnimatedStreamingText(displayContent, Boolean(!isUser && isStreaming));
   const hasJsonBlock = message.content.includes('```json');
   const attachmentGallery =
     message.attachments && message.attachments.length > 0 ? (
@@ -99,6 +274,14 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
   const hasSuggestions = !isUser && message.suggestions && message.suggestions.length > 0;
   const useCardStyle = !isUser && !hasJsonBlock && !isStreaming &&
     (isQuestion(message.content) || hasSuggestions);
+  const hasAssistantCopy = !isUser && animatedStreamingContent.length > 0;
+
+  const handleQuickReply = (suggestion: string) => {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
+    onQuickReply?.(suggestion);
+  };
 
   if (isSummary) {
     return (
@@ -113,10 +296,10 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
             <div className="flex-shrink-0 bg-emerald-50 rounded-full p-1.5 mt-0.5">
               <ClipboardList size={18} className="text-emerald-500" />
             </div>
-            <div className="text-slate-700 text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5">
+            <div className="text-slate-700 text-sm leading-relaxed">
               {agentSummary}
               {toolCallSummary}
-              <ReactMarkdown>{displayContent}</ReactMarkdown>
+              <AssistantMarkdown content={displayContent} />
               {attachmentGallery}
             </div>
           </div>
@@ -139,10 +322,10 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
             <div className="flex-shrink-0 bg-blue-50 rounded-full p-1.5 mt-0.5">
               {getQuestionIcon(displayContent)}
             </div>
-            <div className="text-slate-700 text-sm leading-relaxed prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5">
+            <div className="text-slate-700 text-sm leading-relaxed">
               {agentSummary}
               {toolCallSummary}
-              <ReactMarkdown>{displayContent}</ReactMarkdown>
+              <AssistantMarkdown content={displayContent} />
               {attachmentGallery}
             </div>
           </div>
@@ -150,13 +333,19 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
           {hasSuggestions && onQuickReply && !diagnosisResult && (
             <div className="flex flex-wrap gap-2 mt-3 pl-9">
               {message.suggestions!.map((suggestion, i) => (
-                <button
-                  key={i}
-                  onClick={() => onQuickReply(suggestion)}
-                  className="text-sm px-3 py-1.5 rounded-full border border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
+                <motion.button
+                  key={`${suggestion}-${i}`}
+                  type="button"
+                  onClick={() => handleQuickReply(suggestion)}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.04 }}
+                  whileHover={{ y: -1, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="cursor-pointer rounded-full border border-blue-200/90 bg-gradient-to-b from-white to-blue-50 px-3.5 py-2 text-sm font-medium text-blue-700 shadow-[0_1px_2px_rgba(37,99,235,0.08)] transition-[border-color,box-shadow,background-color] hover:border-blue-300 hover:from-blue-50 hover:to-blue-100 hover:shadow-[0_6px_18px_rgba(59,130,246,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2"
                 >
                   {suggestion}
-                </button>
+                </motion.button>
               ))}
             </div>
           )}
@@ -179,11 +368,33 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
           <Cross size={16} className="text-blue-500" />
         </div>
         <div className="max-w-[80%] flex flex-col items-start">
-          <div className="bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed shadow-sm break-words prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5">
+          <div className="rounded-2xl rounded-tl-sm border border-blue-100 bg-gradient-to-b from-white to-blue-50/60 px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-[0_8px_24px_rgba(59,130,246,0.08)] break-words">
             {agentSummary}
-            <ReactMarkdown>{stripJsonBlock(displayContent)}</ReactMarkdown>
+            {toolCallSummary}
+            {hasAssistantCopy ? <AssistantMarkdown content={animatedStreamingContent} /> : null}
             {attachmentGallery}
-            <span className="inline-block w-0.5 h-4 bg-blue-400 animate-pulse ml-0.5 align-middle" />
+            <div
+              className={`flex items-center gap-2 text-[11px] font-medium text-slate-400 ${
+                hasAssistantCopy || attachmentGallery ? 'mt-3' : ''
+              }`}
+            >
+              <span>正在整理回复</span>
+              <div className="flex items-center gap-1">
+                {[0, 1, 2].map((dot) => (
+                  <motion.span
+                    key={dot}
+                    className="h-1.5 w-1.5 rounded-full bg-blue-300"
+                    animate={{ opacity: [0.3, 1, 0.3], y: [0, -1, 0] }}
+                    transition={{
+                      duration: 1.15,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: 'easeInOut',
+                      delay: dot * 0.16,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
           <span className="text-slate-400 text-xs mt-1 px-1">{formatTime(message.timestamp)}</span>
         </div>
@@ -216,14 +427,14 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
           className={`px-4 py-3 text-sm leading-relaxed break-words ${
             isUser
               ? 'bg-blue-500 text-white rounded-2xl rounded-tr-sm whitespace-pre-wrap'
-              : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm shadow-sm prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5'
-          }`}
-          >
-            {!isUser && agentSummary}
-            {!isUser && toolCallSummary}
-            {isUser ? displayContent : <ReactMarkdown>{displayContent}</ReactMarkdown>}
-            {attachmentGallery}
-          </div>
+              : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm shadow-sm'
+           }`}
+           >
+             {!isUser && agentSummary}
+             {!isUser && toolCallSummary}
+             {isUser ? displayContent : <AssistantMarkdown content={displayContent} />}
+             {attachmentGallery}
+           </div>
         <span className="text-slate-400 text-xs mt-1 px-1">
           {formatTime(message.timestamp)}
         </span>

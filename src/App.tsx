@@ -4,7 +4,7 @@ import { AppSidebar, type SidebarSection } from './components/AppSidebar';
 import { AgentOrchestrationPanel } from './components/AgentOrchestrationPanel';
 import { AuthDialog } from './components/AuthDialog';
 import { ChatBubble } from './components/ChatBubble';
-import { ChatInput } from './components/ChatInput';
+import { ChatInput, type ChatInputLayoutMetrics } from './components/ChatInput';
 import { CloudSyncCard } from './components/CloudSyncCard';
 import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
@@ -166,6 +166,11 @@ export default function App() {
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
   const [recordSearchQuery, setRecordSearchQuery] = useState('');
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
+    height: 148,
+    keyboardOffset: 0,
+    isFocused: false,
+  });
   const profileCompletion = useMemo(
     () =>
       Math.round(
@@ -235,6 +240,16 @@ export default function App() {
     setWorkspaceSection(defaultWorkspaceSection);
     setCurrentPage('workspace');
   }, [defaultWorkspaceSection]);
+
+  const handleChatInputLayoutChange = useCallback((nextLayout: ChatInputLayoutMetrics) => {
+    setChatInputLayout((previousLayout) =>
+      previousLayout.height === nextLayout.height &&
+      previousLayout.keyboardOffset === nextLayout.keyboardOffset &&
+      previousLayout.isFocused === nextLayout.isFocused
+        ? previousLayout
+        : nextLayout
+    );
+  }, []);
 
   const handleRecordSearchChange = useCallback((value: string) => {
     setRecordSearchQuery(value);
@@ -541,6 +556,21 @@ export default function App() {
     : showWelcome
       ? 'max-w-5xl'
       : 'max-w-4xl';
+  const chatScrollPaddingBottom = showWorkspace
+    ? '40px'
+    : `${Math.max(148, chatInputLayout.height + chatInputLayout.keyboardOffset + 20)}px`;
+
+  useEffect(() => {
+    if (!chatInputLayout.isFocused || messages.length === 0 || showWorkspace) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 140);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [chatInputLayout.isFocused, chatInputLayout.keyboardOffset, messages.length, showWorkspace]);
 
   const activeConversation = useMemo(
     () => conversationSessions.find((session) => session.id === activeSessionId) ?? null,
@@ -684,7 +714,7 @@ export default function App() {
 
         <div
           className="flex-1 overflow-y-auto px-4 md:px-6"
-          style={{ paddingBottom: showWorkspace ? '40px' : '132px' }}
+          style={{ paddingBottom: chatScrollPaddingBottom }}
         >
           <div className={`${contentWidthClass} mx-auto w-full`}>
             {showWorkspace && (
@@ -909,7 +939,12 @@ export default function App() {
                   </div>
                 )}
 
-                <DiagnosisProgress messages={messages} diagnosisResult={diagnosisResult} />
+                <DiagnosisProgress
+                  messages={messages}
+                  diagnosisResult={diagnosisResult}
+                  isLoading={isLoading}
+                  hasStreamingContent={Boolean(streamingContent)}
+                />
                 {messages.map((msg) => (
                   <ChatBubble
                     key={msg.id}
@@ -946,17 +981,21 @@ export default function App() {
                         toolCalls={activeToolCalls}
                       />
                       <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                        <p className="text-sm font-medium text-slate-700">正在整理你的情况</p>
+                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                          马上会开始逐步回复；如果涉及外部资料检索，也会一并整理进本次建议。
+                        </p>
                         <div className="flex gap-1">
                           <span
-                            className="h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce"
+                            className="mt-2 h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce"
                             style={{ animationDelay: '0ms' }}
                           />
                           <span
-                            className="h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce"
+                            className="mt-2 h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce"
                             style={{ animationDelay: '150ms' }}
                           />
                           <span
-                            className="h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce"
+                            className="mt-2 h-1.5 w-1.5 rounded-full bg-slate-300 animate-bounce"
                             style={{ animationDelay: '300ms' }}
                           />
                         </div>
@@ -984,7 +1023,12 @@ export default function App() {
         </div>
 
         {!showWorkspace && (
-          <ChatInput onSend={handleSendMessage} isLoading={isLoading} withDesktopSidebar />
+          <ChatInput
+            onSend={handleSendMessage}
+            isLoading={isLoading}
+            withDesktopSidebar
+            onLayoutChange={handleChatInputLayoutChange}
+          />
         )}
       </div>
 
