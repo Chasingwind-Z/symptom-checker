@@ -275,6 +275,27 @@ export function toToolCallState(
   };
 }
 
+export async function searchWebSources(query: string): Promise<{
+  ok: boolean;
+  sourceLabel: string;
+  fetchedAt: string;
+  query?: string;
+  message?: string;
+  officialDomains?: string[];
+  results?: { title: string; url: string; snippet: string }[];
+}> {
+  const raw = await runWebSearch(query);
+  return JSON.parse(raw) as {
+    ok: boolean;
+    sourceLabel: string;
+    fetchedAt: string;
+    query?: string;
+    message?: string;
+    officialDomains?: string[];
+    results?: { title: string; url: string; snippet: string }[];
+  };
+}
+
 async function runWebSearch(query: string): Promise<string> {
   if (hasGatewayRoute('official-source-fetch')) {
     try {

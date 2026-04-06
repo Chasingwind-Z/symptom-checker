@@ -39,10 +39,7 @@ import type {
   ToolCall,
 } from '../types';
 import type { WeatherData, LocationData } from '../lib/geolocation';
-
-const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
-  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
-);
+import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 
 type StoredChatImageAttachment = Pick<
   ChatImageAttachment,
@@ -127,7 +124,7 @@ function buildAttachmentContext(attachments: ChatImageAttachment[]): string {
   return [
     '【图片补充信息】',
     `用户本轮附带了 ${attachments.length} 张医疗相关图片。${
-      VISION_INPUT_ENABLED
+      AI_VISION_ENABLED
         ? '当前模型可接收图片，请先概括你能直接看到的异常、药盒/报告上的可读文字，再明确哪些结论仍不能仅凭图片确认。'
         : '当前 AI 环境不具备图片像素识别能力，图片未以视觉方式传入，下方仅为文件元数据。请主动引导用户用文字描述图片内容（部位、颜色、范围、持续时间等），不要依赖图片信息做分诊判断。'
     }`,
@@ -162,7 +159,7 @@ function buildUserChatContent(
   const textWithAttachmentContext = [text, attachmentContext].filter(Boolean).join('\n\n');
   const attachmentsWithImageData = attachments.filter((attachment) => Boolean(attachment.dataUrl));
 
-  if (!VISION_INPUT_ENABLED || attachmentsWithImageData.length === 0) {
+  if (!AI_VISION_ENABLED || attachmentsWithImageData.length === 0) {
     return textWithAttachmentContext;
   }
 

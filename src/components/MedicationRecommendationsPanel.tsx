@@ -272,6 +272,17 @@ export function MedicationRecommendationsPanel({
     featuredContext?.diagnosis.departments[0] ?? currentDiagnosis?.departments[0] ?? null;
   const riskIsHigh =
     featuredContext?.riskLevel === 'orange' || featuredContext?.riskLevel === 'red';
+  const currentDiagnosisRiskLabel = currentDiagnosis
+    ? {
+        green: '低风险',
+        yellow: '中风险',
+        orange: '较高风险',
+        red: '紧急',
+      }[currentDiagnosis.level]
+    : null;
+  const panelDescription = currentDiagnosis
+    ? `这次问诊已筛出更值得先核对的 OTC / 家庭处理方向，并保留找药房、查说明书和回原线程继续复核的入口。`
+    : '把更值得先核对的 OTC / 家庭处理方向集中在一处，先看可参考项，再看需要谨慎的地方。';
   const locationHint = currentLocation ? '按当前位置' : normalizedCity ? `按${normalizedCity}` : '通用入口';
   const nearbyPharmacyUrl = useMemo(
     () =>
@@ -389,7 +400,7 @@ export function MedicationRecommendationsPanel({
           </div>
           <h2 className="mt-3 text-xl font-semibold text-slate-900">用药建议中心</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
-            把更值得先核对的 OTC / 家庭处理方向集中在一处，先看可参考项，再看需要谨慎的地方。
+            {panelDescription}
           </p>
         </div>
 
@@ -407,6 +418,41 @@ export function MedicationRecommendationsPanel({
           <p className="text-[11px] text-slate-500">仅供 OTC / 家庭处理参考，不替代处方或线下评估。</p>
         </div>
       </div>
+
+      {currentDiagnosis && (
+        <div className="mt-4 rounded-2xl border border-violet-100 bg-violet-50/70 px-4 py-4">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Pill size={16} className="text-violet-700" />
+                <p className="text-sm font-semibold text-slate-800">本次问诊直通入口</p>
+                {currentDiagnosisRiskLabel && (
+                  <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-[10px] text-violet-700">
+                    {currentDiagnosisRiskLabel}
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                {preferredRecommendation
+                  ? `优先核对：${preferredRecommendation.title}。建议先看成分、禁忌和是否与现用药重复，再决定是否购买。`
+                  : riskIsHigh
+                    ? '当前分级偏高，更适合把这里当作信息复核与基础用品入口，不建议只靠 OTC 自行处理。'
+                    : '当前还没有明显更优的 OTC 方向，可先补充信息或回原线程继续复核。'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {preferredRecommendation && (
+                <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-[10px] text-violet-700">
+                  当前优先：{trimText(preferredRecommendation.title, 18)}
+                </span>
+              )}
+              <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-slate-500">
+                {locationHint}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">

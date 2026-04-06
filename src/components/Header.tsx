@@ -8,6 +8,14 @@ import {
   Settings2,
   Stethoscope,
 } from 'lucide-react';
+import type { RiskLevel } from '../types';
+
+const RISK_CHIP: Record<RiskLevel, { style: string; label: string }> = {
+  green: { style: 'border-emerald-200 bg-emerald-50 text-emerald-700', label: '低风险' },
+  yellow: { style: 'border-amber-200 bg-amber-50 text-amber-700', label: '建议就诊' },
+  orange: { style: 'border-orange-200 bg-orange-50 text-orange-700', label: '今日处理' },
+  red: { style: 'border-red-200 bg-red-50 text-red-700', label: '紧急' },
+};
 
 interface HeaderProps {
   title: string;
@@ -22,6 +30,7 @@ interface HeaderProps {
   onInstallApp?: () => void;
   canInstallApp?: boolean;
   isAppInstalled?: boolean;
+  diagnosisRiskLevel?: RiskLevel | null;
 }
 
 export function Header({
@@ -37,10 +46,12 @@ export function Header({
   onInstallApp,
   canInstallApp = false,
   isAppInstalled = false,
+  diagnosisRiskLevel = null,
 }: HeaderProps) {
   const isSignedIn = Boolean(sessionEmail);
   const contextLabel =
     currentView === 'workspace' ? '健康空间' : currentView === 'chat' ? '当前问诊' : '症状自查';
+  const riskChip = currentView === 'chat' && diagnosisRiskLevel ? RISK_CHIP[diagnosisRiskLevel] : null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
@@ -57,6 +68,14 @@ export function Header({
         </div>
 
         <div className="flex items-center gap-2">
+          {riskChip && (
+            <span
+              className={`hidden lg:inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-medium ${riskChip.style}`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" />
+              {riskChip.label}
+            </span>
+          )}
           {isAppInstalled && (
             <span className="hidden sm:inline-flex items-center gap-1 rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-700">
               <CheckCircle2 size={13} />
@@ -118,7 +137,7 @@ export function Header({
           )}
           <button
             onClick={onReset}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 lg:hidden"
             title="新建问诊"
           >
             <Plus size={14} />

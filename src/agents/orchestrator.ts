@@ -6,6 +6,7 @@ import { memoryAgent } from './memoryAgent';
 import { publicHealthAgent } from './publicHealthAgent';
 import { triageAgent } from './triageAgent';
 import type { AgentPromptContext, SpecialistAgentDefinition } from './types';
+import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 
 const AGENT_REGISTRY: Record<AgentId, SpecialistAgentDefinition> = {
   orchestrator: {
@@ -46,9 +47,6 @@ const ROUTE_ORDER: AgentId[] = [
 ];
 
 const FOLLOW_UP_RESPONSES = ['明显好转', '略有好转', '没有变化', '更严重了'] as const;
-const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
-  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
-);
 
 function formatAttachmentSize(sizeBytes: number): string {
   const sizeInMb = sizeBytes / (1024 * 1024);
@@ -233,7 +231,7 @@ function buildContextNotes(context: AgentPromptContext): string[] {
   if ((context.attachments?.length ?? 0) > 0) {
     notes.push(
       `【图片补充信息】\n用户本轮上传了 ${context.attachments!.length} 张图片（常见于皮疹、伤口、药盒或检查报告）。${
-        VISION_INPUT_ENABLED
+        AI_VISION_ENABLED
           ? '当前模型可接收图片，请先说明你能直接看到的异常或可读文字，再明确哪些结论仍不能仅凭图片确认。'
           : '当前 AI 环境不具备图片像素识别能力，图片未以视觉方式传入，下方仅为文件元数据。请主动引导用户用文字描述图片内容（部位、颜色、范围、持续时间等），不要依赖图片信息做分诊判断。'
       } 回复中需要明确“不能仅凭图片做诊断”。\n${context.attachments!

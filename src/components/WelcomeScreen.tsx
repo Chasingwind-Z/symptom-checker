@@ -2,7 +2,7 @@ import { Baby, HeartPulse, LogIn, MessageCircle, ShieldPlus, UserRound } from 'l
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
 import { maskEmail } from '../lib/supabase'
 import type { ConversationSession } from '../types'
-import { ConversationHistoryPanel } from './ConversationHistoryPanel'
+import { getAICapabilities } from '../lib/aiCapabilities'
 
 type WelcomeProfileContext = Pick<
   ProfileDraft,
@@ -25,7 +25,6 @@ interface WelcomeScreenProps {
   profile?: WelcomeProfileContext | null
   recentCases?: CaseHistoryItem[]
   recentSessions: ConversationSession[]
-  activeSessionId?: string | null
   onOpenConversation: (sessionId: string) => void
 }
 
@@ -171,7 +170,6 @@ export function WelcomeScreen({
   profile,
   recentCases = [],
   recentSessions,
-  activeSessionId,
   onOpenConversation,
 }: WelcomeScreenProps) {
   const personalizedScenarios = buildPersonalizedScenarios({
@@ -181,6 +179,7 @@ export function WelcomeScreen({
   })
   const canOpenAuthEntry = canOpenAuth !== false && Boolean(onOpenAuth)
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : ''
+  const aiCaps = getAICapabilities()
   const scenarioChips =
     personalizedScenarios.length === 0
       ? COMMON_SCENARIOS
@@ -188,6 +187,7 @@ export function WelcomeScreen({
         ? [...personalizedScenarios, ...COMMON_SCENARIOS].slice(0, MIN_SCENARIO_CHIP_COUNT)
         : personalizedScenarios.slice(0, MAX_PERSONALIZED_CHIP_COUNT)
   const hasPersonalizedScenarios = personalizedScenarios.length > 0
+  const recentConversationChips = recentSessions.slice(0, 3)
 
   return (
     <div className="w-full py-6 sm:py-7">
@@ -260,6 +260,38 @@ export function WelcomeScreen({
               })}
             </div>
           </div>
+
+          {/* Capability status row */}
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              文字问诊
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
+                aiCaps.speechInput
+                  ? 'border-slate-200 bg-slate-50 text-slate-600'
+                  : 'border-slate-100 bg-slate-50/60 text-slate-400'
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${aiCaps.speechInput ? 'bg-emerald-500' : 'bg-slate-300'}`}
+              />
+              语音输入{!aiCaps.speechInput && '（浏览器不支持）'}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
+                aiCaps.vision
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-amber-200 bg-amber-50 text-amber-700'
+              }`}
+            >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${aiCaps.vision ? 'bg-blue-500' : 'bg-amber-400'}`}
+              />
+              图片模式：{aiCaps.vision ? '图像识别' : '文字辅助'}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
@@ -282,18 +314,33 @@ export function WelcomeScreen({
             </div>
           </div>
 
-          <div className="lg:hidden">
-            <ConversationHistoryPanel
-              sessions={recentSessions}
-              activeSessionId={activeSessionId}
-              onOpenSession={onOpenConversation}
-              title="最近对话"
-              description="手机端也能在这里继续之前的问诊线程。"
-              maxItems={5}
-              showStartButton={false}
-              emptyMessage="完成第一次问诊后，最近对话会出现在这里。下次回来时可以直接继续，不必重新描述全部症状。"
-            />
-          </div>
+          {recentConversationChips.length > 0 && (
+            <div className="lg:hidden rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">继续最近问诊</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    手机端先保留最常继续的 3 条线程入口，不再堆一整块历史面板。
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                  {recentSessions.length} 段
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {recentConversationChips.map((session) => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => onOpenConversation(session.id)}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 transition-colors hover:border-cyan-200 hover:bg-cyan-50"
+                  >
+                    {truncateText(getRecentSessionReference(session) || session.title, 16)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

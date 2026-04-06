@@ -25,14 +25,17 @@ import {
   RecordsCenterPanel,
   type RecordsCenterSummaryItem,
 } from './components/RecordsCenterPanel';
+import { SearchIntelligencePanel, type ConnectedWebSearchState } from './components/SearchIntelligencePanel';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { useChat } from './hooks/useChat';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { usePwaInstall } from './hooks/usePwaInstall';
+import { searchWebSources } from './lib/agentTools';
 import type { CaseHistoryItem } from './lib/healthData';
 import { getRecommendedHospitals } from './lib/mockHospitals';
+import { searchMedicalKnowledge } from './lib/medicalKnowledge';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
 import { buildProfileCompletionGuide } from './lib/healthWorkspaceInsights';
 import {
@@ -48,6 +51,7 @@ import {
   applyPersonalizedOrdering,
   buildCombinedMedicalNotes,
   buildPersonalizationRankingContext,
+  getMedicationGuidance,
 } from './lib/personalization';
 import type { ConversationSession, Hospital, SendMessageInput } from './types';
 
@@ -353,6 +357,9 @@ export default function App() {
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [recordSearchQuery, setRecordSearchQuery] = useState('');
+  const [connectedWebSearch, setConnectedWebSearch] = useState<ConnectedWebSearchState>({
+    status: 'idle',
+  });
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
     height: 148,
@@ -498,6 +505,14 @@ export default function App() {
 
   const handleRecordSearchChange = useCallback((value: string) => {
     setRecordSearchQuery(value);
+    setConnectedWebSearch(
+      value.trim()
+        ? {
+            status: 'loading',
+            sourceLabel: '公开资料检索',
+          }
+        : { status: 'idle' }
+    );
     if (value.trim()) {
       setWorkspaceSection('search');
       setCurrentPage('workspace');
@@ -651,6 +666,44 @@ export default function App() {
     () => normalizeRecordKey(recordSearchQuery),
     [recordSearchQuery]
   );
+  const knowledgeSearchPreview = useMemo(
+    () =>
+      normalizedSearchQuery ? searchMedicalKnowledge(recordSearchQuery.trim(), { limit: 4 }) : null,
+    [normalizedSearchQuery, recordSearchQuery]
+  );
+
+  useEffect(() => {
+    if (workspaceSection !== 'search' || !recordSearchQuery.trim()) return;
+
+    let cancelled = false;
+    const query = recordSearchQuery.trim();
+    const timeoutId = window.setTimeout(() => {
+      void searchWebSources(query)
+        .then((result) => {
+          if (cancelled) return;
+          setConnectedWebSearch({
+            status: 'ready',
+            sourceLabel: result.sourceLabel,
+            fetchedAt: result.fetchedAt,
+            message: result.message,
+            results: result.results,
+          });
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setConnectedWebSearch({
+            status: 'error',
+            sourceLabel: '公开资料检索',
+            message: '联网检索暂时不可用，可先查看本地知识命中或改用外部搜索。',
+          });
+        });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [recordSearchQuery, workspaceSection]);
 
   const personalizationRankingContext = useMemo(
     () =>
@@ -784,6 +837,12 @@ export default function App() {
     ).length;
   }, [normalizedSearchQuery, workspace.recentCases]);
 
+  const medicationBadgeCount = useMemo(() => {
+    if (!diagnosisResult) return 0;
+    return getMedicationGuidance(diagnosisResult, workspace.profile).filter((item) => item.suitable)
+      .length;
+  }, [diagnosisResult, workspace.profile]);
+
   const searchPersonalizationHintVisible =
     Boolean(normalizedSearchQuery) &&
     (personalizedConversationSearch.changed ||
@@ -854,10 +913,10 @@ export default function App() {
           return {
             title: '搜索记录',
             subtitle: recordSearchQuery.trim()
-              ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索${
-                  searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                }`
-              : '按症状、标题、科室或建议快速查找历史会话与记录。',
+              ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索，并同步联动知识库与公开资料${
+                   searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                 }`
+              : '按症状、标题、科室或建议快速查找历史会话、医学知识和公开资料。',
           };
         case 'profile':
           return {
@@ -1025,6 +1084,7 @@ export default function App() {
         statusHelperText={workspace.helperText}
         profileCompletion={profileCompletion}
         pendingFollowUpCount={pendingFollowUpRecords.length}
+        medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
       />
 
       <div className="flex min-h-screen flex-1 flex-col">
@@ -1043,6 +1103,7 @@ export default function App() {
           onInstallApp={() => {
             void pwa.promptInstall();
           }}
+          diagnosisRiskLevel={diagnosisResult?.level ?? null}
         />
 
         {shellBanner && (
@@ -1090,7 +1151,7 @@ export default function App() {
                         {recordSearchQuery.trim() && (
                           <button
                             type="button"
-                            onClick={() => setRecordSearchQuery('')}
+                            onClick={() => handleRecordSearchChange('')}
                             className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-50"
                           >
                             清空关键词
@@ -1137,6 +1198,14 @@ export default function App() {
                         </div>
                       </div>
                     </section>
+
+                    {recordSearchQuery.trim() && (
+                      <SearchIntelligencePanel
+                        query={recordSearchQuery.trim()}
+                        knowledgeResult={knowledgeSearchPreview}
+                        webSearch={connectedWebSearch}
+                      />
+                    )}
 
                     {recordSearchQuery.trim() ? (
                       <>
@@ -1297,7 +1366,6 @@ export default function App() {
                 profile={workspace.profile}
                 recentCases={workspace.recentCases}
                 recentSessions={conversationSessions}
-                activeSessionId={activeSessionId}
                 onOpenConversation={handleOpenConversation}
               />
             )}

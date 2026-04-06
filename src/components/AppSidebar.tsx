@@ -53,6 +53,7 @@ interface AppSidebarProps {
   statusHelperText?: string;
   profileCompletion: number;
   pendingFollowUpCount: number;
+  medicationBadge?: string;
   onOpenAuth?: () => void;
   authActionLabel?: string;
   sessionEmail?: string | null;
@@ -153,6 +154,7 @@ export function AppSidebar({
   statusHelperText,
   profileCompletion,
   pendingFollowUpCount,
+  medicationBadge,
   onOpenAuth,
   authActionLabel,
   sessionEmail,
@@ -169,24 +171,48 @@ export function AppSidebar({
   const pendingBadge =
     pendingFollowUpCount > 0 ? `${Math.min(9, pendingFollowUpCount)}${pendingFollowUpCount > 9 ? '+' : ''}` : undefined;
 
-  const personalizedItems: SidebarPersonalizationItem[] = [
-    {
-      id: 'profile',
-      label: '档案',
-      title: `档案已完成 ${profileCompletion}%`,
-      description:
-        profileCompletion >= 100
-          ? maskedSessionEmail
-            ? `已连接 ${maskedSessionEmail}，后续更新会自动同步。`
-            : '档案已基本完善，当前资料保存在本机浏览器。'
-          : maskedSessionEmail
-            ? `已连接 ${maskedSessionEmail}，再补一点资料会更省追问。`
-            : '补齐基础资料后，问诊会更少重复追问。',
-      toneClass: profileCompletion >= 100 ? 'bg-emerald-500' : 'bg-cyan-500',
-      badge: maskedSessionEmail ? '云端同步' : '本机保存',
-      onClick: onSelectProfile,
-    },
-  ];
+  const personalizedItems: SidebarPersonalizationItem[] = [];
+
+  if (pendingFollowUpCount > 0) {
+    personalizedItems.push({
+      id: 'follow-up-priority',
+      label: '待跟进',
+      title: `还有 ${pendingFollowUpCount} 项随访待处理`,
+      description: '优先回复最近的变化和复诊进度，系统会继续沿用原问诊上下文。',
+      toneClass: 'bg-amber-500',
+      badge: pendingBadge ?? '待办',
+      onClick: onSelectRecords,
+    });
+  }
+
+  if (featuredSession?.riskLevel === 'orange' || featuredSession?.riskLevel === 'red') {
+    personalizedItems.push({
+      id: 'high-risk-session',
+      label: '高风险',
+      title: `继续「${trimSidebarText(featuredSession.title)}」`,
+      description: '最近线程风险偏高，建议优先回看行动清单、门诊入口和后续变化。',
+      toneClass: featuredSession.riskLevel === 'red' ? 'bg-rose-500' : 'bg-orange-500',
+      badge: featuredSession.riskLevel === 'red' ? '紧急' : '较高风险',
+      onClick: () => onOpenSession(featuredSession.id),
+    });
+  }
+
+  personalizedItems.push({
+    id: 'profile',
+    label: '档案',
+    title: `档案已完成 ${profileCompletion}%`,
+    description:
+      profileCompletion >= 100
+        ? maskedSessionEmail
+          ? `已连接 ${maskedSessionEmail}，后续更新会自动同步。`
+          : '档案已基本完善，当前资料保存在本机浏览器。'
+        : maskedSessionEmail
+          ? `已连接 ${maskedSessionEmail}，再补一点资料会更省追问。`
+          : '补齐基础资料后，问诊会更少重复追问。',
+    toneClass: profileCompletion >= 100 ? 'bg-emerald-500' : 'bg-cyan-500',
+    badge: maskedSessionEmail ? '云端同步' : '本机保存',
+    onClick: onSelectProfile,
+  });
 
   if (normalizedSearchQuery) {
     personalizedItems.push(
@@ -260,6 +286,8 @@ export function AppSidebar({
       onClick: onOpenMap,
     });
   }
+
+  const visiblePersonalizedItems = personalizedItems.slice(0, 2);
 
   return (
     <aside
@@ -345,6 +373,7 @@ export function AppSidebar({
           onClick={onSelectMedication}
           icon={Pill}
           isCollapsed={isCollapsed}
+          badge={medicationBadge}
         />
         <SidebarNavButton
           label="健康地图"
@@ -368,12 +397,12 @@ export function AppSidebar({
       {!isCollapsed && (
         <>
           <section className="mt-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-2">
-            <p className="px-2 text-[11px] font-medium tracking-[0.08em] text-slate-500">为你推荐</p>
-            <div className="mt-1.5 space-y-0.5">
-              {personalizedItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
+              <p className="px-2 text-[11px] font-medium tracking-[0.08em] text-slate-500">推荐下一步</p>
+              <div className="mt-1.5 space-y-0.5">
+                {visiblePersonalizedItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
                   onClick={item.onClick}
                   className="flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white/90"
                 >

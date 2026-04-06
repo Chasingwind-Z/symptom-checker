@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { ImagePlus, Loader2, Mic, MicOff, Send, ShieldAlert, X } from 'lucide-react';
 import type { ChatImageAttachment, SendMessageInput } from '../types';
+import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 
 export interface ChatInputLayoutMetrics {
   height: number;
@@ -28,9 +29,6 @@ interface ChatInputProps {
   variant?: 'floating' | 'inline';
 }
 
-const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
-  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
-);
 const MAX_IMAGE_ATTACHMENTS = 3;
 const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024;
 const MIN_TEXTAREA_HEIGHT = 56;
@@ -125,12 +123,12 @@ function appendPromptTemplate(currentValue: string, template: string): string {
 
 function buildHelperText(attachmentCount: number): string {
   if (attachmentCount === 0) {
-    return VISION_INPUT_ENABLED
+    return AI_VISION_ENABLED
       ? '支持文字、语音和最多 3 张图片；药盒、检查单图片会优先尝试识别可见文字。'
       : '支持文字、语音和图片（最多 3 张）。当前 AI 不直接识别像素，图片以文件名与类型作为文字上下文辅助分析。';
   }
 
-  return VISION_INPUT_ENABLED
+  return AI_VISION_ENABLED
     ? `已附加 ${attachmentCount} 张图片，可先看图中异常或可读文字；建议继续补充部位、持续时间和伴随症状。`
     : `已附加 ${attachmentCount} 张图片（文件名已作为文字上下文）；请继续描述部位、持续时间和症状以便更准确分析。`;
 }
@@ -140,7 +138,7 @@ function buildPlaceholder(attachmentCount: number): string {
     return '描述您的症状、持续时间，以及是否发热、疼痛或呼吸不适…';
   }
 
-  return VISION_INPUT_ENABLED
+  return AI_VISION_ENABLED
     ? '可补充：哪里不适、持续多久、图里最担心哪一处，或想核对哪盒药 / 哪项指标…'
     : '请补充图片对应的部位、持续时间、是否疼/痒/发热，或你想核对的药名 / 指标…';
 }
@@ -327,7 +325,7 @@ export function ChatInput({
 
     if (attachmentCount >= MAX_IMAGE_ATTACHMENTS) {
       setUploadError(
-        VISION_INPUT_ENABLED
+        AI_VISION_ENABLED
           ? `最多同时附加 ${MAX_IMAGE_ATTACHMENTS} 张图片——超过后单轮 token 用量会过大。请先移除不需要的图片。`
           : `最多同时附加 ${MAX_IMAGE_ATTACHMENTS} 张图片——图片文件信息会以文字形式加入提示词，超过后提示词会过长。请先移除不需要的图片。`
       );
@@ -434,7 +432,7 @@ export function ChatInput({
                         已附加 {attachmentCount} 张图片
                       </p>
                       <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                        {VISION_INPUT_ENABLED ? '图片将直接发送给视觉模型' : '图片以文字上下文方式辅助'}
+                        {AI_VISION_ENABLED ? '图片将直接发送给视觉模型' : '图片以文字上下文方式辅助'}
                       </span>
                       {remainingAttachmentSlots > 0 && (
                         <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
@@ -613,7 +611,7 @@ export function ChatInput({
                 <ShieldAlert size={12} className="mt-0.5 flex-shrink-0 text-amber-500" />
                 <p className="leading-relaxed">
                   可上传最多 3 张皮疹、伤口、化验单或药盒照片（3 张限制是为了控制单轮提示词长度）。
-                  {VISION_INPUT_ENABLED
+                  {AI_VISION_ENABLED
                     ? ' 当前视觉模型已启用，图片像素会直接发送给 AI，可先参考图片里可见的异常或文字，再结合你的描述做谨慎分诊。'
                     : ' 当前 AI 环境不具备图片像素识别能力，图片不会被模型"看到"——仅文件名与类型以文字形式告知助手，用于引导你补充描述。'}
                   不会仅凭图片下诊断，完整图片预览主要保留在当前会话中。

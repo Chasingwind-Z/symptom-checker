@@ -10,6 +10,7 @@ import {
   DatabaseZap,
   ExternalLink,
   Globe,
+  MapPin,
   Pill,
   ShieldCheck,
   UserRoundSearch,
@@ -19,6 +20,7 @@ import { OfficialSourceComparison } from './OfficialSourceComparison';
 import { RiskGauge } from './RiskGauge';
 import { ReportExport } from './ReportExport';
 import * as officialSourceHelpers from '../lib/officialSources';
+import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import {
   getMedicationGuidance,
   getPersonalizedInsights,
@@ -36,10 +38,6 @@ import type {
   SymptomReport,
   ToolCall,
 } from '../types';
-
-const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
-  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
-);
 
 const DISTRICTS = [
   '朝阳区',
@@ -649,6 +647,10 @@ export function ResultCard({
     [profile]
   );
   const hasMedicationSummary = medicationSummarySections.length > 0;
+  const medicationPreviewTitles = useMemo(
+    () => medicationAdvice.filter((item) => item.suitable).slice(0, 2).map((item) => item.title),
+    [medicationAdvice]
+  );
   const latestImageAttachmentCount = useMemo(
     () =>
       [...messages]
@@ -746,6 +748,63 @@ export function ResultCard({
             <p className="text-emerald-500 text-xs font-medium mt-3 text-center">✓ 准备就绪，祝您早日康复</p>
           )}
         </div>
+
+        {(hasMedicationSummary || onToggleMap) && (
+          <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800">推荐下一步</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  {result.level === 'red'
+                    ? '当前应优先线下急诊 / 急救，不建议把注意力放在购药上。'
+                    : hasMedicationSummary
+                      ? '先核对这次更贴近的 OTC / 家庭处理方向，再决定是否去药房或继续补充信息。'
+                      : '可先查看附近门诊 / 医疗资源；若后续补充了更多信息，也会自动刷新支持建议。'}
+                </p>
+              </div>
+              {medicationPreviewTitles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {medicationPreviewTitles.map((title) => (
+                    <span
+                      key={title}
+                      className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700"
+                    >
+                      {title}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {hasMedicationSummary && onOpenMedicationHub && result.level !== 'red' && (
+                <button
+                  type="button"
+                  onClick={onOpenMedicationHub}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-700"
+                >
+                  <Pill size={14} />
+                  查看本次 OTC / 用药入口
+                  <ArrowRight size={13} />
+                </button>
+              )}
+              {onToggleMap && (
+                <button
+                  type="button"
+                  onClick={onToggleMap}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                >
+                  <MapPin size={14} />
+                  {result.level === 'red'
+                    ? '查看急诊 / 医院入口'
+                    : result.level === 'orange'
+                      ? '查看今日就医入口'
+                      : '查看附近门诊 / 药房'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Level badge + title */}
         <div className="flex items-center gap-3 mb-4">
@@ -901,7 +960,8 @@ export function ResultCard({
         </div>
 
         {(personalizedInsights.length > 0 || hasMedicationSummary) && (
-          <div className="mb-5 grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
+          <div className="mb-5 space-y-3">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
             {personalizedInsights.length > 0 && (
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -997,34 +1057,52 @@ export function ResultCard({
                 <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
                   仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
                 </p>
-                {onOpenMedicationHub && (
-                  <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/80 px-3 py-3">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-800">{medicationHubCtaTitle}</p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
-                          打开用药建议中心后，可继续看附近药房、搜推荐方向、查说明书，或回对话继续核对药盒 / 报告。
-                        </p>
-                        {latestImageAttachmentCount > 0 && (
-                          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-                            {VISION_INPUT_ENABLED
-                              ? `本次已上传并发送了 ${latestImageAttachmentCount} 张图片给视觉模型；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`
-                              : `本次已上传 ${latestImageAttachmentCount} 张图片（以文字上下文辅助分析）；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`}
-                          </p>
-                        )}
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={onOpenMedicationHub}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
-                      >
-                        打开入口
-                        <ArrowRight size={14} />
-                      </button>
+              </div>
+            )}
+            </div>
+            {hasMedicationSummary && onOpenMedicationHub && (
+              <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/80 px-4 py-4">
+                <div className="flex items-start gap-4 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Pill size={16} className="text-blue-600 shrink-0" />
+                      <p className="text-sm font-semibold text-slate-800">{medicationHubCtaTitle}</p>
                     </div>
+                    <p className="text-xs leading-relaxed text-slate-600">
+                      打开用药建议中心后，可继续看附近药房、搜推荐方向、查说明书，或回对话继续核对药盒 / 报告。
+                    </p>
+                    {medicationPreviewTitles.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {medicationPreviewTitles.map((title) => (
+                          <span
+                            key={title}
+                            className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700"
+                          >
+                            {title}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {latestImageAttachmentCount > 0 && (
+                      <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                        {AI_VISION_ENABLED
+                          ? `本次已上传并发送了 ${latestImageAttachmentCount} 张图片给视觉模型；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`
+                          : `本次已上传 ${latestImageAttachmentCount} 张图片（以文字上下文辅助分析）；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`}
+                      </p>
+                    )}
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={onOpenMedicationHub}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                  >
+                    查看用药建议
+                    <ArrowRight size={15} />
+                  </button>
+                </div>
+                <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
+                  仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
+                </p>
               </div>
             )}
           </div>
