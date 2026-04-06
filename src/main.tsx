@@ -6,9 +6,7 @@ import App from './App.tsx';
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch((error) => {
-        console.warn('[PWA] Service worker registration failed:', error);
-      });
+      void navigator.serviceWorker.register('/sw.js').catch(() => undefined);
     });
   } else {
     void navigator.serviceWorker.getRegistrations().then((registrations) => {

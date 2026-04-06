@@ -186,8 +186,8 @@ export async function saveProfileDraft(draft: ProfileDraft) {
   if (!client) {
     return {
       storedIn: 'local' as const,
-      statusLabel: '本机档案已保存',
-      helperText: '当前先保存在本机；登录后可自动同步到你的个人空间。',
+      statusLabel: '游客档案已保存',
+      helperText: '当前先保存在这个浏览器里；登录后可自动同步到你的个人空间。',
     };
   }
 
@@ -199,8 +199,8 @@ export async function saveProfileDraft(draft: ProfileDraft) {
   if (authError || !user) {
     return {
       storedIn: 'local' as const,
-      statusLabel: '资料已保存，登录后自动上云',
-      helperText: '基础资料已先保存到本机，使用邮箱登录后会自动同步到云端。',
+      statusLabel: '资料已保存在当前浏览器',
+      helperText: '基础资料已先本地保存，使用邮箱登录后会自动同步到云端。',
     };
   }
 
@@ -227,7 +227,7 @@ export async function saveProfileDraft(draft: ProfileDraft) {
     return {
       storedIn: 'local' as const,
       statusLabel: '云端同步待重试',
-      helperText: '这次没有成功同步，但本机记录已保留，稍后重试即可。',
+      helperText: '这次没有成功同步，但浏览器本地记录已保留，稍后重试即可。',
     };
   }
 
@@ -372,7 +372,9 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
     return {
       mode: bootstrap.state === 'error' ? 'error' : 'local',
       statusLabel:
-        localProfile.profileMode === 'demo' && seededDemo ? '已载入体验画像（本机记录）' : bootstrap.label,
+        localProfile.profileMode === 'demo' && seededDemo
+          ? '已载入体验画像（游客模式）'
+          : bootstrap.label,
       helperText:
         localProfile.profileMode === 'demo'
           ? '已为你预置一份可编辑的体验档案与示例问诊记录，用来展示个性化推荐效果。'
@@ -390,9 +392,12 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
 
   if (authError) {
     return {
-      mode: 'error',
-      statusLabel: '当前改用本机记录',
-      helperText: '暂时无法读取云端会话，不影响继续问诊和保存本地记录。',
+      mode: bootstrap.state === 'error' ? 'error' : 'cloud-ready',
+      statusLabel: bootstrap.state === 'error' ? '云端同步暂不可用' : '游客模式（登录后可同步）',
+      helperText:
+        bootstrap.state === 'error'
+          ? '暂时无法读取云端会话，当前会继续保存在浏览器中。'
+          : '还没有读取到有效登录态，你可以重新发送邮箱登录链接继续同步。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,
@@ -403,11 +408,13 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
     return {
       mode: 'cloud-ready',
       statusLabel:
-        localProfile.profileMode === 'demo' ? '可登录后同步这份体验档案' : '登录后可同步档案',
+        localProfile.profileMode === 'demo'
+          ? '游客模式（可登录后同步这份体验档案）'
+          : '游客模式（登录后可同步档案）',
       helperText:
         localProfile.profileMode === 'demo'
           ? '当前已经带上一份可编辑体验画像；登录后可继续保留或改成自己的资料再同步。'
-          : '你可以先以游客方式使用；登录后档案和历史记录会自动跟随邮箱账号同步。',
+          : '你可以先以游客方式使用；登录后档案和历史会话会自动跟随邮箱账号同步。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,

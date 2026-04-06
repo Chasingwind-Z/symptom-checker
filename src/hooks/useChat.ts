@@ -19,6 +19,7 @@ import { persistCaseRecord } from '../lib/healthData';
 import type {
   AgentRoute,
   ChatImageAttachment,
+  ConversationSession,
   DiagnosisResult,
   Message,
   SendMessageInput,
@@ -151,6 +152,8 @@ function toHistoryMessage(message: Message): ChatMessage {
 }
 
 const FOLLOW_UP_STORAGE_KEY = 'symptom_followup_cases';
+const CHAT_SESSION_STORAGE_KEY = 'symptom_chat_sessions_v1';
+const MAX_CHAT_SESSIONS = 16;
 const FOLLOW_UP_OPTIONS = ['明显好转', '略有好转', '没有变化', '更严重了'] as const;
 const FOLLOW_UP_DISTRICTS = [
   '朝阳区',
@@ -246,6 +249,110 @@ function buildFollowUpMessage(followUpCase: FollowUpCase): Message {
   };
 }
 
+function stripSessionMetadata(content: string): string {
+  return content
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function buildConversationTitle(messages: Message[]): string {
+  const firstUserMessage = messages.find((message) => message.role === 'user');
+  const sourceText = stripSessionMetadata(firstUserMessage?.content ?? '');
+  if (!sourceText) return '新的症状咨询';
+  return sourceText.length > 20 ? `${sourceText.slice(0, 20).trim()}…` : sourceText;
+}
+
+function normalizeStoredMessage(raw: unknown, index: number): Message | null {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const message = raw as Partial<Message>;
+  if (message.role !== 'user' && message.role !== 'assistant') {
+    return null;
+  }
+
+  const timestampValue =
+    typeof message.timestamp === 'string' || message.timestamp instanceof Date
+      ? message.timestamp
+      : new Date().toISOString();
+  const parsedTimestamp = new Date(timestampValue);
+
+  return {
+    id: typeof message.id === 'string' ? message.id : `stored-message-${index}`,
+    role: message.role,
+    content: typeof message.content === 'string' ? message.content : '',
+    timestamp: Number.isNaN(parsedTimestamp.getTime()) ? new Date() : parsedTimestamp,
+    attachments: Array.isArray(message.attachments) ? message.attachments : undefined,
+    suggestions: Array.isArray(message.suggestions)
+      ? message.suggestions.filter((item): item is string => typeof item === 'string')
+      : undefined,
+    toolCalls: Array.isArray(message.toolCalls) ? message.toolCalls : undefined,
+    agentRoute: message.agentRoute,
+  };
+}
+
+function readConversationSessionsCache(): ConversationSession[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = localStorage.getItem(CHAT_SESSION_STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .map((item, index) => {
+        if (!item || typeof item !== 'object') return null;
+        const session = item as Partial<ConversationSession>;
+        const messages = Array.isArray(session.messages)
+          ? session.messages
+              .map((message, messageIndex) => normalizeStoredMessage(message, messageIndex))
+              .filter((message): message is Message => Boolean(message))
+          : [];
+
+        if (messages.length === 0) return null;
+
+        const createdAt = typeof session.createdAt === 'string' ? session.createdAt : new Date().toISOString();
+        const updatedAt = typeof session.updatedAt === 'string' ? session.updatedAt : createdAt;
+        const riskLevel =
+          session.riskLevel === 'green' ||
+          session.riskLevel === 'yellow' ||
+          session.riskLevel === 'orange' ||
+          session.riskLevel === 'red'
+            ? session.riskLevel
+            : null;
+
+        return {
+          id: typeof session.id === 'string' ? session.id : `chat-session-${index}`,
+          title:
+            typeof session.title === 'string' && session.title.trim()
+              ? session.title
+              : buildConversationTitle(messages),
+          createdAt,
+          updatedAt,
+          riskLevel,
+          diagnosisResult: session.diagnosisResult ?? null,
+          messages,
+          storage: session.storage === 'supabase' ? 'supabase' : 'local',
+        } satisfies ConversationSession;
+      })
+      .filter((session): session is ConversationSession => Boolean(session))
+      .sort(
+        (left, right) =>
+          new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+      );
+  } catch {
+    return [];
+  }
+}
+
+function writeConversationSessionsCache(sessions: ConversationSession[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(CHAT_SESSION_STORAGE_KEY, JSON.stringify(sessions));
+}
+
 export function useChat(memoryContext?: AgentMemoryContext | null) {
   const [messages, setMessages] = useState<Message[]>(() => {
     const dueFollowUp = getDueFollowUpCase();
@@ -262,6 +369,38 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     getDueFollowUpCase()
   );
   const [activeAgentRoute, setActiveAgentRoute] = useState<AgentRoute | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [conversationSessions, setConversationSessions] = useState<ConversationSession[]>(() =>
+    readConversationSessionsCache()
+  );
+
+  const persistConversationSession = useCallback(
+    (sessionId: string, nextMessages: Message[], nextDiagnosis: DiagnosisResult | null) => {
+      if (!sessionId || nextMessages.length === 0) return;
+
+      const now = new Date().toISOString();
+      setConversationSessions((prev) => {
+        const existing = prev.find((session) => session.id === sessionId);
+        const nextSessions = [
+          {
+            id: sessionId,
+            title: buildConversationTitle(nextMessages),
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now,
+            riskLevel: nextDiagnosis?.level ?? null,
+            diagnosisResult: nextDiagnosis ?? null,
+            messages: nextMessages,
+            storage: 'local' as const,
+          },
+          ...prev.filter((session) => session.id !== sessionId),
+        ].slice(0, MAX_CHAT_SESSIONS);
+
+        writeConversationSessionsCache(nextSessions);
+        return nextSessions;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     void primeMedicalKnowledgeCorpus();
@@ -272,8 +411,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
         setLocationData(loc);
         const weather = await fetchWeather(loc.lat, loc.lon);
         if (weather) setWeatherData(weather);
-      } catch (e) {
-        console.warn('[WeatherBar] 定位失败，尝试使用默认位置:', e);
+      } catch {
         try {
           const weather = await fetchWeather(39.92, 116.41);
           if (weather) setWeatherData(weather);
@@ -318,8 +456,17 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
         timestamp: new Date(),
         attachments: attachments.length > 0 ? attachments : undefined,
       };
+      const sessionId = activeSessionId ?? `chat-session-${Date.now()}`;
 
-      setMessages((prev) => [...prev, userMessage]);
+      if (!activeSessionId) {
+        setActiveSessionId(sessionId);
+      }
+
+      setMessages((prev) => {
+        const nextMessages = [...prev, userMessage];
+        persistConversationSession(sessionId, nextMessages, diagnosisResult);
+        return nextMessages;
+      });
       setIsLoading(true);
       setStreamingContent('');
       setIsSearchingKB(true);
@@ -361,6 +508,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
       const finalizeAssistantMessage = (content: string) => {
         const suggestions = extractSuggestions(content);
+        const result = extractDiagnosis(content);
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -371,12 +519,15 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           agentRoute: orchestration.route,
         };
 
-        setMessages((prev) => [...prev, assistantMessage]);
+        setMessages((prev) => {
+          const nextMessages = [...prev, assistantMessage];
+          persistConversationSession(sessionId, nextMessages, result ?? diagnosisResult);
+          return nextMessages;
+        });
         setStreamingContent('');
         setIsLoading(false);
         setIsSearchingKB(false);
 
-        const result = extractDiagnosis(content);
         if (result) {
           setDiagnosisResult(result);
           queueFollowUpCase(displayText, result);
@@ -436,9 +587,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
         const finalContent =
           fullContent || result.content || '抱歉，我暂时无法生成完整回复，请稍后重试。';
         finalizeAssistantMessage(finalContent);
-      } catch (toolFlowError) {
-        console.warn('[Chat] tool-aware flow failed, fallback to plain stream:', toolFlowError);
-
+      } catch {
         if (toolCallMap.size === 0) {
           setActiveToolCalls([
             {
@@ -462,7 +611,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           });
 
           finalizeAssistantMessage(fullContent || '抱歉，连接出现问题，请稍后重试。');
-        } catch (err) {
+        } catch {
           const errorMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
@@ -475,21 +624,55 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           setStreamingContent('');
           setIsLoading(false);
           setIsSearchingKB(false);
-          console.error('Chat error:', err);
         }
       }
     },
-    [messages, isLoading, locationData, diagnosisResult, pendingFollowUp, memoryContext]
+    [
+      activeSessionId,
+      messages,
+      isLoading,
+      locationData,
+      diagnosisResult,
+      pendingFollowUp,
+      memoryContext,
+    ]
+  );
+
+  const loadConversationSession = useCallback(
+    (sessionId: string) => {
+      const target =
+        conversationSessions.find((session) => session.id === sessionId) ??
+        readConversationSessionsCache().find((session) => session.id === sessionId);
+
+      if (!target) {
+        return false;
+      }
+
+      setActiveSessionId(target.id);
+      setMessages(target.messages);
+      setDiagnosisResult(target.diagnosisResult);
+      setPendingFollowUp(null);
+      setIsLoading(false);
+      setStreamingContent('');
+      setIsSearchingKB(false);
+      setActiveToolCalls([]);
+      setActiveAgentRoute(null);
+      return true;
+    },
+    [conversationSessions]
   );
 
   const resetChat = useCallback(() => {
-    setMessages([]);
+    const dueFollowUp = getDueFollowUpCase();
+    setMessages(dueFollowUp ? [buildFollowUpMessage(dueFollowUp)] : []);
     setIsLoading(false);
     setStreamingContent('');
     setDiagnosisResult(null);
     setIsSearchingKB(false);
     setActiveToolCalls([]);
     setActiveAgentRoute(null);
+    setPendingFollowUp(dueFollowUp);
+    setActiveSessionId(null);
   }, []);
 
   return {
@@ -502,7 +685,10 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     activeAgentRoute,
     weatherData,
     locationData,
+    activeSessionId,
+    conversationSessions,
     sendMessage,
+    loadConversationSession,
     resetChat,
   };
 }

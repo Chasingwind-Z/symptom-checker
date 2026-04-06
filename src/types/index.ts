@@ -64,6 +64,17 @@ export interface DiagnosisResult {
   disclaimer: string;
 }
 
+export interface ConversationSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  riskLevel: RiskLevel | null;
+  diagnosisResult: DiagnosisResult | null;
+  messages: Message[];
+  storage: 'local' | 'supabase';
+}
+
 export interface OfficialSourceRecord {
   id: string;
   title: string;

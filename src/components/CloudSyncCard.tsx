@@ -39,14 +39,6 @@ const TRIAGE_LABELS: Record<CaseHistoryItem['triageLevel'], string> = {
   pending: '待分诊',
 };
 
-const TRIAGE_BADGES: Record<CaseHistoryItem['triageLevel'], string> = {
-  green: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-  yellow: 'bg-amber-50 text-amber-700 border-amber-100',
-  orange: 'bg-orange-50 text-orange-700 border-orange-100',
-  red: 'bg-rose-50 text-rose-700 border-rose-100',
-  pending: 'bg-slate-100 text-slate-600 border-slate-200',
-};
-
 export function CloudSyncCard({
   mode,
   statusLabel,
@@ -60,7 +52,7 @@ export function CloudSyncCard({
   onApplyDemoPersona,
 }: CloudSyncCardProps) {
   const latestCase = recentCases[0];
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [draft, setDraft] = useState<ProfileDraft>(profile);
   const [isSaving, setIsSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'done' | 'error'>('idle');
@@ -186,7 +178,7 @@ export function CloudSyncCard({
                     : 'text-slate-700'
               }`}
             >
-              {isSignedIn ? '同步已开启' : isCloudConfigured ? '可开启同步' : '本机记录'}
+              {isSignedIn ? '云端同步已开启' : isCloudConfigured ? '游客模式' : '当前浏览器保存'}
             </span>
           </div>
           <p className="text-sm font-semibold text-slate-800">健康空间</p>
@@ -232,10 +224,10 @@ export function CloudSyncCard({
               账号状态
             </div>
             <p className="text-sm font-semibold text-slate-800 mt-2">
-              {sessionEmail || (isCloudConfigured ? '未登录，可开启邮件同步' : '仅保存本机记录')}
+              {sessionEmail || (isCloudConfigured ? '游客模式，可开启邮件同步' : '仅当前浏览器保存')}
             </p>
             <p className="text-[11px] text-slate-500 mt-1">
-              {isSignedIn ? '档案与历史可跨设备同步' : isCloudConfigured ? '可发送邮箱登录链接' : '不影响直接问诊'}
+              {isSignedIn ? '档案与会话可跨设备同步' : isCloudConfigured ? '可发送邮箱登录链接' : '不影响直接问诊'}
             </p>
           </div>
 
@@ -256,13 +248,13 @@ export function CloudSyncCard({
         <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3">
           <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
             <History size={12} />
-            最近历史
+            问诊摘要
           </div>
           <p className="text-sm font-semibold text-slate-800 mt-2">{recentCases.length} 条</p>
           <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
             {latestCase
               ? `${latestCase.chiefComplaint} · ${TRIAGE_LABELS[latestCase.triageLevel]}`
-              : '完成一次分诊后，这里会自动缓存本机/云端摘要。'}
+              : '完成一次分诊后，会自动缓存摘要并出现在下方历史会话里。'}
           </p>
         </div>
       </div>
@@ -287,7 +279,7 @@ export function CloudSyncCard({
                 <div>
                   <p className="text-sm font-semibold text-slate-800">账号与同步</p>
                   <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    登录后档案和问诊摘要会自动同步，不需要额外密码。
+                    当前支持邮箱验证码链接登录；登录后档案、摘要和历史会话会自动同步，不需要额外密码。
                   </p>
                 </div>
                 <ShieldCheck size={16} className="text-cyan-600" />
@@ -348,12 +340,12 @@ export function CloudSyncCard({
                     </div>
                   </label>
                   <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                    收到邮件后按提示打开即可继续使用。
+                    收到邮件后按提示打开即可继续使用，成功后这里会显示你的邮箱和同步状态。
                   </p>
                 </div>
               ) : (
                 <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white/80 px-3 py-3 text-[11px] text-slate-600 leading-relaxed">
-                  云端同步暂未启用时，也可以继续使用本机记录和问诊功能。
+                  即使暂未启用云端同步，也可以继续以游客模式使用；资料会保存在当前浏览器。
                 </div>
               )}
 
@@ -564,70 +556,19 @@ export function CloudSyncCard({
 
           <div className="space-y-3">
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">最近问诊记录</p>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    已完成的分诊会自动缓存到本机或同步到云端。
-                  </p>
-                </div>
-                {latestCase && (
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-600">
-                    最新：{new Date(latestCase.createdAt).toLocaleDateString('zh-CN')}
-                  </span>
-                )}
+              <div className="flex items-center gap-1.5 text-slate-700">
+                <Database size={14} className="text-cyan-600" />
+                <p className="text-sm font-semibold">当前保存位置</p>
               </div>
-
-              <div className="mt-3 space-y-2">
-                {recentCases.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-white/80 px-3 py-3 text-[11px] text-slate-500 leading-relaxed">
-                    还没有历史记录。完成一次问诊后，这里会显示风险等级、建议科室和摘要。
-                  </div>
-                ) : (
-                  recentCases.slice(0, 4).map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-800 leading-snug">
-                          {item.chiefComplaint}
-                        </p>
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                            TRIAGE_BADGES[item.triageLevel]
-                          }`}
-                        >
-                          {TRIAGE_LABELS[item.triageLevel].split(' · ')[0]}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        {new Date(item.createdAt).toLocaleString('zh-CN', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}{' '}
-                        · {item.source === 'supabase' ? '云端' : '本机'}
-                      </p>
-                      {item.departments.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {item.departments.slice(0, 3).map((department) => (
-                            <span
-                              key={`${item.id}-${department}`}
-                              className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600"
-                            >
-                              {department}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                        {item.assistantPreview}
-                      </p>
-                    </div>
-                  ))
-                )}
+              <div className="mt-2 space-y-2 text-[11px] text-slate-600 leading-relaxed">
+                <div className="rounded-xl bg-white px-3 py-2">
+                  <p className="font-medium text-slate-700">游客模式</p>
+                  <p className="mt-1">资料只保存在当前浏览器，适合先体验或临时使用。</p>
+                </div>
+                <div className="rounded-xl bg-white px-3 py-2">
+                  <p className="font-medium text-slate-700">登录后</p>
+                  <p className="mt-1">同一邮箱可跨设备同步档案、摘要和历史会话。</p>
+                </div>
               </div>
             </div>
 
@@ -639,7 +580,8 @@ export function CloudSyncCard({
               <ul className="mt-2 space-y-1.5 text-[11px] text-slate-600 leading-relaxed">
                 <li>• 你的昵称、城市、慢病/过敏备注</li>
                 <li>• 最近问诊的风险等级、摘要与建议科室</li>
-                <li>• 未配置 Supabase 时，依然保留本机缓存，不影响继续使用</li>
+                <li>• 新的历史会话列表，可点击恢复并继续对话</li>
+                <li>• 若云端暂不可用，也会保留浏览器本地缓存，不影响继续使用</li>
               </ul>
             </div>
           </div>

@@ -21,6 +21,7 @@ import {
 import { OfficialSourceComparison } from './OfficialSourceComparison'
 import * as officialSourceHelpers from '../lib/officialSources'
 import type { DistrictRiskData } from '../lib/epidemicDataEngine'
+import type { OfficialSourceBundle } from '../types'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Legend, Tooltip, Filler)
 
@@ -40,11 +41,40 @@ const getTrendLabel = (trend: DistrictRiskData['trend']) =>
 const formatTrendDelta = (trend: DistrictRiskData['trend'], percent: number) =>
   trend === 'down' ? `-${percent}%` : trend === 'stable' ? `±${Math.max(2, Math.round(percent * 0.4))}%` : `+${percent}%`
 
+const FALLBACK_DASHBOARD_SOURCES = {
+  records: [],
+  syncStatus: {
+    state: 'idle',
+    mode: 'seeded-local',
+    freshness: 'seeded',
+    sourceLabel: '官方公开资料',
+    summary: '当前展示内置公开资料摘要。',
+    note: '如云端资料暂不可用，会先回退到本地整理的公开信息。',
+    lastSyncTime: '',
+    latestRecordTime: '',
+    fallbackActive: true,
+    configured: false,
+    fetchedAt: Date.now(),
+  },
+} satisfies OfficialSourceBundle
+
+const useDashboardOfficialSourcesSafe =
+  typeof officialSourceHelpers.useDashboardOfficialSources === 'function'
+    ? officialSourceHelpers.useDashboardOfficialSources
+    : () => FALLBACK_DASHBOARD_SOURCES
+
 export function EpidemicDashboard({ onBack }: Props) {
+  const mapKey = (import.meta.env.VITE_AMAP_JS_KEY as string | undefined)?.trim() ?? ''
   const [currentTime, setCurrentTime] = useState<string>('')
   const cityOverview = useMemo(() => getCityOverview(), [])
   const districtData = useMemo<DistrictRiskData[]>(() => mergeLocalReports(getDistrictRiskData()), [])
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
+  const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'fallback'>(
+    mapKey ? 'loading' : 'fallback'
+  )
+  const [mapNote, setMapNote] = useState(
+    mapKey ? '正在载入热力图…' : '当前未配置地图 Key，已自动切换为趋势参考视图。'
+  )
   const mapContainerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
@@ -72,85 +102,104 @@ export function EpidemicDashboard({ onBack }: Props) {
     const initMap = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (!mapContainerRef.current || !(window as any).AMap) return
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const AMap = (window as any).AMap
 
-      circlesRef.current.forEach(c => c.setMap?.(null))
-      circlesRef.current = []
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const AMap = (window as any).AMap
 
-      if (!mapRef.current) {
-        mapRef.current = new AMap.Map(mapContainerRef.current, {
-          zoom: 10,
-          center: [116.3974, 39.9093],
-          mapStyle: 'amap://styles/dark',
-        })
-      }
+        circlesRef.current.forEach(c => c.setMap?.(null))
+        circlesRef.current = []
 
-      const map = mapRef.current
-
-      districtData.forEach(district => {
-        const color = getRiskColor(district.riskLevel)
-
-        const circle = new AMap.Circle({
-          center: district.center,
-          radius: 4500,
-          fillColor: color,
-          fillOpacity: district.riskLevel === 'critical' ? 0.5 : 0.3,
-          strokeColor: color,
-          strokeWeight: 2,
-          strokeOpacity: 0.8,
-        })
-        circle.setMap(map)
-        circle.on('click', () => setSelectedDistrict(district.district))
-        circlesRef.current.push(circle)
-
-        if (district.riskLevel === 'critical') {
-          const outerCircle = new AMap.Circle({
-            center: district.center,
-            radius: 6500,
-            fillColor: color,
-            fillOpacity: 0.1,
-            strokeColor: color,
-            strokeWeight: 1,
-            strokeOpacity: 0.3,
+        if (!mapRef.current) {
+          mapRef.current = new AMap.Map(mapContainerRef.current, {
+            zoom: 10,
+            center: [116.3974, 39.9093],
+            mapStyle: 'amap://styles/dark',
           })
-          outerCircle.setMap(map)
-          circlesRef.current.push(outerCircle)
         }
 
-        const text = new AMap.Text({
-          text: district.district.replace('区', ''),
-          position: district.center,
-          style: {
-            'background-color': 'transparent',
-            border: 'none',
-            color: 'rgba(255,255,255,0.8)',
-            'font-size': '12px',
-            'font-weight': '500',
-          },
+        const map = mapRef.current
+
+        districtData.forEach(district => {
+          const color = getRiskColor(district.riskLevel)
+
+          const circle = new AMap.Circle({
+            center: district.center,
+            radius: 4500,
+            fillColor: color,
+            fillOpacity: district.riskLevel === 'critical' ? 0.5 : 0.3,
+            strokeColor: color,
+            strokeWeight: 2,
+            strokeOpacity: 0.8,
+          })
+          circle.setMap(map)
+          circle.on('click', () => setSelectedDistrict(district.district))
+          circlesRef.current.push(circle)
+
+          if (district.riskLevel === 'critical') {
+            const outerCircle = new AMap.Circle({
+              center: district.center,
+              radius: 6500,
+              fillColor: color,
+              fillOpacity: 0.1,
+              strokeColor: color,
+              strokeWeight: 1,
+              strokeOpacity: 0.3,
+            })
+            outerCircle.setMap(map)
+            circlesRef.current.push(outerCircle)
+          }
+
+          const text = new AMap.Text({
+            text: district.district.replace('区', ''),
+            position: district.center,
+            style: {
+              'background-color': 'transparent',
+              border: 'none',
+              color: 'rgba(255,255,255,0.8)',
+              'font-size': '12px',
+              'font-weight': '500',
+            },
+          })
+          text.setMap(map)
+          circlesRef.current.push(text)
         })
-        text.setMap(map)
-        circlesRef.current.push(text)
-      })
+
+        setMapStatus('ready')
+      } catch {
+        setMapStatus('fallback')
+        setMapNote('地图暂时无法渲染，已自动切换为趋势参考视图。')
+      }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((window as any).AMap) {
       initMap()
     } else {
-      const key = import.meta.env.VITE_AMAP_JS_KEY as string
+      const key = mapKey
       const securityKey = import.meta.env.VITE_AMAP_JS_SECURITY_KEY as string
+      if (!key) {
+        return
+      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ;(window as any)._AMapSecurityConfig = { securityJsCode: securityKey }
 
       const existing = document.getElementById('amap-script')
       if (existing) {
         existing.addEventListener('load', initMap)
+        existing.addEventListener('error', () => {
+          setMapStatus('fallback')
+          setMapNote('地图资源加载失败，已切换为趋势参考视图。')
+        })
       } else {
         const script = document.createElement('script')
         script.id = 'amap-script'
         script.src = `https://webapi.amap.com/maps?v=2.0&key=${key}`
         script.onload = initMap
+        script.onerror = () => {
+          setMapStatus('fallback')
+          setMapNote('地图资源加载失败，已切换为趋势参考视图。')
+        }
         document.head.appendChild(script)
       }
     }
@@ -159,7 +208,7 @@ export function EpidemicDashboard({ onBack }: Props) {
       circlesRef.current.forEach(c => c.setMap?.(null))
       circlesRef.current = []
     }
-  }, [districtData])
+  }, [districtData, mapKey])
 
   // 卸载时销毁地图
   useEffect(() => {
@@ -178,7 +227,7 @@ export function EpidemicDashboard({ onBack }: Props) {
   const warningText = districtData.length > 0 ? getAIWarningText(districtData) : ''
   const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   const focusDistrict = sortedDistricts[0] ?? null
-  const { records: dashboardSources, syncStatus: dashboardSyncStatus } = officialSourceHelpers.useDashboardOfficialSources(
+  const { records: dashboardSources, syncStatus: dashboardSyncStatus } = useDashboardOfficialSourcesSafe(
     activeDistrict?.topSymptoms ?? focusDistrict?.topSymptoms ?? []
   )
   const breakdownItems = activeDistrict
@@ -415,6 +464,22 @@ export function EpidemicDashboard({ onBack }: Props) {
               </div>
               <div className="relative flex-1 min-h-[360px]">
                 <div ref={mapContainerRef} className="h-full w-full min-h-[360px]" />
+                {mapStatus !== 'ready' && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-slate-950/65 px-5 text-center">
+                    <div className="max-w-sm rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-4">
+                      <p className="text-sm font-semibold text-white">
+                        {mapStatus === 'loading' ? '正在载入区域热力图' : '已切换为趋势参考视图'}
+                      </p>
+                      <p className="mt-2 text-[11px] leading-relaxed text-white/65">{mapNote}</p>
+                      {focusDistrict && (
+                        <p className="mt-3 text-[11px] leading-relaxed text-cyan-200">
+                          当前重点关注 {focusDistrict.district}，高频症状为
+                          {focusDistrict.topSymptoms.slice(0, 2).join('、')}。
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {focusDistrict && (
                   <div className="absolute left-4 bottom-4 max-w-xs rounded-2xl border border-white/10 bg-slate-950/75 backdrop-blur px-3 py-2.5 shadow-2xl">
                     <div className="flex items-center justify-between gap-2">

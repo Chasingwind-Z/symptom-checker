@@ -38,17 +38,17 @@ export function Header({
 }: HeaderProps) {
   const isSignedIn = Boolean(sessionEmail);
   const accountLabel = isSignedIn
-    ? '同步已开启'
+    ? '云端同步中'
     : cloudMode === 'cloud-ready'
-      ? '登录同步'
+      ? '游客模式 · 可登录同步'
       : cloudMode === 'error'
-        ? '当前使用本机记录'
-        : '本机模式';
+        ? '游客模式 · 同步待恢复'
+        : '游客模式 · 当前浏览器';
   const accountClassName = isSignedIn
     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
     : cloudMode === 'cloud-ready'
       ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
-    : cloudMode === 'error'
+      : cloudMode === 'error'
         ? 'border-amber-200 bg-amber-50 text-amber-700'
         : 'border-slate-200 bg-slate-50 text-slate-600';
 
@@ -94,13 +94,24 @@ export function Header({
             )}
           </div>
         )}
-        <div
-          className={`hidden md:flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs ${accountClassName}`}
-          title={isSignedIn ? '当前云端登录状态' : '当前同步模式'}
-        >
-          {isSignedIn ? <Cloud size={13} /> : <CloudOff size={13} />}
-          <span className="max-w-[180px] truncate">{isSignedIn ? sessionEmail : accountLabel}</span>
-        </div>
+        {onOpenWorkspace ? (
+          <button
+            onClick={onOpenWorkspace}
+            className={`hidden md:flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs transition-colors hover:opacity-85 ${accountClassName}`}
+            title={isSignedIn ? '查看账号与同步状态' : '点击查看游客模式说明与登录同步'}
+          >
+            {isSignedIn ? <Cloud size={13} /> : <CloudOff size={13} />}
+            <span className="max-w-[200px] truncate">{isSignedIn ? sessionEmail : accountLabel}</span>
+          </button>
+        ) : (
+          <div
+            className={`hidden md:flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs ${accountClassName}`}
+            title={isSignedIn ? '当前云端登录状态' : '当前同步模式'}
+          >
+            {isSignedIn ? <Cloud size={13} /> : <CloudOff size={13} />}
+            <span className="max-w-[200px] truncate">{isSignedIn ? sessionEmail : accountLabel}</span>
+          </div>
+        )}
         {onOpenWorkspace && (
           <>
             <button

@@ -39,6 +39,11 @@ function getFreshnessBadge(syncStatus?: OfficialSourceSyncStatus): string {
   }
 }
 
+const formatOfficialTime =
+  typeof officialSourceHelpers.formatOfficialSourceTime === 'function'
+    ? officialSourceHelpers.formatOfficialSourceTime
+    : (value: string) => value || '最近';
+
 export function OfficialSourceComparison({
   records,
   syncStatus,
@@ -113,9 +118,9 @@ export function OfficialSourceComparison({
             </div>
             <div className={`text-[10px] ${isDark ? 'text-white/40' : 'text-slate-400'}`}>
               {syncStatus.lastSyncTime
-                ? `最近同步 ${officialSourceHelpers.formatOfficialSourceTime(syncStatus.lastSyncTime)}`
+                ? `最近同步 ${formatOfficialTime(syncStatus.lastSyncTime)}`
                 : syncStatus.latestRecordTime
-                ? `资料更新 ${officialSourceHelpers.formatOfficialSourceTime(syncStatus.latestRecordTime)}`
+                ? `资料更新 ${formatOfficialTime(syncStatus.latestRecordTime)}`
                 : '当前使用内置资料'}
             </div>
           </div>
@@ -148,7 +153,7 @@ export function OfficialSourceComparison({
                     </span>
                   </div>
                   <p className={`text-[11px] mt-1 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
-                    {record.sourceLabel} · 更新于 {officialSourceHelpers.formatOfficialSourceTime(record.lastUpdated)}
+                    {record.sourceLabel} · 更新于 {formatOfficialTime(record.lastUpdated)}
                   </p>
                 </div>
                 {record.url && (

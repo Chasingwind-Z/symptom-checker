@@ -23,6 +23,8 @@ export interface SupabaseAuthActionResult {
   message: string;
 }
 
+const shouldLogSupabase = import.meta.env.DEV;
+
 export function getSupabaseClient(): AppSupabaseClient | null {
   if (!isSupabaseConfigured) return null;
 
@@ -40,7 +42,9 @@ export function getSupabaseClient(): AppSupabaseClient | null {
     });
   } catch (error) {
     initError = error instanceof Error ? error : new Error('Supabase 初始化失败');
-    console.warn('[Supabase] 初始化失败，已回退到本机模式。', initError);
+    if (shouldLogSupabase) {
+      console.warn('[Supabase] 初始化失败，已回退到游客模式。', initError);
+    }
   }
 
   return browserClient;
@@ -50,23 +54,23 @@ export function getSupabaseBootstrapStatus(): SupabaseBootstrapStatus {
   if (initError) {
     return {
       state: 'error',
-      label: '当前改用本机记录',
-      helperText: '云端暂时不可用，不影响继续问诊与保存本地记录。',
+      label: '云端同步暂不可用',
+      helperText: '当前自动降级为游客模式，资料仍会保存在当前浏览器。',
     };
   }
 
   if (!isSupabaseConfigured) {
     return {
       state: 'unconfigured',
-      label: '游客模式（本机记录）',
-      helperText: '可直接开始问诊；登录后可同步档案、历史记录和随访结果。',
+      label: '游客模式（仅当前浏览器保存）',
+      helperText: '可直接开始问诊；登录后可同步档案、历史会话和随访结果。',
     };
   }
 
   return {
     state: 'ready',
     label: '已支持邮箱登录同步',
-    helperText: '登录后可跨设备查看健康档案、近期问诊记录与同步结果。',
+    helperText: '登录后可跨设备查看健康档案、历史会话与同步结果。',
   };
 }
 
@@ -84,7 +88,9 @@ export async function getSupabaseSession(): Promise<Session | null> {
 
   const { data, error } = await client.auth.getSession();
   if (error) {
-    console.warn('[Supabase] 获取会话失败：', error.message);
+    if (shouldLogSupabase) {
+      console.warn('[Supabase] 获取会话失败：', error.message);
+    }
     return null;
   }
 
@@ -122,7 +128,9 @@ export async function sendMagicLink(email: string): Promise<SupabaseAuthActionRe
   });
 
   if (error) {
-    console.warn('[Supabase] 发送 magic link 失败：', error.message);
+    if (shouldLogSupabase) {
+      console.warn('[Supabase] 发送 magic link 失败：', error.message);
+    }
     return {
       ok: false,
       message: error.message,
@@ -144,13 +152,15 @@ export async function signOutSupabase(): Promise<SupabaseAuthActionResult> {
   if (!client) {
     return {
       ok: true,
-      message: '当前就是本机模式，无需退出账号。',
+      message: '当前处于游客模式，无需退出账号。',
     };
   }
 
   const { error } = await client.auth.signOut();
   if (error) {
-    console.warn('[Supabase] 退出登录失败：', error.message);
+    if (shouldLogSupabase) {
+      console.warn('[Supabase] 退出登录失败：', error.message);
+    }
     return {
       ok: false,
       message: error.message,

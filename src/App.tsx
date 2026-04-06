@@ -14,6 +14,7 @@ import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { InfoBar } from './components/WeatherBar';
 import { EpidemicDashboard } from './components/EpidemicDashboard';
 import { CloudSyncCard } from './components/CloudSyncCard';
+import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import type { Hospital, SendMessageInput } from './types';
@@ -48,7 +49,10 @@ export default function App() {
     activeToolCalls,
     activeAgentRoute,
     weatherData,
+    activeSessionId,
+    conversationSessions,
     sendMessage,
+    loadConversationSession,
     resetChat,
   } = useChat(chatMemoryContext);
 
@@ -84,6 +88,12 @@ export default function App() {
     setCurrentPage('home');
   }
 
+  function handleOpenConversation(sessionId: string) {
+    if (loadConversationSession(sessionId)) {
+      setCurrentPage('chat');
+    }
+  }
+
   const effectivePage = currentPage === 'home' && messages.length > 0 ? 'chat' : currentPage;
   const showWorkspace = effectivePage === 'workspace';
   const showWelcome = !showWorkspace && messages.length === 0;
@@ -115,7 +125,7 @@ export default function App() {
         className="flex-1 overflow-y-auto px-3 md:px-6"
         style={{ paddingTop: '8px', paddingBottom: '132px' }}
       >
-        <div className="max-w-2xl mx-auto w-full">
+        <div className={`${showWorkspace ? 'max-w-5xl' : 'max-w-2xl'} mx-auto w-full`}>
           {showWorkspace && (
             <div className="py-5 space-y-4">
               <section className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
@@ -123,15 +133,15 @@ export default function App() {
                   <div>
                     <p className="text-sm font-semibold text-slate-800">账号与健康档案</p>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      这里集中管理邮箱登录、个人资料、近期问诊记录与同步状态；游客也可以先使用本机记录。
+                      游客模式下，资料只保存在当前浏览器；登录后可同步档案、历史会话和问诊摘要。
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
+                      onClick={handleResetChat}
                       className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
                     >
-                      {messages.length > 0 ? '继续问诊' : '返回首页'}
+                      开始新对话
                     </button>
                     <button
                       onClick={() => setCurrentPage('map')}
@@ -154,6 +164,13 @@ export default function App() {
                 isRefreshing={workspace.isRefreshing}
                 onSaveProfile={workspace.updateProfile}
                 onApplyDemoPersona={workspace.loadDemoPersona}
+              />
+
+              <ConversationHistoryPanel
+                sessions={conversationSessions}
+                activeSessionId={activeSessionId}
+                onOpenSession={handleOpenConversation}
+                onStartNewSession={handleResetChat}
               />
             </div>
           )}

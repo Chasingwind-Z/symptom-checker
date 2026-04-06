@@ -21,7 +21,15 @@ import { ReportExport } from './ReportExport';
 import * as officialSourceHelpers from '../lib/officialSources';
 import { getMedicationGuidance, getPersonalizedInsights } from '../lib/personalization';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
-import type { DiagnosisResult, Hospital, Message, RiskLevel, SymptomReport, ToolCall } from '../types';
+import type {
+  DiagnosisResult,
+  Hospital,
+  Message,
+  OfficialSourceBundle,
+  RiskLevel,
+  SymptomReport,
+  ToolCall,
+} from '../types';
 
 const DISTRICTS = [
   '朝阳区',
@@ -46,6 +54,26 @@ const ACTION_ITEMS: Record<RiskLevel, [string, string, string]> = {
 };
 
 const STORAGE_KEY = 'symptom_reports';
+const FALLBACK_OFFICIAL_SOURCE_BUNDLE = {
+  records: [],
+  syncStatus: {
+    state: 'idle',
+    mode: 'seeded-local',
+    freshness: 'seeded',
+    sourceLabel: '官方公开资料',
+    summary: '当前展示内置公开资料摘要。',
+    note: '如云端同步暂不可用，会自动回退到本地整理的资料卡片。',
+    lastSyncTime: '',
+    latestRecordTime: '',
+    fallbackActive: true,
+    configured: false,
+    fetchedAt: Date.now(),
+  },
+} satisfies OfficialSourceBundle;
+const useOfficialSourceComparisonSafe =
+  typeof officialSourceHelpers.useOfficialSourceComparison === 'function'
+    ? officialSourceHelpers.useOfficialSourceComparison
+    : () => FALLBACK_OFFICIAL_SOURCE_BUNDLE;
 
 const RISK_LABELS: Record<RiskLevel, string> = {
   green: '低风险',
@@ -522,7 +550,7 @@ export function ResultCard({
     };
   }, [messages, result]);
   const { records: officialSources, syncStatus: officialSourceSyncStatus } =
-    officialSourceHelpers.useOfficialSourceComparison(officialSourceContext);
+    useOfficialSourceComparisonSafe(officialSourceContext);
   const personalizedInsights = useMemo(
     () => getPersonalizedInsights({ profile, recentCases, diagnosis: result }),
     [profile, recentCases, result]
