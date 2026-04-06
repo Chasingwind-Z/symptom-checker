@@ -39,12 +39,17 @@ function formatFetchedAt(value?: string) {
   });
 }
 
+function getKnowledgeStorageLabel(storageMode?: string) {
+  if (!storageMode) return '结构化知识库'
+  return storageMode.includes('supabase') ? 'Supabase 云端知识库' : '本地结构化知识库'
+}
+
 export function SearchIntelligencePanel({
   query,
   knowledgeResult,
   webSearch,
 }: SearchIntelligencePanelProps) {
-  const knowledgeDocs = knowledgeResult?.documents.slice(0, 3) ?? [];
+  const knowledgeDocs = knowledgeResult?.documents.slice(0, 4) ?? [];
   const webResults = webSearch.results?.slice(0, 3) ?? [];
 
   return (
@@ -57,7 +62,7 @@ export function SearchIntelligencePanel({
           </div>
           <h3 className="mt-3 text-lg font-semibold text-slate-900">同一个关键词，直接看知识库和公开资料</h3>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
-            输入症状或问题后，这里会同时展示本地 / 云端医学知识命中，以及联网公开资料结果。
+            输入症状或问题后，这里会同时展示知识库来源、更新时间、适用人群和公开资料结果，不再只暴露工程计数。
           </p>
         </div>
         <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-500">
@@ -79,15 +84,46 @@ export function SearchIntelligencePanel({
                   : '会优先展示与当前问题最相关的医学知识片段和危险信号。'}
               </p>
             </div>
-            {knowledgeResult?.focusPopulation && (
-              <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-violet-700">
-                重点人群：{knowledgeResult.focusPopulation}
-              </span>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {knowledgeResult?.focusPopulation && (
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-violet-700">
+                  重点人群：{knowledgeResult.focusPopulation}
+                </span>
+              )}
+              {knowledgeResult && (
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-slate-500">
+                  {getKnowledgeStorageLabel(knowledgeResult.storageMode)}
+                </span>
+              )}
+            </div>
           </div>
 
           {knowledgeDocs.length > 0 ? (
             <div className="mt-3 space-y-3">
+              {knowledgeResult && (
+                <div className="rounded-2xl border border-violet-100 bg-white/90 px-4 py-3 text-[11px] leading-relaxed text-slate-500">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-violet-50 px-2 py-0.5 text-violet-700">
+                      来源：{getKnowledgeStorageLabel(knowledgeResult.storageMode)}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                      更新时间：{knowledgeResult.lastUpdated || '最近一次同步'}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                      相关资料：{knowledgeResult.documents.length} 条
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                      chunk 命中：{knowledgeResult.chunkMatches.length} 条
+                    </span>
+                  </div>
+                  <p className="mt-2">
+                    数据底座：{knowledgeResult.supabaseTable}
+                    {knowledgeResult.storageMode.includes('supabase')
+                      ? '（已接入云端文档 / chunk）'
+                      : '（当前回退到本地结构化知识）'}
+                  </p>
+                </div>
+              )}
               {knowledgeDocs.map((item) => (
                 <article
                   key={item.document.id}

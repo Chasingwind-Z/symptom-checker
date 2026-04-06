@@ -268,6 +268,14 @@ export function MedicationRecommendationsPanel({
     featuredContext?.recommendations.find((recommendation) => recommendation.suitable) ??
     featuredContext?.recommendations[0] ??
     null;
+  const recommendedMedicationNames = useMemo(
+    () =>
+      featuredContext?.recommendations
+        .filter((recommendation) => recommendation.suitable)
+        .slice(0, 3)
+        .map((recommendation) => recommendation.title) ?? [],
+    [featuredContext]
+  );
   const primaryDepartment =
     featuredContext?.diagnosis.departments[0] ?? currentDiagnosis?.departments[0] ?? null;
   const riskIsHigh =
@@ -440,15 +448,23 @@ export function MedicationRecommendationsPanel({
                     : '当前还没有明显更优的 OTC 方向，可先补充信息或回原线程继续复核。'}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {preferredRecommendation && (
-                <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-[10px] text-violet-700">
-                  当前优先：{trimText(preferredRecommendation.title, 18)}
+              <div className="flex flex-wrap gap-2">
+                {preferredRecommendation && (
+                  <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-[10px] text-violet-700">
+                    当前优先：{trimText(preferredRecommendation.title, 18)}
+                  </span>
+                )}
+                {recommendedMedicationNames.slice(1).map((name) => (
+                  <span
+                    key={name}
+                    className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-600"
+                  >
+                    可参考：{trimText(name, 18)}
+                  </span>
+                ))}
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-slate-500">
+                  {locationHint}
                 </span>
-              )}
-              <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-slate-500">
-                {locationHint}
-              </span>
             </div>
           </div>
         </div>

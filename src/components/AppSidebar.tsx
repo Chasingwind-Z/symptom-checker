@@ -37,6 +37,7 @@ interface AppSidebarProps {
   totalSessionCount: number;
   activeSessionId?: string | null;
   onOpenSession: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
   onStartNewSession: () => void;
   onSelectChat: () => void;
   onSelectSearch: () => void;
@@ -138,6 +139,7 @@ export function AppSidebar({
   totalSessionCount,
   activeSessionId,
   onOpenSession,
+  onDeleteSession,
   onStartNewSession,
   onSelectChat,
   onSelectSearch,
@@ -433,6 +435,7 @@ export function AppSidebar({
               sessions={sessions}
               activeSessionId={activeSessionId}
               onOpenSession={onOpenSession}
+              onDeleteSession={onDeleteSession}
               title={normalizedSearchQuery ? '匹配会话' : '最近会话'}
               description={
                 normalizedSearchQuery

@@ -226,6 +226,7 @@ function buildContextNotes(context: AgentPromptContext): string[] {
   const notes: string[] = [];
   const additionalSkills = loadSkills(context.userText);
   const profile = context.memoryContext?.profile;
+  const consultationMode = context.memoryContext?.consultationMode;
   const recentCases = context.memoryContext?.recentCases?.slice(0, 3) ?? [];
 
   if ((context.attachments?.length ?? 0) > 0) {
@@ -265,6 +266,14 @@ function buildContextNotes(context: AgentPromptContext): string[] {
         `【用户健康档案】\n${profileItems.join('；')}。这些信息视为已知，不要重复追问，除非当前分诊必须再次确认。`
       );
     }
+  }
+
+  if (consultationMode) {
+    notes.push(
+      `【当前咨询模式】\n已选择：${consultationMode.label}${
+        consultationMode.subtitle ? `（${consultationMode.subtitle}）` : ''
+      }。${consultationMode.promptNote}\n注意：如果用户只是选择了模式但还没给出具体症状，不要假设已经知道病情，先请对方描述这次最主要的不适。`
+    );
   }
 
   if (recentCases.length > 0) {

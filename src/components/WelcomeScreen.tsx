@@ -1,8 +1,11 @@
-import { Baby, HeartPulse, LogIn, MessageCircle, ShieldPlus, UserRound } from 'lucide-react'
+import { Baby, CheckCircle2, HeartPulse, LogIn, ShieldPlus, UserRound } from 'lucide-react'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
 import { maskEmail } from '../lib/supabase'
 import type { ConversationSession } from '../types'
-import { getAICapabilities } from '../lib/aiCapabilities'
+import {
+  getConsultationModePreset,
+  type ConsultationModeId,
+} from '../lib/consultationModes'
 
 type WelcomeProfileContext = Pick<
   ProfileDraft,
@@ -15,7 +18,10 @@ interface ScenarioChip {
 }
 
 interface WelcomeScreenProps {
-  onSendMessage: (text: string) => void
+  onStartConsultation: () => void
+  onApplyStarterText: (text: string) => void
+  selectedModeId?: ConsultationModeId | null
+  onSelectMode: (modeId: ConsultationModeId) => void
   onToggleMap: () => void
   onOpenWorkspace: () => void
   sessionEmail?: string | null
@@ -29,9 +35,9 @@ interface WelcomeScreenProps {
 }
 
 const COMMON_SCENARIOS: ScenarioChip[] = [
-  { label: '发烧了不知道严不严重', sendText: '我发烧了，不知道严不严重' },
-  { label: '头痛持续三天要去医院吗', sendText: '我头痛已经持续三天了' },
-  { label: '孩子咳嗽该去哪里看', sendText: '我的孩子一直在咳嗽' },
+  { label: '发烧 38.5℃，要不要去医院', sendText: '发烧 38.5℃，要不要去医院' },
+  { label: '咳嗽三天，晚上更重', sendText: '咳嗽三天，晚上更重' },
+  { label: '先把过敏史和现在用药说清楚', sendText: '先把过敏史和现在用药说清楚' },
 ]
 
 const DEFAULT_PROFILE_CITY = '中国大陆'
@@ -131,37 +137,44 @@ function buildPersonalizedScenarios(params: {
 
 const GUARDIAN_MODES = [
   {
+    id: 'self' as const,
     label: '本人',
     subtitle: '标准问诊',
-    sendText: '我想咨询自己的身体不适，请按标准问诊流程开始。',
     icon: UserRound,
     className: 'bg-white text-blue-700 border-blue-100 hover:bg-blue-50',
+    activeClassName: 'border-blue-300 bg-blue-50/80 shadow-sm',
   },
   {
+    id: 'child' as const,
     label: '儿童守护',
     subtitle: '儿科优先',
-    sendText: '这是孩子的情况，请按儿童模式帮我问诊并优先考虑儿科建议。',
     icon: Baby,
     className: 'bg-white text-amber-700 border-amber-100 hover:bg-amber-50',
+    activeClassName: 'border-amber-300 bg-amber-50/80 shadow-sm',
   },
   {
+    id: 'elderly' as const,
     label: '老人守护',
     subtitle: '高风险优先',
-    sendText: '这是家里老人的情况，请按老年人高风险模式帮我问诊。',
     icon: ShieldPlus,
     className: 'bg-white text-violet-700 border-violet-100 hover:bg-violet-50',
+    activeClassName: 'border-violet-300 bg-violet-50/80 shadow-sm',
   },
   {
+    id: 'chronic' as const,
     label: '慢病守护',
     subtitle: '基础病叠加',
-    sendText: '我有高血压/糖尿病等慢性病，请按慢病患者模式帮我问诊。',
     icon: HeartPulse,
     className: 'bg-white text-rose-700 border-rose-100 hover:bg-rose-50',
+    activeClassName: 'border-rose-300 bg-rose-50/80 shadow-sm',
   },
 ] as const
 
 export function WelcomeScreen({
-  onSendMessage,
+  onStartConsultation,
+  onApplyStarterText,
+  selectedModeId,
+  onSelectMode,
   onToggleMap,
   sessionEmail,
   canOpenAuth,
@@ -179,13 +192,22 @@ export function WelcomeScreen({
   })
   const canOpenAuthEntry = canOpenAuth !== false && Boolean(onOpenAuth)
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : ''
-  const aiCaps = getAICapabilities()
-  const scenarioChips =
-    personalizedScenarios.length === 0
-      ? COMMON_SCENARIOS
-      : personalizedScenarios.length < MIN_SCENARIO_CHIP_COUNT
-        ? [...personalizedScenarios, ...COMMON_SCENARIOS].slice(0, MIN_SCENARIO_CHIP_COUNT)
-        : personalizedScenarios.slice(0, MAX_PERSONALIZED_CHIP_COUNT)
+  const selectedMode = getConsultationModePreset(selectedModeId)
+  const modeStarterScenarios = selectedMode
+    ? selectedMode.starterPrompts.map((prompt) => ({
+        label: truncateText(prompt, 18),
+        sendText: prompt,
+      }))
+    : COMMON_SCENARIOS
+  const scenarioChips = Array.from(
+    new Map(
+      [
+        ...personalizedScenarios.slice(0, selectedMode ? 1 : 2),
+        ...modeStarterScenarios,
+        ...COMMON_SCENARIOS,
+      ].map((item) => [item.sendText, item] as const)
+    ).values()
+  ).slice(0, selectedMode ? MAX_PERSONALIZED_CHIP_COUNT : MIN_SCENARIO_CHIP_COUNT)
   const hasPersonalizedScenarios = personalizedScenarios.length > 0
   const recentConversationChips = recentSessions.slice(0, 3)
 
@@ -195,24 +217,27 @@ export function WelcomeScreen({
         <div className="rounded-3xl border border-slate-200 bg-white/95 px-5 pb-5 pt-4 shadow-sm">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
             <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-            {sessionEmail ? `已同步 · ${maskedSessionEmail}` : '无需登录，直接开始症状自查'}
+            {sessionEmail ? `已同步 · ${maskedSessionEmail}` : '无需登录，也可先开始咨询'}
           </div>
           <h1 className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">
-            先描述不适，再决定下一步
+            今天哪里不舒服？
           </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
+            先选一种咨询方式，我会按对应人群更谨慎地问你；真正开始前，不会替你自动发消息。
+          </p>
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
-              onClick={() => onSendMessage('我想做一次症状自查，请按标准流程开始问我第一个问题。')}
+              onClick={onStartConsultation}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
             >
-              <MessageCircle size={16} />
-              立即开始
+              <CheckCircle2 size={16} />
+              开始咨询
             </button>
             {canOpenAuthEntry && !sessionEmail && (
               <button
                 onClick={onOpenAuth}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-2 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
               >
                 <LogIn size={16} />
                 {authActionLabel ?? '登录 / 注册'}
@@ -233,79 +258,76 @@ export function WelcomeScreen({
               健康地图
             </button>
           </div>
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">选择更贴近的问诊模式</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  儿童、老人和慢病人群会直接走更保守的追问和风险判断。
-                </p>
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">先选 AI 咨询模式</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    模式只决定问诊策略与推荐入口，不会自动替你开始发问。
+                  </p>
+                </div>
               </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {GUARDIAN_MODES.map((mode) => {
+                  const Icon = mode.icon
+                  const isSelected = selectedModeId === mode.id
+                  return (
+                    <button
+                      key={mode.id}
+                      onClick={() => onSelectMode(mode.id)}
+                      className={`rounded-2xl border px-3 py-3 text-left transition-all hover:shadow-sm ${
+                        isSelected ? mode.activeClassName : mode.className
+                      }`}
+                    >
+                      <Icon size={16} className="mb-2" />
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-semibold">{mode.label}</p>
+                        {isSelected && <CheckCircle2 size={13} />}
+                      </div>
+                      <p className="mt-1 text-[11px] opacity-80">{mode.subtitle}</p>
+                    </button>
+                  )
+                })}
+              </div>
+              {selectedMode && (
+                <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 size={16} className="mt-0.5 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">
+                        已切换到 {selectedMode.label}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                        {selectedMode.summary} 下方词条会先写入输入框，你确认后再发送。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {GUARDIAN_MODES.map((mode) => {
-                const Icon = mode.icon
-                return (
-                  <button
-                    key={mode.label}
-                    onClick={() => onSendMessage(mode.sendText)}
-                    className={`rounded-2xl border px-3 py-3 text-left transition-all hover:shadow-sm ${mode.className}`}
-                  >
-                    <Icon size={16} className="mb-2" />
-                    <p className="text-xs font-semibold">{mode.label}</p>
-                    <p className="mt-1 text-[11px] opacity-80">{mode.subtitle}</p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Capability status row */}
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              文字问诊
-            </span>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
-                aiCaps.speechInput
-                  ? 'border-slate-200 bg-slate-50 text-slate-600'
-                  : 'border-slate-100 bg-slate-50/60 text-slate-400'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${aiCaps.speechInput ? 'bg-emerald-500' : 'bg-slate-300'}`}
-              />
-              语音输入{!aiCaps.speechInput && '（浏览器不支持）'}
-            </span>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] ${
-                aiCaps.vision
-                  ? 'border-blue-200 bg-blue-50 text-blue-700'
-                  : 'border-amber-200 bg-amber-50 text-amber-700'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${aiCaps.vision ? 'bg-blue-500' : 'bg-amber-400'}`}
-              />
-              图片模式：{aiCaps.vision ? '图像识别' : '文字辅助'}
-            </span>
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <p className="text-xs leading-relaxed text-slate-500">
+              支持文字、语音和图片辅助；药盒、报告和皮疹图片会先做谨慎说明，不会直接当作诊断结论。
+            </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3">
           <div className="space-y-2">
-            {hasPersonalizedScenarios && (
+            {(hasPersonalizedScenarios || selectedMode) && (
               <p className="text-xs text-slate-500">
-                这些入口已结合你保存的档案和近期记录；不符合的话，也可以直接描述这次不适。
+                {selectedMode
+                  ? `已按 ${selectedMode.label} 模式换了一组更贴近的起步词条；点击后会先写入输入框。`
+                  : '这些入口已结合你保存的档案和近期记录；点击后会先写入输入框，不会直接发送。'}
               </p>
             )}
             <div className="flex flex-wrap gap-2">
               {scenarioChips.map((item) => (
                 <button
                   key={item.label}
-                  onClick={() => onSendMessage(item.sendText)}
+                  onClick={() => onApplyStarterText(item.sendText)}
                   className="rounded-full border border-transparent bg-slate-100 px-3.5 py-1.5 text-xs text-slate-700 transition-colors hover:bg-slate-200"
                 >
                   {item.label}

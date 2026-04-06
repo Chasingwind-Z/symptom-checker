@@ -207,9 +207,15 @@ function summarizeToolPayload(toolName: string, payload?: Record<string, unknown
       typeof payload.retrievalLabel === 'string' && payload.retrievalLabel.trim()
         ? ` · ${payload.retrievalLabel}`
         : '';
+    const storageLabel =
+      typeof payload.storageMode === 'string'
+        ? payload.storageMode.includes('supabase')
+          ? ' · 云端知识库'
+          : ' · 本地知识库'
+        : '';
 
     if (documentCount > 0 || matchCount > 0) {
-      return `已命中 ${documentCount || matchCount} 条医学指引${focusPopulation}${retrievalLabel}`;
+      return `已连接医学知识库 · 展示 ${documentCount || matchCount} 条相关资料${focusPopulation}${storageLabel}${retrievalLabel}`;
     }
 
     return '已返回基础分诊规则';

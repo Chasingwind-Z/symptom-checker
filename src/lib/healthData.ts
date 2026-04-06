@@ -122,6 +122,12 @@ function cacheCaseHistory(item: CaseHistoryItem) {
   writeLocalJson(CASE_HISTORY_STORAGE_KEY, nextCases);
 }
 
+function removeLocalCaseHistory(caseId: string) {
+  const nextCases = readLocalCaseHistory().filter((item) => item.id !== caseId);
+  writeLocalJson(CASE_HISTORY_STORAGE_KEY, nextCases);
+  return nextCases;
+}
+
 export function getDefaultProfileDraft(): ProfileDraft {
   return { ...DEFAULT_PROFILE_DRAFT };
 }
@@ -328,6 +334,84 @@ export async function persistCaseRecord(input: PersistCaseRecordInput) {
     storedIn: 'supabase' as const,
     caseId: caseRow.id,
   };
+}
+
+export async function deleteCaseHistoryItem(caseId: string) {
+  const localCases = readLocalCaseHistory()
+  const target = localCases.find((item) => item.id === caseId) ?? null
+  const hadLocalCopy = Boolean(target)
+
+  if (hadLocalCopy) {
+    removeLocalCaseHistory(caseId)
+  }
+
+  const shouldDeleteRemote = target?.source === 'supabase' || !caseId.startsWith('local-')
+  if (!shouldDeleteRemote) {
+    return {
+      caseId,
+      deletedFrom: 'local' as const,
+      deletedLocal: hadLocalCopy,
+      deletedRemote: false,
+    }
+  }
+
+  const client = getSupabaseClient()
+  if (!client) {
+    return {
+      caseId,
+      deletedFrom: 'local' as const,
+      deletedLocal: hadLocalCopy,
+      deletedRemote: false,
+    }
+  }
+
+  const {
+    data: { user },
+    error: authError,
+  } = await client.auth.getUser()
+
+  if (authError || !user) {
+    return {
+      caseId,
+      deletedFrom: 'local' as const,
+      deletedLocal: hadLocalCopy,
+      deletedRemote: false,
+      error: authError?.message,
+    }
+  }
+
+  const dataClient = client
+  const { error: messageError } = await dataClient.from('case_messages').delete().eq('case_id', caseId)
+  if (messageError && import.meta.env.DEV) {
+    console.warn('[Supabase] 删除对话详情失败：', messageError.message)
+  }
+
+  const { error: caseError } = await dataClient
+    .from('cases')
+    .delete()
+    .eq('id', caseId)
+    .eq('user_id', user.id)
+
+  if (caseError) {
+    if (import.meta.env.DEV) {
+      console.warn('[Supabase] 删除问诊摘要失败：', caseError.message)
+    }
+
+    return {
+      caseId,
+      deletedFrom: 'local' as const,
+      deletedLocal: hadLocalCopy,
+      deletedRemote: false,
+      error: caseError.message,
+    }
+  }
+
+  return {
+    caseId,
+    deletedFrom: 'supabase' as const,
+    deletedLocal: hadLocalCopy,
+    deletedRemote: true,
+  }
 }
 
 export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSnapshot> {

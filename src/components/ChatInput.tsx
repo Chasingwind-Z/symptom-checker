@@ -24,6 +24,13 @@ interface ChatInputProps {
   withDesktopSidebar?: boolean;
   desktopSidebarWidth?: number;
   onLayoutChange?: (layout: ChatInputLayoutMetrics) => void;
+  draftValue?: string;
+  onDraftChange?: (value: string) => void;
+  placeholderOverride?: string;
+  selectedModeLabel?: string;
+  selectedModeSummary?: string;
+  onClearSelectedMode?: () => void;
+  focusSignal?: number;
   /** 'floating' (default) – fixed overlay used in active chat.
    *  'inline' – normal-flow card used on the home/welcome screen. */
   variant?: 'floating' | 'inline';
@@ -149,10 +156,17 @@ export function ChatInput({
   withDesktopSidebar = false,
   desktopSidebarWidth = 256,
   onLayoutChange,
+  draftValue,
+  onDraftChange,
+  placeholderOverride,
+  selectedModeLabel,
+  selectedModeSummary,
+  onClearSelectedMode,
+  focusSignal,
   variant = 'floating',
 }: ChatInputProps) {
   const isInline = variant === 'inline';
-  const [value, setValue] = useState('');
+  const [internalValue, setInternalValue] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState<ChatImageAttachment[]>([]);
   const [uploadError, setUploadError] = useState('');
@@ -162,6 +176,20 @@ export function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const value = draftValue ?? internalValue;
+
+  const updateDraft = useCallback(
+    (nextValue: string | ((previousValue: string) => string)) => {
+      const resolved =
+        typeof nextValue === 'function' ? nextValue(draftValue ?? internalValue) : nextValue
+
+      if (draftValue === undefined) {
+        setInternalValue(resolved)
+      }
+      onDraftChange?.(resolved)
+    },
+    [draftValue, internalValue, onDraftChange]
+  )
 
   const attachmentCount = selectedAttachments.length;
   const remainingAttachmentSlots = Math.max(0, MAX_IMAGE_ATTACHMENTS - attachmentCount);
@@ -171,7 +199,7 @@ export function ChatInput({
     : buildHelperText(attachmentCount);
   const placeholder = isListening
     ? '正在将语音实时转成文字…'
-    : buildPlaceholder(attachmentCount);
+    : placeholderOverride || buildPlaceholder(attachmentCount);
 
   const notifyLayoutChange = useCallback(() => {
     if (!onLayoutChange || !containerRef.current) return;
@@ -252,6 +280,11 @@ export function ChatInput({
     []
   );
 
+  useEffect(() => {
+    if (focusSignal === undefined) return
+    textareaRef.current?.focus()
+  }, [focusSignal])
+
   const handleSend = () => {
     const trimmed = value.trim();
     if ((!trimmed && attachmentCount === 0) || isLoading) return;
@@ -265,7 +298,7 @@ export function ChatInput({
       onSend(trimmed);
     }
 
-    setValue('');
+    updateDraft('');
     setSelectedAttachments([]);
     setUploadError('');
   };
@@ -302,7 +335,7 @@ export function ChatInput({
       const transcript = Array.from(event.results)
         .map((result) => result[0].transcript)
         .join('');
-      setValue(transcript);
+      updateDraft(transcript);
     };
 
     recognition.onend = clearListeningState;
@@ -423,6 +456,27 @@ export function ChatInput({
               </div>
             )}
 
+            {selectedModeLabel && (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-700">
+                <span className="rounded-full bg-white px-2.5 py-1 font-medium text-blue-700">
+                  已选模式：{selectedModeLabel}
+                </span>
+                {selectedModeSummary && (
+                  <p className="min-w-0 flex-1 leading-relaxed text-blue-700/90">{selectedModeSummary}</p>
+                )}
+                {onClearSelectedMode && (
+                  <button
+                    type="button"
+                    onClick={onClearSelectedMode}
+                    className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                  >
+                    <X size={12} />
+                    取消
+                  </button>
+                )}
+              </div>
+            )}
+
             {attachmentCount > 0 && (
               <div className="mb-3 rounded-[22px] border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white px-3 py-3 shadow-sm">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -487,7 +541,9 @@ export function ChatInput({
                     <button
                       key={shortcut.id}
                       type="button"
-                      onClick={() => setValue((previousValue) => appendPromptTemplate(previousValue, shortcut.template))}
+                      onClick={() =>
+                        updateDraft((previousValue) => appendPromptTemplate(previousValue, shortcut.template))
+                      }
                       className="rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:text-blue-600"
                     >
                       {shortcut.label}
@@ -539,7 +595,7 @@ export function ChatInput({
                   <textarea
                     ref={textareaRef}
                     value={value}
-                    onChange={(e) => setValue(e.target.value)}
+                    onChange={(e) => updateDraft(e.target.value)}
                     onKeyDown={handleKeyDown}
                     onFocus={() => setIsInputFocused(true)}
                     onBlur={() => setIsInputFocused(false)}

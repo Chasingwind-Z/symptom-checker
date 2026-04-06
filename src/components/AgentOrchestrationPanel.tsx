@@ -16,10 +16,23 @@ const BADGE_STYLES: Record<AgentBadge['tone'], string> = {
   rose: 'bg-rose-50 text-rose-700 border-rose-200',
 };
 
+const FRIENDLY_AGENT_LABELS: Record<AgentBadge['id'], string> = {
+  orchestrator: '当前重点',
+  triage: '判断紧急程度',
+  evidence: '补充医学参考',
+  careNavigator: '整理就医与购药入口',
+  publicHealth: '补充当地趋势提醒',
+  memory: '结合既往情况',
+};
+
 function getStepDot(step: AgentStep): string {
   if (step.status === 'lead') return 'bg-blue-500';
   if (step.status === 'active') return 'bg-emerald-500';
   return 'bg-slate-300';
+}
+
+function getFriendlyAgentLabel(agent: Pick<AgentBadge, 'id' | 'label'>): string {
+  return FRIENDLY_AGENT_LABELS[agent.id] ?? agent.label;
 }
 
 export function AgentOrchestrationPanel({
@@ -28,6 +41,16 @@ export function AgentOrchestrationPanel({
   isLive = false,
 }: AgentOrchestrationPanelProps) {
   if (!route) return null;
+
+  const primaryLabel = getFriendlyAgentLabel(route.primary);
+  const supportingLabels = route.activeAgents
+    .filter((agent) => agent.id !== route.primary.id)
+    .map((agent) => getFriendlyAgentLabel(agent));
+  const headline = isLive ? '正在综合症状、既往记录和医学资料' : `当前重点：${primaryLabel}`;
+  const supportingText =
+    supportingLabels.length > 0
+      ? `已同步参考 ${supportingLabels.slice(0, 3).join('、')}`
+      : '会继续结合当前对话整理更稳妥的下一步建议。';
 
   return (
     <div
@@ -39,26 +62,29 @@ export function AgentOrchestrationPanel({
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             {isLive ? <Sparkles className="w-3.5 h-3.5" /> : <GitBranch className="w-3.5 h-3.5" />}
-            <span>{isLive ? '智能分析中' : '分析摘要'}</span>
+            <span>{isLive ? '正在整理判断' : '分析过程'}</span>
           </div>
-          <p className={`mt-1 text-slate-600 ${compact ? 'text-[11px]' : 'text-xs'}`}>
-            {route.summary}
+          <p className={`mt-1 font-medium text-slate-700 ${compact ? 'text-[11px]' : 'text-xs'}`}>
+            {headline}
+          </p>
+          <p className={`mt-1 text-slate-500 ${compact ? 'text-[11px]' : 'text-xs'}`}>
+            {supportingText}
           </p>
         </div>
         <span className="rounded-full bg-white px-2 py-1 text-[11px] text-slate-500">
-          主路径：{route.primary.shortLabel}
+          当前重点：{primaryLabel}
         </span>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {route.activeAgents.map((agent) => (
+        {route.activeAgents.filter((agent) => agent.id !== 'orchestrator').map((agent) => (
           <span
             key={agent.id}
             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
               BADGE_STYLES[agent.tone]
             }`}
           >
-            {agent.shortLabel}
+            {getFriendlyAgentLabel(agent)}
           </span>
         ))}
       </div>
@@ -69,7 +95,10 @@ export function AgentOrchestrationPanel({
             <div key={step.id} className="flex items-start gap-2 text-xs text-slate-600">
               <span className={`mt-1 h-2 w-2 rounded-full ${getStepDot(step)}`} />
               <span>
-                <strong className="font-medium text-slate-700">{step.label}</strong>：{step.focus}
+                <strong className="font-medium text-slate-700">
+                  {FRIENDLY_AGENT_LABELS[step.id] ?? step.label}
+                </strong>
+                ：{step.focus}
               </span>
             </div>
           ))}

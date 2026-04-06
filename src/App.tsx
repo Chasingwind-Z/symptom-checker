@@ -28,12 +28,18 @@ import {
 import { SearchIntelligencePanel, type ConnectedWebSearchState } from './components/SearchIntelligencePanel';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { InfoBar } from './components/WeatherBar';
 import { useChat } from './hooks/useChat';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import { searchWebSources } from './lib/agentTools';
 import type { CaseHistoryItem } from './lib/healthData';
+import { deleteCaseHistoryItem } from './lib/healthData';
+import {
+  getConsultationModePreset,
+  type ConsultationModeId,
+} from './lib/consultationModes';
 import { getRecommendedHospitals } from './lib/mockHospitals';
 import { searchMedicalKnowledge } from './lib/medicalKnowledge';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
@@ -313,15 +319,32 @@ export default function App() {
   const workspace = useHealthWorkspace();
   const network = useNetworkStatus();
   const pwa = usePwaInstall();
+  const [selectedConsultationModeId, setSelectedConsultationModeId] = useState<ConsultationModeId | null>(
+    null
+  );
+  const [welcomeDraftValue, setWelcomeDraftValue] = useState('');
+  const [welcomeFocusSignal, setWelcomeFocusSignal] = useState(0);
+  const selectedConsultationMode = useMemo(
+    () => getConsultationModePreset(selectedConsultationModeId),
+    [selectedConsultationModeId]
+  );
   const chatMemoryContext = useMemo(
     () => ({
       profile: {
         ...workspace.profile,
         medicalNotes: buildCombinedMedicalNotes(workspace.profile),
       },
+      consultationMode: selectedConsultationMode
+        ? {
+            id: selectedConsultationMode.id,
+            label: selectedConsultationMode.label,
+            subtitle: selectedConsultationMode.subtitle,
+            promptNote: selectedConsultationMode.promptNote,
+          }
+        : null,
       recentCases: workspace.recentCases,
     }),
-    [workspace.profile, workspace.recentCases]
+    [selectedConsultationMode, workspace.profile, workspace.recentCases]
   );
   const {
     messages,
@@ -331,6 +354,7 @@ export default function App() {
     isSearchingKB,
     activeToolCalls,
     activeAgentRoute,
+    weatherData,
     activeSessionId,
     conversationSessions,
     locationData,
@@ -340,6 +364,7 @@ export default function App() {
     sendMessage,
     openFollowUpRecord,
     loadConversationSession,
+    deleteConversationSession,
     resetChat,
   } = useChat(chatMemoryContext);
 
@@ -423,24 +448,75 @@ export default function App() {
   const handleSendMessage = useCallback(
     (input: string | SendMessageInput) => {
       setCurrentPage('chat');
+      setWelcomeDraftValue('');
       sendMessage(input);
     },
     [sendMessage]
   );
 
+  const handleStartConsultation = useCallback(() => {
+    setWelcomeFocusSignal((current) => current + 1);
+  }, []);
+
+  const handleApplyStarterText = useCallback((text: string) => {
+    setWelcomeDraftValue(text);
+    setWelcomeFocusSignal((current) => current + 1);
+  }, []);
+
+  const handleSelectConsultationMode = useCallback((modeId: ConsultationModeId) => {
+    setSelectedConsultationModeId(modeId);
+    setWelcomeFocusSignal((current) => current + 1);
+  }, []);
+
+  const handleClearSelectedConsultationMode = useCallback(() => {
+    setSelectedConsultationModeId(null);
+  }, []);
+
   const handleResetChat = useCallback(() => {
     resetChat();
+    setSelectedConsultationModeId(null);
+    setWelcomeDraftValue('');
     setCurrentPage('home');
   }, [resetChat]);
 
   const handleOpenConversation = useCallback(
     (sessionId: string) => {
       if (loadConversationSession(sessionId)) {
+        setSelectedConsultationModeId(null);
+        setWelcomeDraftValue('');
         setCurrentPage('chat');
       }
     },
     [loadConversationSession]
   );
+
+  const handleDeleteConversation = useCallback(
+    (sessionId: string) => {
+      const target = conversationSessions.find((session) => session.id === sessionId)
+      if (!target) return
+
+      const confirmed = window.confirm(`确认删除会话“${target.title}”？删除后将不再出现在历史与搜索结果中。`)
+      if (!confirmed) return
+
+      const deletedSession = deleteConversationSession(sessionId)
+      if (!deletedSession) return
+
+      if (activeSessionId === sessionId) {
+        setSelectedConsultationModeId(null)
+        setWelcomeDraftValue('')
+        setCurrentPage('home')
+      }
+    },
+    [activeSessionId, conversationSessions, deleteConversationSession]
+  )
+
+  const handleDeleteCaseRecord = useCallback(async (caseId: string, title: string) => {
+    const confirmed = window.confirm(`确认删除记录“${title}”？删除后将从记录中心与搜索结果里移除。`)
+    if (!confirmed) return
+
+    await deleteCaseHistoryItem(caseId)
+    await workspace.refresh()
+  }, [workspace])
 
   const handleOpenWorkspaceSection = useCallback((section: SidebarSection) => {
     setWorkspaceSection(section);
@@ -615,10 +691,10 @@ export default function App() {
         matchedCase?.assistantPreview ??
         '可继续打开相关记录，回看上次的问诊判断与后续建议。';
 
-      items.push({
-        id: `followup-summary-${record.id}`,
-        title: `随访 · ${record.summary}`,
-        summary: trimText(`${responseLabel}${contextSummary}`),
+        items.push({
+          id: `followup-summary-${record.id}`,
+          title: `随访 · ${record.summary}`,
+          summary: trimText(`${responseLabel}${contextSummary}`),
         metaLabel: `完成于 ${formatDateTimeLabel(record.respondedAt ?? record.createdAt)}`,
         sourceLabel: matchedSession
           ? `${getConversationSourceLabel(matchedSession.storage)} · 已完成随访`
@@ -627,15 +703,22 @@ export default function App() {
             : '已完成随访',
         departments: matchedSession?.diagnosisResult?.departments ?? matchedCase?.departments ?? [],
         riskLevel: matchedSession?.riskLevel ?? matchedCase?.triageLevel ?? record.level,
-        primaryAction: matchedSession
-          ? {
-              label: '继续咨询',
-              onClick: () => handleOpenConversation(matchedSession.id),
-              tone: 'primary',
-            }
-          : undefined,
+          primaryAction: matchedSession
+            ? {
+                label: '继续咨询',
+                onClick: () => handleOpenConversation(matchedSession.id),
+                tone: 'primary',
+              }
+            : undefined,
+          onDelete: matchedSession
+            ? () => handleDeleteConversation(matchedSession.id)
+            : matchedCase
+              ? () => {
+                  void handleDeleteCaseRecord(matchedCase.id, matchedCase.chiefComplaint)
+                }
+              : undefined,
+        });
       });
-    });
 
     conversationSessions
       .filter((session) => session.diagnosisResult && !linkedSessionIds.has(session.id))
@@ -656,11 +739,19 @@ export default function App() {
             onClick: () => handleOpenConversation(session.id),
             tone: 'primary',
           },
+          onDelete: () => handleDeleteConversation(session.id),
         });
       });
 
     return items;
-  }, [completedFollowUpRecords, conversationSessions, handleOpenConversation, workspace.recentCases]);
+  }, [
+    completedFollowUpRecords,
+    conversationSessions,
+    handleDeleteCaseRecord,
+    handleDeleteConversation,
+    handleOpenConversation,
+    workspace.recentCases,
+  ]);
 
   const normalizedSearchQuery = useMemo(
     () => normalizeRecordKey(recordSearchQuery),
@@ -668,7 +759,7 @@ export default function App() {
   );
   const knowledgeSearchPreview = useMemo(
     () =>
-      normalizedSearchQuery ? searchMedicalKnowledge(recordSearchQuery.trim(), { limit: 4 }) : null,
+      normalizedSearchQuery ? searchMedicalKnowledge(recordSearchQuery.trim(), { limit: 8 }) : null,
     [normalizedSearchQuery, recordSearchQuery]
   );
 
@@ -1065,6 +1156,7 @@ export default function App() {
         totalSessionCount={conversationSessions.length}
         activeSessionId={activeSessionId}
         onOpenSession={handleOpenConversation}
+        onDeleteSession={handleDeleteConversation}
         onStartNewSession={handleResetChat}
         onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
         onSelectSearch={() => handleOpenWorkspaceSection('search')}
@@ -1105,6 +1197,10 @@ export default function App() {
           }}
           diagnosisRiskLevel={diagnosisResult?.level ?? null}
         />
+
+        {!showWorkspace && (
+          <InfoBar weather={weatherData} />
+        )}
 
         {shellBanner && (
           <div className="px-4 pt-3 lg:px-6">
@@ -1163,7 +1259,7 @@ export default function App() {
                         <Search size={16} className="text-slate-400" />
                         <input
                           value={recordSearchQuery}
-                          onChange={(event) => setRecordSearchQuery(event.target.value)}
+                          onChange={(event) => handleRecordSearchChange(event.target.value)}
                           placeholder="例如：发烧、头痛、消化内科、复诊、去医院"
                           className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
                         />
@@ -1213,6 +1309,7 @@ export default function App() {
                           sessions={filteredConversationSessions}
                           activeSessionId={activeSessionId}
                           onOpenSession={handleOpenConversation}
+                          onDeleteSession={handleDeleteConversation}
                           onStartNewSession={handleResetChat}
                           title="匹配会话"
                           description={
@@ -1297,6 +1394,7 @@ export default function App() {
                     sessions={filteredConversationSessions}
                     activeSessionId={activeSessionId}
                     onOpenSession={handleOpenConversation}
+                    onDeleteSession={handleDeleteConversation}
                     onStartNewSession={handleResetChat}
                     title={recordSearchQuery.trim() ? '筛选后的历史会话' : '历史会话'}
                     description={
@@ -1357,7 +1455,10 @@ export default function App() {
 
             {showWelcome && (
               <WelcomeScreen
-                onSendMessage={handleSendMessage}
+                onStartConsultation={handleStartConsultation}
+                onApplyStarterText={handleApplyStarterText}
+                selectedModeId={selectedConsultationModeId}
+                onSelectMode={handleSelectConsultationMode}
                 onOpenWorkspace={handleOpenWorkspace}
                 onOpenAuth={handleOpenAuthDialog}
                 authActionLabel={authActionLabel}
@@ -1375,6 +1476,13 @@ export default function App() {
                 variant="inline"
                 onSend={handleSendMessage}
                 isLoading={isLoading}
+                draftValue={welcomeDraftValue}
+                onDraftChange={setWelcomeDraftValue}
+                placeholderOverride={selectedConsultationMode?.placeholder}
+                selectedModeLabel={selectedConsultationMode?.label}
+                selectedModeSummary={selectedConsultationMode?.summary}
+                onClearSelectedMode={handleClearSelectedConsultationMode}
+                focusSignal={welcomeFocusSignal}
               />
             )}
 
@@ -1386,6 +1494,7 @@ export default function App() {
                       sessions={conversationSessions}
                       activeSessionId={activeSessionId}
                       onOpenSession={handleOpenConversation}
+                      onDeleteSession={handleDeleteConversation}
                       onStartNewSession={handleResetChat}
                       title="最近对话"
                       description="手机端也能在主聊天界面切换到之前的问诊线程。"
@@ -1502,6 +1611,9 @@ export default function App() {
             withDesktopSidebar
             desktopSidebarWidth={desktopSidebarWidth}
             onLayoutChange={handleChatInputLayoutChange}
+            selectedModeLabel={selectedConsultationMode?.label}
+            selectedModeSummary={selectedConsultationMode?.summary}
+            onClearSelectedMode={handleClearSelectedConsultationMode}
           />
         )}
       </div>

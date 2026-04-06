@@ -571,7 +571,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       setIsSearchingKB(true);
       setActiveToolCalls([]);
 
-        const knowledgeSearch = searchMedicalKnowledge(displayText, { limit: 4 });
+        const knowledgeSearch = searchMedicalKnowledge(displayText, { limit: 6 });
         const kbResults = knowledgeSearch.symptomMatches.slice(0, 2);
         const orchestration = createAgentOrchestration({
           userText: displayText,
@@ -766,6 +766,45 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     [conversationSessions]
   );
 
+  const deleteConversationSession = useCallback(
+    (sessionId: string) => {
+      const target = conversationSessions.find((session) => session.id === sessionId) ?? null
+      if (!target) return null
+
+      const nextSessions = conversationSessions.filter((session) => session.id !== sessionId)
+      setConversationSessions(nextSessions)
+      writeConversationSessionsCache(nextSessions)
+
+      if (activeSessionId === sessionId) {
+        setMessages([])
+        setDiagnosisResult(null)
+        setIsLoading(false)
+        setStreamingContent('')
+        setIsSearchingKB(false)
+        setActiveToolCalls([])
+        setActiveAgentRoute(null)
+        setActiveFollowUpId(null)
+        setActiveSessionId(null)
+      }
+
+      return target
+    },
+    [activeSessionId, conversationSessions]
+  )
+
+  const restoreConversationSession = useCallback(
+    (session: ConversationSession) => {
+      const nextSessions = [session, ...conversationSessions.filter((item) => item.id !== session.id)]
+        .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+        .slice(0, MAX_CHAT_SESSIONS)
+
+      setConversationSessions(nextSessions)
+      writeConversationSessionsCache(nextSessions)
+      return true
+    },
+    [conversationSessions]
+  )
+
   const resetChat = useCallback(() => {
     setMessages([]);
     setIsLoading(false);
@@ -799,6 +838,8 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     respondToFollowUp,
     openFollowUpRecord,
     loadConversationSession,
+    deleteConversationSession,
+    restoreConversationSession,
     resetChat,
   };
 }
