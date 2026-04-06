@@ -251,7 +251,7 @@ export function HealthSettingsPanel({
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
               <Settings2 size={14} />
-              问诊设置
+              偏好设置
             </div>
             <h2 className="mt-3 text-lg font-semibold text-slate-900">按自己的使用习惯调整问诊体验</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">

@@ -164,7 +164,10 @@ export function ConversationHistoryPanel({
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-400">
                       <span>{formatUpdatedAt(session.updatedAt)}</span>
-                      <span>{session.messages.length} 条</span>
+                      <div className="flex items-center gap-2">
+                        <span>{session.messages.length} 条</span>
+                        <span>{getStorageLabel(session.storage)}</span>
+                      </div>
                     </div>
                   </button>
                   {onDeleteSession && (

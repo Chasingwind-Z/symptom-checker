@@ -161,17 +161,17 @@ export function MobileBottomNav({
 
           <div className="space-y-1">
             <SheetItem
-              label="判断依据"
+              label="为什么这样建议"
               icon={ShieldCheck}
               onClick={() => handleMoreItem(onSelectEvidence)}
             />
             <SheetItem
-              label="会话线程"
+              label="历史问诊"
               icon={History}
               onClick={() => handleMoreItem(onSelectHistory)}
             />
             <SheetItem
-              label="买药 / 用药"
+              label="服务入口"
               icon={Pill}
               badge={medicationBadge}
               onClick={() => handleMoreItem(onSelectMedication)}
@@ -183,7 +183,7 @@ export function MobileBottomNav({
               onClick={() => handleMoreItem(onOpenMap)}
             />
             <SheetItem
-              label="问诊设置"
+              label="偏好设置"
               icon={Settings2}
               onClick={() => handleMoreItem(onOpenSettings)}
             />

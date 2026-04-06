@@ -1,4 +1,4 @@
-import type { DiagnosisResult, Message } from '../types';
+import type { ConversationSession, DiagnosisResult, Message } from '../types';
 import { getSupabaseBootstrapStatus, getSupabaseClient, maskEmail } from './supabase';
 import { buildCombinedMedicalNotes, getDemoPersonaWorkspace } from './personalization';
 
@@ -32,6 +32,7 @@ export interface CaseHistoryItem {
 }
 
 export interface PersistCaseRecordInput {
+  caseId?: string;
   diagnosis: DiagnosisResult | null;
   messages: Message[];
 }
@@ -43,6 +44,178 @@ export interface HealthWorkspaceSnapshot {
   profile: ProfileDraft;
   recentCases: CaseHistoryItem[];
   sessionEmail: string | null;
+}
+
+function extractSuggestions(content: string): string[] | undefined {
+  const match = content.match(/\{"suggestions":\s*(\[[\s\S]*?\])\}/);
+  if (!match) return undefined;
+
+  try {
+    const parsed = JSON.parse(match[1]) as unknown;
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeStoredTimestamp(value: string | null | undefined, fallback?: string) {
+  if (!value) return fallback ? new Date(fallback) : new Date();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? (fallback ? new Date(fallback) : new Date()) : parsed;
+}
+
+function normalizeStoredAttachments(raw: unknown): Message['attachments'] {
+  if (!Array.isArray(raw)) return undefined;
+
+  const attachments = raw
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') return null;
+      const attachment = item as {
+        id?: unknown;
+        kind?: unknown;
+        name?: unknown;
+        mimeType?: unknown;
+        sizeBytes?: unknown;
+      };
+
+      return {
+        id: typeof attachment.id === 'string' ? attachment.id : `cloud-attachment-${index}`,
+        kind: attachment.kind === 'image' ? 'image' : 'image',
+        name: typeof attachment.name === 'string' ? attachment.name : `图片 ${index + 1}`,
+        mimeType: typeof attachment.mimeType === 'string' ? attachment.mimeType : 'image/jpeg',
+        sizeBytes: typeof attachment.sizeBytes === 'number' ? attachment.sizeBytes : 0,
+      } as const;
+    })
+    .filter((item): item is NonNullable<Message['attachments']>[number] => Boolean(item));
+
+  return attachments.length > 0 ? attachments : undefined;
+}
+
+function buildConversationDiagnosis(caseRow: {
+  triage_level: DiagnosisResult['level'] | null;
+  triage_reason: string | null;
+  recommendation: string | null;
+  structured_summary: unknown;
+}): DiagnosisResult | null {
+  if (!caseRow.triage_level || !caseRow.triage_reason || !caseRow.recommendation) {
+    return null;
+  }
+
+  const structuredSummary =
+    caseRow.structured_summary && typeof caseRow.structured_summary === 'object'
+      ? caseRow.structured_summary
+      : {};
+  const departments = Array.isArray((structuredSummary as { departments?: unknown }).departments)
+    ? ((structuredSummary as { departments?: string[] }).departments ?? []).filter(Boolean)
+    : [];
+  const disclaimer =
+    typeof (structuredSummary as { disclaimer?: unknown }).disclaimer === 'string'
+      ? ((structuredSummary as { disclaimer?: string }).disclaimer ?? '')
+      : '本建议仅供参考，不构成医疗诊断';
+
+  return {
+    level: caseRow.triage_level,
+    reason: caseRow.triage_reason,
+    action: caseRow.recommendation,
+    departments,
+    disclaimer,
+  };
+}
+
+export async function loadCloudConversationSessions(limit = 12): Promise<ConversationSession[]> {
+  const client = getSupabaseClient();
+  if (!client) return [];
+
+  const {
+    data: { user },
+    error: authError,
+  } = await client.auth.getUser();
+
+  if (authError || !user) {
+    return [];
+  }
+
+  const dataClient = client;
+  const { data: cases, error: casesError } = await dataClient
+    .from('cases')
+    .select(
+      'id, chief_complaint, triage_level, triage_reason, recommendation, structured_summary, created_at, updated_at'
+    )
+    .eq('user_id', user.id)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+
+  if (casesError || !cases || cases.length === 0) {
+    if (casesError && import.meta.env.DEV) {
+      console.warn('[Supabase] 读取云端会话线程失败：', casesError.message);
+    }
+    return [];
+  }
+
+  const caseIds = cases.map((item) => item.id);
+  const { data: messageRows, error: messageError } = await dataClient
+    .from('case_messages')
+    .select('case_id, role, content, sequence_no, metadata, created_at')
+    .in('case_id', caseIds)
+    .order('sequence_no', { ascending: true });
+
+  if (messageError && import.meta.env.DEV) {
+    console.warn('[Supabase] 读取云端会话详情失败：', messageError.message);
+  }
+
+  const messagesByCaseId = new Map<string, Message[]>();
+
+  (messageRows ?? []).forEach((row) => {
+    if (row.role !== 'user' && row.role !== 'assistant') {
+      return;
+    }
+
+    const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+    const timestamp =
+      typeof (metadata as { timestamp?: unknown }).timestamp === 'string'
+        ? ((metadata as { timestamp?: string }).timestamp ?? row.created_at)
+        : row.created_at;
+    const attachments = normalizeStoredAttachments((metadata as { attachments?: unknown }).attachments);
+
+    const nextMessage: Message = {
+      id: `${row.case_id}-${row.sequence_no}`,
+      role: row.role,
+      content: row.content,
+      timestamp: normalizeStoredTimestamp(timestamp, row.created_at),
+      attachments,
+      suggestions: row.role === 'assistant' ? extractSuggestions(row.content) : undefined,
+    };
+
+    const existing = messagesByCaseId.get(row.case_id) ?? [];
+    messagesByCaseId.set(row.case_id, [...existing, nextMessage]);
+  });
+
+  return cases
+    .map<ConversationSession | null>((item) => {
+      const messages = messagesByCaseId.get(item.id) ?? [];
+      if (messages.length === 0) return null;
+
+      return {
+        id: item.id,
+        title: toPreview(item.chief_complaint, '云端问诊'),
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+        riskLevel:
+          item.triage_level === 'green' ||
+          item.triage_level === 'yellow' ||
+          item.triage_level === 'orange' ||
+          item.triage_level === 'red'
+            ? item.triage_level
+            : null,
+        diagnosisResult: buildConversationDiagnosis(item),
+        messages,
+        storage: 'supabase' as const,
+      } satisfies ConversationSession;
+    })
+    .filter((item): item is ConversationSession => item !== null)
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
 }
 
 const DEFAULT_PROFILE_DRAFT: ProfileDraft = {
@@ -259,24 +432,32 @@ export async function persistCaseRecord(input: PersistCaseRecordInput) {
   }
 
   const dataClient = client;
-  const { data: caseRow, error: caseError } = await dataClient
-    .from('cases')
-    .insert({
-      user_id: user.id,
-      profile_id: null,
-      status: input.diagnosis ? 'closed' : 'active',
-      channel: 'web',
-      is_anonymous: false,
-      chief_complaint: localItem.chiefComplaint,
-      triage_level: input.diagnosis?.level ?? null,
-      triage_reason: input.diagnosis?.reason ?? null,
-      recommendation: input.diagnosis?.action ?? null,
-      structured_summary: {
-        departments: input.diagnosis?.departments ?? [],
-        disclaimer: input.diagnosis?.disclaimer ?? null,
-      },
-      location_context: {},
-    })
+  const casePayload = {
+    user_id: user.id,
+    profile_id: null,
+    status: input.diagnosis ? 'closed' : 'active',
+    channel: 'web',
+    is_anonymous: false,
+    chief_complaint: localItem.chiefComplaint,
+    triage_level: input.diagnosis?.level ?? null,
+    triage_reason: input.diagnosis?.reason ?? null,
+    recommendation: input.diagnosis?.action ?? null,
+    structured_summary: {
+      departments: input.diagnosis?.departments ?? [],
+      disclaimer: input.diagnosis?.disclaimer ?? null,
+    },
+    location_context: {},
+  };
+
+  const caseMutation = input.caseId
+    ? dataClient
+        .from('cases')
+        .update(casePayload)
+        .eq('id', input.caseId)
+        .eq('user_id', user.id)
+    : dataClient.from('cases').insert(casePayload);
+
+  const { data: caseRow, error: caseError } = await caseMutation
     .select('id, chief_complaint, triage_level, status, created_at')
     .single();
 
@@ -313,6 +494,17 @@ export async function persistCaseRecord(input: PersistCaseRecordInput) {
   }));
 
   if (messageRows.length > 0) {
+    if (input.caseId) {
+      const { error: deleteMessageError } = await dataClient
+        .from('case_messages')
+        .delete()
+        .eq('case_id', input.caseId);
+
+      if (deleteMessageError && import.meta.env.DEV) {
+        console.warn('[Supabase] 覆盖云端会话详情失败：', deleteMessageError.message);
+      }
+    }
+
     const { error: messageError } = await dataClient.from('case_messages').insert(messageRows);
     if (messageError) {
       if (import.meta.env.DEV) {
@@ -424,7 +616,7 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
     return {
       mode: bootstrap.state === 'error' ? 'error' : 'local',
       statusLabel:
-        localProfile.profileMode === 'demo' ? '当前使用常见场景（快速体验）' : bootstrap.label,
+        localProfile.profileMode === 'demo' ? '当前使用参考资料模板' : bootstrap.label,
       helperText:
         localProfile.profileMode === 'demo'
           ? '你可以直接继续问诊，也可以先把这份资料改成自己的真实情况后再保存。'
@@ -447,10 +639,10 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
 
     return {
       mode: bootstrap.state === 'error' ? 'error' : 'cloud-ready',
-      statusLabel: bootstrap.state === 'error' ? '邮箱同步暂不可用' : '邮箱同步待连接',
+      statusLabel: bootstrap.state === 'error' ? '邮箱同步暂不可用' : '登录后可继续同步',
       helperText:
         bootstrap.state === 'error'
-          ? '暂时无法读取云端会话，当前会继续保存在浏览器中。'
+          ? '暂时无法读取已同步资料，当前会继续保存在本设备中。'
           : '暂未读取到有效邮箱会话。若刚打开邮件，请回到这里后刷新一次状态。',
       profile: localProfile,
       recentCases: localCases,
@@ -463,12 +655,12 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
       mode: 'cloud-ready',
       statusLabel:
         localProfile.profileMode === 'demo'
-          ? '常见场景待确认（登录后可同步）'
-          : '邮箱同步待开启',
+          ? '参考资料模板待确认（登录后可同步）'
+          : '未登录 · 可开启同步',
       helperText:
         localProfile.profileMode === 'demo'
-          ? '当前是一份可编辑的场景资料；建议先改成自己的真实资料后再开启同步。'
-          : '你可以先继续使用；输入邮箱后，我们会用登录链接帮你继续同步档案和历史会话。',
+          ? '当前是一份可编辑的资料模板；建议先改成自己的真实资料后再开启同步。'
+          : '你可以先继续使用；输入邮箱后，我们会用登录链接帮你同步资料和历史问诊。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,
@@ -551,13 +743,13 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
 
   return {
     mode: 'cloud-session',
-    statusLabel: user.email ? `已连接邮箱：${maskEmail(user.email)}` : '已连接邮箱',
+    statusLabel: user.email ? `已登录 · ${maskEmail(user.email)}` : '已登录',
     helperText:
       hasSyncFallback
-        ? '邮箱已连接，但这次云端资料加载不完整；已先回退到本机缓存，稍后可刷新重试。'
+        ? '这次已同步资料加载不完整；已先回退到本设备缓存，稍后可刷新重试。'
         : recentCases.length > 0
-        ? `已同步 ${recentCases.length} 条最近问诊，可跨设备继续查看档案与历史摘要。`
-        : '云端账号已连接，新的档案修改和问诊结果会自动尝试同步。',
+        ? `已同步 ${recentCases.length} 条最近问诊，可跨设备继续查看资料与历史问诊。`
+        : '云端账号已连接，新的资料修改和问诊结果会自动尝试同步。',
     profile: syncedProfile,
     recentCases,
     sessionEmail: user.email ?? null,

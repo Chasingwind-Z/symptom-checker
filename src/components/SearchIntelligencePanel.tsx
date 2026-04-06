@@ -40,8 +40,23 @@ function formatFetchedAt(value?: string) {
 }
 
 function getKnowledgeStorageLabel(storageMode?: string) {
-  if (!storageMode) return '结构化知识库'
-  return storageMode.includes('supabase') ? 'Supabase 云端知识库' : '本地结构化知识库'
+  if (!storageMode) return '内置基础资料'
+  return storageMode.includes('supabase') ? '已同步资料库' : '内置基础资料'
+}
+
+function getKnowledgeCategoryLabel(category: string) {
+  switch (category) {
+    case 'danger_signs':
+      return '危险信号'
+    case 'department_guidance':
+      return '科室建议'
+    case 'population_guidance':
+      return '重点人群'
+    case 'self_care':
+      return '居家处理'
+    default:
+      return '症状资料'
+  }
 }
 
 export function SearchIntelligencePanel({
@@ -58,11 +73,11 @@ export function SearchIntelligencePanel({
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
             <Sparkles size={12} />
-            智能知识检索
+            相关资料
           </div>
-          <h3 className="mt-3 text-lg font-semibold text-slate-900">同一个关键词，直接看知识库和公开资料</h3>
+          <h3 className="mt-3 text-lg font-semibold text-slate-900">同一个问题，直接看可继续核对的资料</h3>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
-            输入症状或问题后，这里会同时展示知识库来源、更新时间、适用人群和公开资料结果，不再只暴露工程计数。
+            输入症状或问题后，这里会整理本次判断可参考的资料、更新时间、适用人群和公开来源。
           </p>
         </div>
         <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-500">
@@ -76,12 +91,12 @@ export function SearchIntelligencePanel({
             <div>
               <div className="flex items-center gap-2">
                 <ShieldCheck size={15} className="text-violet-700" />
-                <p className="text-sm font-semibold text-slate-800">医学知识命中</p>
+                <p className="text-sm font-semibold text-slate-800">资料参考</p>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
                 {knowledgeResult
                   ? `${knowledgeResult.sourceLabel} · ${knowledgeResult.retrievalLabel}`
-                  : '会优先展示与当前问题最相关的医学知识片段和危险信号。'}
+                  : '会优先展示与当前问题最相关的资料片段、危险信号和处理建议。'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -104,24 +119,21 @@ export function SearchIntelligencePanel({
                 <div className="rounded-2xl border border-violet-100 bg-white/90 px-4 py-3 text-[11px] leading-relaxed text-slate-500">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-violet-50 px-2 py-0.5 text-violet-700">
-                      来源：{getKnowledgeStorageLabel(knowledgeResult.storageMode)}
+                      资料状态：{getKnowledgeStorageLabel(knowledgeResult.storageMode)}
                     </span>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
                       更新时间：{knowledgeResult.lastUpdated || '最近一次同步'}
                     </span>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
-                      相关资料：{knowledgeResult.documents.length} 条
+                      命中资料：{knowledgeDocs.length} 条
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
-                      chunk 命中：{knowledgeResult.chunkMatches.length} 条
-                    </span>
+                    {knowledgeResult.queryExpansions.length > 0 && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">
+                        补充词：{knowledgeResult.queryExpansions.slice(0, 2).join('、')}
+                      </span>
+                    )}
                   </div>
-                  <p className="mt-2">
-                    数据底座：{knowledgeResult.supabaseTable}
-                    {knowledgeResult.storageMode.includes('supabase')
-                      ? '（已接入云端文档 / chunk）'
-                      : '（当前回退到本地结构化知识）'}
-                  </p>
+                  <p className="mt-2">这里只保留你现在最值得先看的资料，不展示底层实现细节。</p>
                 </div>
               )}
               {knowledgeDocs.map((item) => (
@@ -132,7 +144,7 @@ export function SearchIntelligencePanel({
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-slate-800">{item.document.title}</p>
                     <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700">
-                      {item.document.category}
+                      {getKnowledgeCategoryLabel(item.document.category)}
                     </span>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
                       {item.document.audience}
@@ -171,10 +183,10 @@ export function SearchIntelligencePanel({
             <div>
               <div className="flex items-center gap-2">
                 <Globe size={15} className="text-emerald-700" />
-                <p className="text-sm font-semibold text-slate-800">公开资料 / 联网结果</p>
+                <p className="text-sm font-semibold text-slate-800">公开资料核对</p>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                {webSearch.sourceLabel || '优先尝试公开资料与官方来源；未配置联网检索时会给出外部检索入口。'}
+                {webSearch.sourceLabel || '优先展示可继续核对的公开资料；暂时没有时会给你一个外部检索入口。'}
               </p>
             </div>
             {webSearch.fetchedAt && (
@@ -214,7 +226,7 @@ export function SearchIntelligencePanel({
           ) : (
             <div className="mt-3 rounded-2xl border border-dashed border-emerald-100 bg-white/80 px-4 py-4">
               <p className="text-sm text-slate-600">
-                {webSearch.message || '暂时没有拿到联网结果，可以先从外部公开资料继续查。'}
+                {webSearch.message || '暂时没有拿到更多公开资料，可以先从外部继续核对。'}
               </p>
               <a
                 href={buildBingSearchUrl(query)}
@@ -222,7 +234,7 @@ export function SearchIntelligencePanel({
                 rel="noreferrer"
                 className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
               >
-                打开外部检索
+                继续查公开资料
                 <ExternalLink size={13} />
               </a>
             </div>

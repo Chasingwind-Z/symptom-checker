@@ -160,7 +160,7 @@ export function WorkspaceView({
           <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="max-w-2xl">
-                <p className="text-sm font-semibold text-slate-900">统一搜索</p>
+                <p className="text-sm font-semibold text-slate-900">查记录</p>
                 <p className="mt-2 text-sm leading-relaxed text-slate-500">
                   支持按症状、标题、建议、科室和随访说明搜索会话与记录。
                 </p>

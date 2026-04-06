@@ -288,7 +288,7 @@ export default function App() {
   );
 
   const handleDeleteConversation = useCallback(
-    (sessionId: string) => {
+    async (sessionId: string) => {
       const target = conversationSessions.find((session) => session.id === sessionId)
       if (!target) return
 
@@ -298,13 +298,18 @@ export default function App() {
       const deletedSession = deleteConversationSession(sessionId)
       if (!deletedSession) return
 
+      if (deletedSession.storage === 'supabase') {
+        await deleteCaseHistoryItem(sessionId)
+        await workspace.refresh()
+      }
+
       if (activeSessionId === sessionId) {
         setSelectedConsultationModeId(null)
         setWelcomeDraftValue('')
         setCurrentPage('home')
       }
     },
-    [activeSessionId, conversationSessions, deleteConversationSession]
+    [activeSessionId, conversationSessions, deleteConversationSession, workspace]
   )
 
   const handleDeleteCaseRecord = useCallback(async (caseId: string, title: string) => {
@@ -816,47 +821,47 @@ export default function App() {
       switch (workspaceSection) {
         case 'search':
           return {
-            title: '统一搜索',
+            title: '查记录',
             subtitle: recordSearchQuery.trim()
               ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索，并同步联动知识库与公开资料${
-                   searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                 }`
+                    searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                  }`
               : '按症状、标题、科室或建议快速查找历史会话、医学知识和公开资料。',
           };
         case 'profile':
           return {
-            title: '健康档案',
+            title: '我的资料',
             subtitle: '管理基础资料、家庭成员和云端同步，后续问诊会自动沿用这些信息。',
           };
         case 'evidence':
           return {
-            title: '判断依据',
+            title: '为什么这样建议',
             subtitle: '把这次分级的主要原因、医学知识参考和公开资料核对点整理在一起，方便理解为什么这样建议。',
           };
         case 'history':
           return {
-            title: '会话线程',
+            title: '历史问诊',
             subtitle: recordSearchQuery.trim()
               ? `已按“${recordSearchQuery}”筛选历史线程${
-                   searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                 }`
+                    searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                  }`
               : '所有问诊会按线程保存，方便随时回到原上下文继续咨询。',
           };
         case 'medication':
           return {
-            title: '买药 / 用药',
+            title: '服务入口',
             subtitle:
               '把最近问诊里的 OTC / 家庭处理方向前置展示出来，并保留风险提醒与回到原线程的入口。',
           };
         case 'settings':
           return {
-            title: '问诊设置',
+            title: '偏好设置',
             subtitle:
               '调整侧栏宽度、定位使用方式、资料展示顺序和聊天排版；更改只保存在当前浏览器。',
           };
         default:
           return {
-            title: '记录中心',
+            title: '记录与跟进',
             subtitle:
               pendingFollowUpRecords.length > 0
                 ? `当前有 ${pendingFollowUpRecords.length} 项待跟进，建议优先处理。`
@@ -926,7 +931,7 @@ export default function App() {
         ? {
             tone: 'info' as const,
             title: workspace.statusLabel,
-            description: `${workspace.helperText} 问诊和本机缓存仍可继续使用。`,
+            description: `${workspace.helperText} 问诊和当前设备保存的资料仍可继续使用。`,
             primaryAction: network.isOnline
               ? {
                   label: workspace.isRefreshing ? '重连中…' : '重新连接',

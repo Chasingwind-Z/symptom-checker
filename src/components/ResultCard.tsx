@@ -837,12 +837,12 @@ export function ResultCard({
           <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800">推荐下一步</p>
+                <p className="text-sm font-semibold text-slate-800">马上去做</p>
                 <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
                   {result.level === 'red'
                     ? '当前应优先线下急诊 / 急救，不建议把注意力放在购药上。'
                     : hasMedicationSummary
-                      ? '先核对这次更贴近的 OTC / 家庭处理方向，再决定是否去药房或继续补充信息。'
+                      ? '把买药、说明书核对和回问诊复核的入口放在一起，先完成最紧要的一步。'
                       : '可先查看附近门诊 / 医疗资源；若后续补充了更多信息，也会自动刷新支持建议。'}
                 </p>
               </div>
@@ -868,7 +868,7 @@ export function ResultCard({
                   className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-700"
                 >
                   <Pill size={14} />
-                  查看本次 OTC / 用药入口
+                  打开买药 / 复核入口
                   <ArrowRight size={13} />
                 </button>
               )}
@@ -882,8 +882,8 @@ export function ResultCard({
                   {result.level === 'red'
                     ? '查看急诊 / 医院入口'
                     : result.level === 'orange'
-                      ? '查看今日就医入口'
-                      : '查看附近门诊 / 药房'}
+                      ? '去找今日就医入口'
+                      : '去找附近门诊 / 药房'}
                 </button>
               )}
             </div>
@@ -912,9 +912,9 @@ export function ResultCard({
         <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 mb-5">
           <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
             <div>
-              <p className="text-sm font-semibold text-slate-800">判断依据与证据</p>
+              <p className="text-sm font-semibold text-slate-800">为什么这样建议</p>
               <p className="text-[11px] text-slate-500 mt-1">
-                结论结合症状规则、本地知识检索、风险信号与公开资料综合生成
+                结论结合分诊规则、相关资料、危险信号和公开来源综合整理
               </p>
             </div>
             <span className="text-[11px] text-slate-400">

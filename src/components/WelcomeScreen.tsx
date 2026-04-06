@@ -298,6 +298,8 @@ export function WelcomeScreen({
   const hasPersonalizedScenarios = personalizedScenarios.length > 0
   const recentConversationChips = recentSessions.slice(0, 3)
   const latestSession = recentSessions[0] ?? null
+  const cloudSessions = recentSessions.filter((session) => session.storage === 'supabase')
+  const latestCloudSession = cloudSessions[0] ?? null
   const showReengagement = Boolean(
     latestSession && (pendingFollowUpCount > 0 || wasUpdatedWithinOneDay(latestSession.updatedAt))
   )
@@ -347,10 +349,34 @@ export function WelcomeScreen({
           </button>
         )}
 
+        {!showReengagement && sessionEmail && latestCloudSession && (
+          <button
+            type="button"
+            onClick={() => onOpenConversation(latestCloudSession.id)}
+            className="w-full rounded-3xl border border-blue-100 bg-blue-50/80 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">已同步 {cloudSessions.length} 段问诊，可跨设备继续</p>
+                <p className="mt-1 truncate text-xs text-slate-600">
+                  {truncateText(getRecentSessionReference(latestCloudSession) || latestCloudSession.title, 24)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">适合直接回到上次线程继续补充，不必从头再说。</p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-700">
+                继续查看
+                <ArrowRight size={13} />
+              </span>
+            </div>
+          </button>
+        )}
+
         <div className="rounded-3xl border border-slate-200 bg-white/95 px-5 pb-5 pt-4 shadow-sm">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
             <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-            {sessionEmail ? `已同步 · ${maskedSessionEmail}` : '无需登录，也可先开始咨询'}
+            {sessionEmail
+              ? `已登录 · ${maskedSessionEmail}${cloudSessions.length > 0 ? ` · ${cloudSessions.length} 段问诊可继续` : ''}`
+              : '未登录 · 仅本设备保存'}
           </div>
           <h1 className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">
             今天哪里不舒服？
@@ -383,9 +409,9 @@ export function WelcomeScreen({
 
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
             {[
-              '分诊评级，先告诉你今天是否需要去医院',
-              '档案联动，慢病和用药可一起带入',
-              '随访跟进，不用每次都从头再说',
+              '先判断今天需不需要线下处理',
+              '年龄、慢病和用药会自动带入',
+              '登录后可跨设备继续上次问诊',
             ].map((item) => (
               <span key={item} className="text-xs text-slate-500">
                 <span className="mr-1 font-semibold text-emerald-500">✓</span>
@@ -394,13 +420,15 @@ export function WelcomeScreen({
             ))}
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span>直接在下方输入症状，或先点一个起步词条。</span>
             <button
+              type="button"
               onClick={onStartConsultation}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              className="inline-flex items-center gap-1 font-medium text-blue-600 transition-colors hover:text-blue-700"
             >
-              <CheckCircle2 size={16} />
-              开始咨询
+              <CheckCircle2 size={14} />
+              直接输入症状
             </button>
           </div>
         </div>

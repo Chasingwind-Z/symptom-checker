@@ -208,21 +208,21 @@ export function AppSidebar({
           <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">主功能</p>
         )}
         <SidebarNavButton
-          label="统一搜索"
+          label="查记录"
           isActive={activeSection === 'search'}
           onClick={onSelectSearch}
           icon={Search}
           isCollapsed={isCollapsed}
         />
         <SidebarNavButton
-          label="判断依据"
+          label="为什么这样建议"
           isActive={activeSection === 'evidence'}
           onClick={onSelectEvidence}
           icon={ShieldCheck}
           isCollapsed={isCollapsed}
         />
         <SidebarNavButton
-          label="记录中心"
+          label="记录与跟进"
           isActive={activeSection === 'records'}
           onClick={onSelectRecords}
           icon={ClipboardList}
@@ -230,7 +230,7 @@ export function AppSidebar({
           badge={pendingBadge}
         />
         <SidebarNavButton
-          label="买药 / 用药"
+          label="服务入口"
           isActive={activeSection === 'medication'}
           onClick={onSelectMedication}
           icon={Pill}
@@ -252,7 +252,7 @@ export function AppSidebar({
           <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">个人</p>
         )}
         <SidebarNavButton
-          label="健康档案"
+          label="我的资料"
           isActive={activeSection === 'profile'}
           onClick={onSelectProfile}
           icon={HeartPulse}
@@ -260,7 +260,7 @@ export function AppSidebar({
           badge={profileCompletion >= 100 ? '已完成' : `${profileCompletion}%`}
         />
         <SidebarNavButton
-          label="会话线程"
+          label="历史问诊"
           isActive={activeSection === 'history'}
           onClick={onSelectHistory}
           icon={History}
@@ -268,7 +268,7 @@ export function AppSidebar({
           badge={historyBadge}
         />
         <SidebarNavButton
-          label="问诊设置"
+          label="偏好设置"
           isActive={activeSection === 'settings'}
           onClick={onSelectSettings}
           icon={Settings2}

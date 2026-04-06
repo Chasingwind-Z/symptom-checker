@@ -15,7 +15,7 @@ import { createAgentOrchestration } from '../agents/orchestrator';
 import type { AgentMemoryContext } from '../agents/types';
 import { primeMedicalKnowledgeCorpus, searchMedicalKnowledge } from '../lib/medicalKnowledge';
 import { requestGeolocation, fetchWeather } from '../lib/geolocation';
-import { persistCaseRecord } from '../lib/healthData';
+import { loadCloudConversationSessions, persistCaseRecord } from '../lib/healthData';
 import {
   FOLLOW_UP_RESPONSE_OPTIONS,
   getCompletedFollowUpRecords,
@@ -40,6 +40,7 @@ import type {
 } from '../types';
 import type { WeatherData, LocationData } from '../lib/geolocation';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
+import { subscribeToSupabaseAuth } from '../lib/supabase';
 
 type StoredChatImageAttachment = Pick<
   ChatImageAttachment,
@@ -285,7 +286,7 @@ function readConversationSessionsCache(): ConversationSession[] {
     if (!Array.isArray(parsed)) return [];
 
     return parsed
-      .map((item, index) => {
+      .map<ConversationSession | null>((item, index) => {
         if (!item || typeof item !== 'object') return null;
         const session = item as Partial<ConversationSession>;
         const messages = Array.isArray(session.messages)
@@ -305,6 +306,8 @@ function readConversationSessionsCache(): ConversationSession[] {
           session.riskLevel === 'red'
             ? session.riskLevel
             : null;
+        const storage = session.storage === 'supabase' ? 'supabase' : 'local';
+        if (storage === 'supabase') return null;
 
         return {
           id: typeof session.id === 'string' ? session.id : `chat-session-${index}`,
@@ -317,10 +320,10 @@ function readConversationSessionsCache(): ConversationSession[] {
           riskLevel,
           diagnosisResult: session.diagnosisResult ?? null,
           messages,
-          storage: session.storage === 'supabase' ? 'supabase' : 'local',
+          storage: 'local' as const,
         } satisfies ConversationSession;
       })
-      .filter((session): session is ConversationSession => Boolean(session))
+      .filter((session): session is ConversationSession => session !== null)
       .sort(
         (left, right) =>
           new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
@@ -331,27 +334,61 @@ function readConversationSessionsCache(): ConversationSession[] {
 }
 
 function serializeConversationSessions(sessions: ConversationSession[]) {
-  return sessions.map((session) => ({
-    ...session,
-    messages: session.messages.map((message) => ({
-      ...message,
-      timestamp:
-        message.timestamp instanceof Date
-          ? message.timestamp.toISOString()
-          : new Date(message.timestamp).toISOString(),
-      // Intentionally strip raw image payloads from long-lived local cache to avoid
-      // exceeding browser storage limits. Full previews stay in the live in-memory session.
-      attachments: message.attachments?.map(
-        (attachment): StoredChatImageAttachment => ({
-          id: attachment.id,
-          kind: attachment.kind,
-          name: attachment.name,
-          mimeType: attachment.mimeType,
-          sizeBytes: attachment.sizeBytes,
-        })
-      ),
-    })),
-  }));
+  return sessions
+    .filter((session) => session.storage === 'local')
+    .map((session) => ({
+      ...session,
+      messages: session.messages.map((message) => ({
+        ...message,
+        timestamp:
+          message.timestamp instanceof Date
+            ? message.timestamp.toISOString()
+            : new Date(message.timestamp).toISOString(),
+        // Intentionally strip raw image payloads from long-lived local cache to avoid
+        // exceeding browser storage limits. Full previews stay in the live in-memory session.
+        attachments: message.attachments?.map(
+          (attachment): StoredChatImageAttachment => ({
+            id: attachment.id,
+            kind: attachment.kind,
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            sizeBytes: attachment.sizeBytes,
+          })
+        ),
+      })),
+    }));
+}
+
+function sortConversationSessions(sessions: ConversationSession[]) {
+  return [...sessions].sort(
+    (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+  );
+}
+
+function upsertConversationSession(
+  sessions: ConversationSession[],
+  nextSession: ConversationSession
+): ConversationSession[] {
+  return sortConversationSessions(
+    [nextSession, ...sessions.filter((session) => session.id !== nextSession.id)].slice(
+      0,
+      MAX_CHAT_SESSIONS
+    )
+  );
+}
+
+function mergeConversationSessions(
+  localSessions: ConversationSession[],
+  cloudSessions: ConversationSession[]
+) {
+  const seen = new Set<string>();
+  return sortConversationSessions(
+    [...localSessions, ...cloudSessions].filter((session) => {
+      if (seen.has(session.id)) return false;
+      seen.add(session.id);
+      return true;
+    })
+  );
 }
 
 function writeConversationSessionsCache(sessions: ConversationSession[]) {
@@ -389,10 +426,18 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   );
   const [activeAgentRoute, setActiveAgentRoute] = useState<AgentRoute | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [conversationSessions, setConversationSessions] = useState<ConversationSession[]>(() =>
+  const [activeSessionStorage, setActiveSessionStorage] = useState<ConversationSession['storage'] | null>(
+    null
+  );
+  const [localConversationSessions, setLocalConversationSessions] = useState<ConversationSession[]>(() =>
     readConversationSessionsCache()
   );
+  const [cloudConversationSessions, setCloudConversationSessions] = useState<ConversationSession[]>([]);
   const keepFollowUpPromptMessageRef = useRef(false);
+  const conversationSessions = useMemo(
+    () => mergeConversationSessions(localConversationSessions, cloudConversationSessions),
+    [cloudConversationSessions, localConversationSessions]
+  );
   const activeFollowUpRecord = useMemo(
     () =>
       followUpRecords.find(
@@ -408,33 +453,48 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     () => getCompletedFollowUpRecords(followUpRecords),
     [followUpRecords]
   );
+  const refreshCloudSessions = useCallback(async () => {
+    const nextSessions = await loadCloudConversationSessions(MAX_CHAT_SESSIONS);
+    setCloudConversationSessions(nextSessions);
+  }, []);
 
   const persistConversationSession = useCallback(
-    (sessionId: string, nextMessages: Message[], nextDiagnosis: DiagnosisResult | null) => {
+    (
+      sessionId: string,
+      nextMessages: Message[],
+      nextDiagnosis: DiagnosisResult | null,
+      storage: ConversationSession['storage'] = activeSessionStorage ?? 'local'
+    ) => {
       if (!sessionId || nextMessages.length === 0) return;
 
       const now = new Date().toISOString();
-      setConversationSessions((prev) => {
-        const existing = prev.find((session) => session.id === sessionId);
-        const nextSessions = [
-          {
-            id: sessionId,
-            title: buildConversationTitle(nextMessages),
-            createdAt: existing?.createdAt ?? now,
-            updatedAt: now,
-            riskLevel: nextDiagnosis?.level ?? null,
-            diagnosisResult: nextDiagnosis ?? null,
-            messages: nextMessages,
-            storage: 'local' as const,
-          },
-          ...prev.filter((session) => session.id !== sessionId),
-        ].slice(0, MAX_CHAT_SESSIONS);
+      const buildNextSession = (createdAt?: string): ConversationSession => ({
+        id: sessionId,
+        title: buildConversationTitle(nextMessages),
+        createdAt: createdAt ?? now,
+        updatedAt: now,
+        riskLevel: nextDiagnosis?.level ?? null,
+        diagnosisResult: nextDiagnosis ?? null,
+        messages: nextMessages,
+        storage,
+      });
 
+      if (storage === 'supabase') {
+        setCloudConversationSessions((prev) => {
+          const existing = prev.find((session) => session.id === sessionId);
+          return upsertConversationSession(prev, buildNextSession(existing?.createdAt));
+        });
+        return;
+      }
+
+      setLocalConversationSessions((prev) => {
+        const existing = prev.find((session) => session.id === sessionId);
+        const nextSessions = upsertConversationSession(prev, buildNextSession(existing?.createdAt));
         writeConversationSessionsCache(nextSessions);
         return nextSessions;
       });
     },
-    []
+    [activeSessionStorage]
   );
 
   useEffect(() => {
@@ -458,6 +518,20 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
     initWeather();
   }, []);
+
+  useEffect(() => {
+    const initialRefreshId = window.setTimeout(() => {
+      void refreshCloudSessions();
+    }, 0);
+    const unsubscribeAuth = subscribeToSupabaseAuth(() => {
+      void refreshCloudSessions();
+    });
+
+    return () => {
+      window.clearTimeout(initialRefreshId);
+      unsubscribeAuth();
+    };
+  }, [refreshCloudSessions]);
 
   useEffect(() => {
     return subscribeToFollowUpRecords(() => {
@@ -522,9 +596,46 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       setActiveAgentRoute(null);
       setActiveFollowUpId(targetRecord.id);
       setActiveSessionId(null);
+      setActiveSessionStorage(null);
       return true;
     },
     [followUpRecords]
+  );
+
+  const promoteConversationSessionToCloud = useCallback(
+    (
+      sessionId: string,
+      caseId: string,
+      nextMessages: Message[],
+      nextDiagnosis: DiagnosisResult | null
+    ) => {
+      const now = new Date().toISOString();
+
+      setLocalConversationSessions((prev) => {
+        const nextSessions = prev.filter((session) => session.id !== sessionId);
+        writeConversationSessionsCache(nextSessions);
+        return nextSessions;
+      });
+
+      setCloudConversationSessions((prev) =>
+        upsertConversationSession(prev, {
+          id: caseId,
+          title: buildConversationTitle(nextMessages),
+          createdAt: now,
+          updatedAt: now,
+          riskLevel: nextDiagnosis?.level ?? null,
+          diagnosisResult: nextDiagnosis ?? null,
+          messages: nextMessages,
+          storage: 'supabase',
+        })
+      );
+
+      if (activeSessionId === sessionId || activeSessionId === null) {
+        setActiveSessionId(caseId);
+        setActiveSessionStorage('supabase');
+      }
+    },
+    [activeSessionId]
   );
 
   const sendMessage = useCallback(
@@ -556,14 +667,16 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
         attachments: attachments.length > 0 ? attachments : undefined,
       };
       const sessionId = activeSessionId ?? `chat-session-${Date.now()}`;
+      const sessionStorage = activeSessionStorage ?? 'local';
 
       if (!activeSessionId) {
         setActiveSessionId(sessionId);
+        setActiveSessionStorage('local');
       }
 
       setMessages((prev) => {
         const nextMessages = [...prev, userMessage];
-        persistConversationSession(sessionId, nextMessages, diagnosisResult);
+        persistConversationSession(sessionId, nextMessages, diagnosisResult, sessionStorage);
         return nextMessages;
       });
       setIsLoading(true);
@@ -620,7 +733,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
         setMessages((prev) => {
           const nextMessages = [...prev, assistantMessage];
-          persistConversationSession(sessionId, nextMessages, result ?? diagnosisResult);
+          persistConversationSession(sessionId, nextMessages, result ?? diagnosisResult, sessionStorage);
           return nextMessages;
         });
         setStreamingContent('');
@@ -632,9 +745,21 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           if (!isFollowUpReply || !activeFollowUpRecord) {
             queueFollowUpRecord(displayText, result);
           }
+          const finalSessionMessages = [...messages, userMessage, assistantMessage];
           void persistCaseRecord({
+            caseId: sessionStorage === 'supabase' ? sessionId : undefined,
             diagnosis: result,
-            messages: [...messages, userMessage, assistantMessage],
+            messages: finalSessionMessages,
+          }).then((persisted) => {
+            if (persisted.storedIn === 'supabase') {
+              promoteConversationSessionToCloud(
+                sessionId,
+                persisted.caseId,
+                finalSessionMessages,
+                result
+              );
+              void refreshCloudSessions();
+            }
           });
         }
       };
@@ -731,6 +856,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     },
     [
       activeSessionId,
+      activeSessionStorage,
       messages,
       isLoading,
       locationData,
@@ -739,6 +865,8 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       memoryContext,
       applyFollowUpResponse,
       persistConversationSession,
+      promoteConversationSessionToCloud,
+      refreshCloudSessions,
     ]
   );
 
@@ -753,6 +881,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       }
 
       setActiveSessionId(target.id);
+      setActiveSessionStorage(target.storage);
       setMessages(target.messages);
       setDiagnosisResult(target.diagnosisResult);
       setActiveFollowUpId(null);
@@ -771,9 +900,13 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       const target = conversationSessions.find((session) => session.id === sessionId) ?? null
       if (!target) return null
 
-      const nextSessions = conversationSessions.filter((session) => session.id !== sessionId)
-      setConversationSessions(nextSessions)
-      writeConversationSessionsCache(nextSessions)
+      if (target.storage === 'supabase') {
+        setCloudConversationSessions((prev) => prev.filter((session) => session.id !== sessionId))
+      } else {
+        const nextSessions = localConversationSessions.filter((session) => session.id !== sessionId)
+        setLocalConversationSessions(nextSessions)
+        writeConversationSessionsCache(nextSessions)
+      }
 
       if (activeSessionId === sessionId) {
         setMessages([])
@@ -785,24 +918,27 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
         setActiveAgentRoute(null)
         setActiveFollowUpId(null)
         setActiveSessionId(null)
+        setActiveSessionStorage(null)
       }
 
       return target
     },
-    [activeSessionId, conversationSessions]
+    [activeSessionId, conversationSessions, localConversationSessions]
   )
 
   const restoreConversationSession = useCallback(
     (session: ConversationSession) => {
-      const nextSessions = [session, ...conversationSessions.filter((item) => item.id !== session.id)]
-        .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
-        .slice(0, MAX_CHAT_SESSIONS)
+      if (session.storage === 'supabase') {
+        setCloudConversationSessions((prev) => upsertConversationSession(prev, session))
+        return true
+      }
 
-      setConversationSessions(nextSessions)
+      const nextSessions = upsertConversationSession(localConversationSessions, session)
+      setLocalConversationSessions(nextSessions)
       writeConversationSessionsCache(nextSessions)
       return true
     },
-    [conversationSessions]
+    [localConversationSessions]
   )
 
   const resetChat = useCallback(() => {
@@ -815,6 +951,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     setActiveAgentRoute(null);
     setActiveFollowUpId(null);
     setActiveSessionId(null);
+    setActiveSessionStorage(null);
   }, []);
 
   return {

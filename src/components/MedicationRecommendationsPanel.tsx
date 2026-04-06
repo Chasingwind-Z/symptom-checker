@@ -404,9 +404,9 @@ export function MedicationRecommendationsPanel({
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
             <Pill size={13} className="text-violet-600" />
-            药品与家庭处理参考
+            服务入口与用药参考
           </div>
-          <h2 className="mt-3 text-xl font-semibold text-slate-900">用药建议中心</h2>
+          <h2 className="mt-3 text-xl font-semibold text-slate-900">买药、复核与门诊入口</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
             {panelDescription}
           </p>
@@ -421,7 +421,7 @@ export function MedicationRecommendationsPanel({
                 tone="primary"
               />
             )}
-            <ActionButton label="新建咨询" onClick={onStartNewConversation} />
+            <ActionButton label="新建问诊" onClick={onStartNewConversation} />
           </div>
           <p className="text-[11px] text-slate-500">仅供 OTC / 家庭处理参考，不替代处方或线下评估。</p>
         </div>
@@ -431,9 +431,9 @@ export function MedicationRecommendationsPanel({
         <div className="mt-4 rounded-2xl border border-violet-100 bg-violet-50/70 px-4 py-4">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Pill size={16} className="text-violet-700" />
-                <p className="text-sm font-semibold text-slate-800">本次问诊直通入口</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Pill size={16} className="text-violet-700" />
+                  <p className="text-sm font-semibold text-slate-800">这次最先该开的入口</p>
                 {currentDiagnosisRiskLabel && (
                   <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-[10px] text-violet-700">
                     {currentDiagnosisRiskLabel}
@@ -504,7 +504,7 @@ export function MedicationRecommendationsPanel({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <MapPin size={16} className="text-cyan-600" />
-                  <p className="text-sm font-semibold text-slate-800">购药与复核入口</p>
+                  <p className="text-sm font-semibold text-slate-800">服务入口</p>
                   <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
                     {locationHint}
                   </span>
