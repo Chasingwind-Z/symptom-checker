@@ -1,5 +1,6 @@
 import { ArrowRight, Cloud, MapPin, MessageSquareText, Plus, UserRound } from 'lucide-react';
 import type { CaseHistoryItem } from '../lib/healthData';
+import { getRiskPresentation } from '../lib/riskPresentation';
 import { maskEmail } from '../lib/supabase';
 import type { ConversationSession } from '../types';
 
@@ -16,21 +17,6 @@ interface WorkspaceOverviewPanelProps {
   onContinueConversation?: () => void;
 }
 
-function getRiskMeta(level?: CaseHistoryItem['triageLevel'] | ConversationSession['riskLevel'] | null) {
-  switch (level) {
-    case 'green':
-      return { label: '低风险', tone: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
-    case 'yellow':
-      return { label: '建议就诊', tone: 'bg-amber-50 text-amber-700 border-amber-100' };
-    case 'orange':
-      return { label: '今日处理', tone: 'bg-orange-50 text-orange-700 border-orange-100' };
-    case 'red':
-      return { label: '紧急', tone: 'bg-rose-50 text-rose-700 border-rose-100' };
-    default:
-      return { label: '进行中', tone: 'bg-slate-100 text-slate-600 border-slate-200' };
-  }
-}
-
 export function WorkspaceOverviewPanel({
   sessionEmail,
   statusLabel,
@@ -43,7 +29,7 @@ export function WorkspaceOverviewPanel({
   onOpenMap,
   onContinueConversation,
 }: WorkspaceOverviewPanelProps) {
-  const riskMeta = getRiskMeta(latestCase?.triageLevel ?? latestConversation?.riskLevel ?? null);
+  const riskMeta = getRiskPresentation(latestCase?.triageLevel ?? latestConversation?.riskLevel ?? null);
   const latestTitle = latestCase?.chiefComplaint || latestConversation?.title || '还没有历史问诊';
   const accountLabel = sessionEmail ? maskEmail(sessionEmail) : '游客使用中';
 

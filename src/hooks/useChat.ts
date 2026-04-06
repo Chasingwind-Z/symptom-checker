@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   chatStream,
   runToolAwareChat,
@@ -16,11 +16,24 @@ import type { AgentMemoryContext } from '../agents/types';
 import { primeMedicalKnowledgeCorpus, searchMedicalKnowledge } from '../lib/medicalKnowledge';
 import { requestGeolocation, fetchWeather } from '../lib/geolocation';
 import { persistCaseRecord } from '../lib/healthData';
+import {
+  FOLLOW_UP_RESPONSE_OPTIONS,
+  getCompletedFollowUpRecords,
+  getDueFollowUpRecord,
+  getPendingFollowUpRecords,
+  isFollowUpResponseOption,
+  queueFollowUpRecord,
+  readFollowUpRecords,
+  saveFollowUpRecordResponse,
+  subscribeToFollowUpRecords,
+} from '../lib/followUpRecords';
 import type {
   AgentRoute,
   ChatImageAttachment,
   ConversationSession,
   DiagnosisResult,
+  FollowUpRecord,
+  FollowUpResponseOption,
   Message,
   SendMessageInput,
   ToolCall,
@@ -151,101 +164,23 @@ function toHistoryMessage(message: Message): ChatMessage {
   };
 }
 
-const FOLLOW_UP_STORAGE_KEY = 'symptom_followup_cases';
 const CHAT_SESSION_STORAGE_KEY = 'symptom_chat_sessions_v1';
 const MAX_CHAT_SESSIONS = 16;
-const FOLLOW_UP_OPTIONS = ['明显好转', '略有好转', '没有变化', '更严重了'] as const;
-const FOLLOW_UP_DISTRICTS = [
-  '朝阳区',
-  '海淀区',
-  '东城区',
-  '西城区',
-  '丰台区',
-  '石景山区',
-  '通州区',
-  '顺义区',
-  '昌平区',
-  '大兴区',
-  '房山区',
-  '门头沟区',
-] as const;
+const FOLLOW_UP_SUGGESTIONS_PAYLOAD = JSON.stringify({
+  suggestions: [...FOLLOW_UP_RESPONSE_OPTIONS],
+});
 
-interface FollowUpCase {
-  id: string;
-  summary: string;
-  level: DiagnosisResult['level'];
-  createdAt: number;
-  district: string;
-  response?: (typeof FOLLOW_UP_OPTIONS)[number];
-  respondedAt?: number;
+function getFollowUpPromptMessageId(recordId: string) {
+  return `followup-prompt-${recordId}`;
 }
 
-function readFollowUpCases(): FollowUpCase[] {
-  if (typeof window === 'undefined') return [];
-
-  try {
-    const raw = localStorage.getItem(FOLLOW_UP_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as FollowUpCase[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeFollowUpCases(cases: FollowUpCase[]) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(FOLLOW_UP_STORAGE_KEY, JSON.stringify(cases));
-}
-
-function createFollowUpCase(userText: string, result: DiagnosisResult): FollowUpCase {
-  const summary = userText.replace(/\s+/g, '').slice(0, 18) || result.reason.slice(0, 18);
-  const district =
-    FOLLOW_UP_DISTRICTS[Math.floor(Math.random() * FOLLOW_UP_DISTRICTS.length)];
-
+function buildFollowUpMessage(followUpCase: FollowUpRecord): Message {
   return {
-    id: `followup-${Date.now()}`,
-    summary,
-    level: result.level,
-    createdAt: Date.now(),
-    district,
-  };
-}
-
-function queueFollowUpCase(userText: string, result: DiagnosisResult) {
-  const nextCase = createFollowUpCase(userText, result);
-  const existing = readFollowUpCases().filter((item) => item.id !== nextCase.id);
-  writeFollowUpCases([nextCase, ...existing].slice(0, 8));
-}
-
-function getDueFollowUpCase(): FollowUpCase | null {
-  const reminderDelay = import.meta.env.DEV ? 5 * 60 * 1000 : 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  return (
-    readFollowUpCases().find(
-      (item) => !item.response && now - item.createdAt >= reminderDelay
-    ) ?? null
-  );
-}
-
-function saveFollowUpResponse(caseId: string, response: (typeof FOLLOW_UP_OPTIONS)[number]) {
-  const nextCases = readFollowUpCases().map((item) =>
-    item.id === caseId
-      ? {
-          ...item,
-          response,
-          respondedAt: Date.now(),
-        }
-      : item
-  );
-  writeFollowUpCases(nextCases);
-}
-
-function buildFollowUpMessage(followUpCase: FollowUpCase): Message {
-  return {
-    id: `followup-prompt-${followUpCase.id}`,
+    id: getFollowUpPromptMessageId(followUpCase.id),
     role: 'assistant',
-    content: `上次您提到“${followUpCase.summary}”，现在感觉怎么样了？\n{"suggestions": ["明显好转", "略有好转", "没有变化", "更严重了"]}`,
+    content: `上次您提到“${followUpCase.summary}”，现在感觉怎么样了？\n${FOLLOW_UP_SUGGESTIONS_PAYLOAD}`,
     timestamp: new Date(),
-    suggestions: [...FOLLOW_UP_OPTIONS],
+    suggestions: [...FOLLOW_UP_RESPONSE_OPTIONS],
   };
 }
 
@@ -355,7 +290,7 @@ function writeConversationSessionsCache(sessions: ConversationSession[]) {
 
 export function useChat(memoryContext?: AgentMemoryContext | null) {
   const [messages, setMessages] = useState<Message[]>(() => {
-    const dueFollowUp = getDueFollowUpCase();
+    const dueFollowUp = getDueFollowUpRecord(readFollowUpRecords());
     return dueFollowUp ? [buildFollowUpMessage(dueFollowUp)] : [];
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -365,13 +300,32 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   const [activeToolCalls, setActiveToolCalls] = useState<ToolCall[]>([]);
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
-  const [pendingFollowUp, setPendingFollowUp] = useState<FollowUpCase | null>(() =>
-    getDueFollowUpCase()
+  const [followUpRecords, setFollowUpRecords] = useState<FollowUpRecord[]>(() =>
+    readFollowUpRecords()
+  );
+  const [activeFollowUpId, setActiveFollowUpId] = useState<string | null>(() =>
+    getDueFollowUpRecord(readFollowUpRecords())?.id ?? null
   );
   const [activeAgentRoute, setActiveAgentRoute] = useState<AgentRoute | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [conversationSessions, setConversationSessions] = useState<ConversationSession[]>(() =>
     readConversationSessionsCache()
+  );
+  const keepFollowUpPromptMessageRef = useRef(false);
+  const activeFollowUpRecord = useMemo(
+    () =>
+      followUpRecords.find(
+        (record) => record.id === activeFollowUpId && record.status === 'pending'
+      ) ?? null,
+    [followUpRecords, activeFollowUpId]
+  );
+  const pendingFollowUpRecords = useMemo(
+    () => getPendingFollowUpRecords(followUpRecords),
+    [followUpRecords]
+  );
+  const completedFollowUpRecords = useMemo(
+    () => getCompletedFollowUpRecords(followUpRecords),
+    [followUpRecords]
   );
 
   const persistConversationSession = useCallback(
@@ -424,6 +378,74 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     initWeather();
   }, []);
 
+  useEffect(() => {
+    return subscribeToFollowUpRecords(() => {
+      const nextRecords = readFollowUpRecords();
+      setFollowUpRecords(nextRecords);
+
+      if (!activeFollowUpId) {
+        return;
+      }
+
+      const activeRecord = nextRecords.find((record) => record.id === activeFollowUpId);
+      if (activeRecord?.status === 'pending') {
+        return;
+      }
+
+      const keepPromptMessage = keepFollowUpPromptMessageRef.current;
+      keepFollowUpPromptMessageRef.current = false;
+      setActiveFollowUpId(null);
+      if (!keepPromptMessage) {
+        setMessages((prev) =>
+          prev.filter((message) => message.id !== getFollowUpPromptMessageId(activeFollowUpId))
+        );
+      }
+    });
+  }, [activeFollowUpId]);
+
+  const applyFollowUpResponse = useCallback(
+    (
+      recordId: string,
+      response: FollowUpResponseOption,
+      options?: { keepPromptMessage?: boolean }
+    ) => {
+      keepFollowUpPromptMessageRef.current = Boolean(options?.keepPromptMessage);
+      const updatedRecord = saveFollowUpRecordResponse(recordId, response);
+      keepFollowUpPromptMessageRef.current = false;
+      return updatedRecord;
+    },
+    []
+  );
+
+  const respondToFollowUp = useCallback(
+    (recordId: string, response: FollowUpResponseOption) =>
+      applyFollowUpResponse(recordId, response),
+    [applyFollowUpResponse]
+  );
+
+  const openFollowUpRecord = useCallback(
+    (recordId: string) => {
+      const targetRecord = followUpRecords.find(
+        (record) => record.id === recordId && record.status === 'pending'
+      );
+      if (!targetRecord) {
+        return false;
+      }
+
+      setMessages([buildFollowUpMessage(targetRecord)]);
+      setIsLoading(false);
+      setStreamingContent('');
+      setDiagnosisResult(null);
+      setIsSearchingKB(false);
+      setActiveToolCalls([]);
+      setActiveAgentRoute(null);
+      setActiveFollowUpId(targetRecord.id);
+      setActiveSessionId(null);
+      return true;
+    },
+    [followUpRecords]
+  );
+
   const sendMessage = useCallback(
     async (input: string | SendMessageInput) => {
       if (isLoading) return;
@@ -437,16 +459,12 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
       if (!displayText.trim() && attachments.length === 0) return;
 
-      const isFollowUpReply = FOLLOW_UP_OPTIONS.includes(
-        displayText as (typeof FOLLOW_UP_OPTIONS)[number]
-      );
+      const isFollowUpReply = isFollowUpResponseOption(displayText);
 
-      if (pendingFollowUp && isFollowUpReply) {
-        saveFollowUpResponse(
-          pendingFollowUp.id,
-          displayText as (typeof FOLLOW_UP_OPTIONS)[number]
-        );
-        setPendingFollowUp(null);
+      if (activeFollowUpRecord && isFollowUpReply) {
+        applyFollowUpResponse(activeFollowUpRecord.id, displayText, {
+          keepPromptMessage: true,
+        });
       }
 
       const userMessage: Message = {
@@ -482,7 +500,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           diagnosisResult,
           kbResults,
           knowledgeSearch,
-          pendingFollowUpSummary: pendingFollowUp?.summary ?? null,
+          pendingFollowUpSummary: activeFollowUpRecord?.summary ?? null,
           memoryContext,
         });
         const scopedTools = getAgentToolsByNames(orchestration.allowedToolNames);
@@ -530,7 +548,9 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
         if (result) {
           setDiagnosisResult(result);
-          queueFollowUpCase(displayText, result);
+          if (!isFollowUpReply || !activeFollowUpRecord) {
+            queueFollowUpRecord(displayText, result);
+          }
           void persistCaseRecord({
             diagnosis: result,
             messages: [...messages, userMessage, assistantMessage],
@@ -633,8 +653,10 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       isLoading,
       locationData,
       diagnosisResult,
-      pendingFollowUp,
+      activeFollowUpRecord,
       memoryContext,
+      applyFollowUpResponse,
+      persistConversationSession,
     ]
   );
 
@@ -651,7 +673,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       setActiveSessionId(target.id);
       setMessages(target.messages);
       setDiagnosisResult(target.diagnosisResult);
-      setPendingFollowUp(null);
+      setActiveFollowUpId(null);
       setIsLoading(false);
       setStreamingContent('');
       setIsSearchingKB(false);
@@ -663,15 +685,14 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   );
 
   const resetChat = useCallback(() => {
-    const dueFollowUp = getDueFollowUpCase();
-    setMessages(dueFollowUp ? [buildFollowUpMessage(dueFollowUp)] : []);
+    setMessages([]);
     setIsLoading(false);
     setStreamingContent('');
     setDiagnosisResult(null);
     setIsSearchingKB(false);
     setActiveToolCalls([]);
     setActiveAgentRoute(null);
-    setPendingFollowUp(dueFollowUp);
+    setActiveFollowUpId(null);
     setActiveSessionId(null);
   }, []);
 
@@ -687,7 +708,14 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     locationData,
     activeSessionId,
     conversationSessions,
+    followUpRecords,
+    pendingFollowUpRecords,
+    completedFollowUpRecords,
+    activeFollowUpRecord,
+    followUpResponseOptions: FOLLOW_UP_RESPONSE_OPTIONS,
     sendMessage,
+    respondToFollowUp,
+    openFollowUpRecord,
     loadConversationSession,
     resetChat,
   };

@@ -111,6 +111,21 @@ export interface OfficialSourceBundle {
   syncStatus: OfficialSourceSyncStatus;
 }
 
+export type FollowUpResponseOption = '明显好转' | '略有好转' | '没有变化' | '更严重了';
+export type FollowUpRecordStatus = 'pending' | 'completed';
+
+export interface FollowUpRecord {
+  id: string;
+  summary: string;
+  level: RiskLevel;
+  createdAt: number;
+  district: string;
+  status: FollowUpRecordStatus;
+  dueAt: number;
+  response?: FollowUpResponseOption;
+  respondedAt?: number;
+}
+
 export interface Hospital {
   id: string;
   name: string;
@@ -154,6 +169,6 @@ export interface SymptomReport {
   level: RiskLevel;
   timestamp: number;
   district: string;
-  followUpStatus?: '明显好转' | '略有好转' | '没有变化' | '更严重了';
+  followUpStatus?: FollowUpResponseOption;
   summary?: string;
 }

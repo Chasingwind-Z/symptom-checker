@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from './hooks/useChat';
 import { getRecommendedHospitals } from './lib/mockHospitals';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
@@ -15,10 +15,15 @@ import { InfoBar } from './components/WeatherBar';
 import { EpidemicDashboard } from './components/EpidemicDashboard';
 import { CloudSyncCard } from './components/CloudSyncCard';
 import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
+import {
+  RecordsCenterPanel,
+  type RecordsCenterSummaryItem,
+} from './components/RecordsCenterPanel';
 import { WorkspaceOverviewPanel } from './components/WorkspaceOverviewPanel';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { usePwaInstall } from './hooks/usePwaInstall';
-import type { Hospital, SendMessageInput } from './types';
+import type { CaseHistoryItem } from './lib/healthData';
+import type { ConversationSession, Hospital, SendMessageInput } from './types';
 
 function getReportCount(): number {
   try {
@@ -26,6 +31,74 @@ function getReportCount(): number {
   } catch {
     return 0;
   }
+}
+
+function stripRecordMetadata(content: string): string {
+  return content
+    .replace(/```json[\s\S]*?```/g, '')
+    .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeRecordKey(content: string): string {
+  return stripRecordMetadata(content).replace(/[^a-z0-9\u4e00-\u9fff]/gi, '').toLowerCase();
+}
+
+function getConversationReferenceText(session: ConversationSession): string {
+  const firstUserMessage = session.messages.find((message) => message.role === 'user');
+  return stripRecordMetadata(firstUserMessage?.content ?? session.title);
+}
+
+function findMatchingConversation(
+  summary: string,
+  sessions: ConversationSession[]
+): ConversationSession | null {
+  const summaryKey = normalizeRecordKey(summary);
+  if (!summaryKey) return null;
+
+  return (
+    sessions.find((session) => {
+      const sessionKey = normalizeRecordKey(getConversationReferenceText(session));
+      return Boolean(sessionKey) && (sessionKey.includes(summaryKey) || summaryKey.includes(sessionKey));
+    }) ?? null
+  );
+}
+
+function findMatchingCase(summary: string, recentCases: CaseHistoryItem[]): CaseHistoryItem | null {
+  const summaryKey = normalizeRecordKey(summary);
+  if (!summaryKey) return null;
+
+  return (
+    recentCases.find((item) => {
+      const caseKey = normalizeRecordKey(item.chiefComplaint);
+      return Boolean(caseKey) && (caseKey.includes(summaryKey) || summaryKey.includes(caseKey));
+    }) ?? null
+  );
+}
+
+function formatDateTimeLabel(value: string | number): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '刚刚';
+
+  return parsed.toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function trimText(text: string, maxLength = 92): string {
+  return text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text;
+}
+
+function getConversationSourceLabel(storage: ConversationSession['storage']): string {
+  return storage === 'supabase' ? '云端会话' : '本机会话';
+}
+
+function getCaseSourceLabel(source: CaseHistoryItem['source']): string {
+  return source === 'supabase' ? '云端摘要' : '本机摘要';
 }
 
 export default function App() {
@@ -52,7 +125,11 @@ export default function App() {
     weatherData,
     activeSessionId,
     conversationSessions,
+    pendingFollowUpRecords,
+    completedFollowUpRecords,
+    activeFollowUpRecord,
     sendMessage,
+    openFollowUpRecord,
     loadConversationSession,
     resetChat,
   } = useChat(chatMemoryContext);
@@ -98,23 +175,38 @@ export default function App() {
       });
   }, [diagnosisResult]);
 
-  function handleSendMessage(input: string | SendMessageInput) {
-    setCurrentPage('chat');
-    sendMessage(input);
-  }
+  const handleSendMessage = useCallback(
+    (input: string | SendMessageInput) => {
+      setCurrentPage('chat');
+      sendMessage(input);
+    },
+    [sendMessage]
+  );
 
-  function handleResetChat() {
+  const handleResetChat = useCallback(() => {
     resetChat();
     setCurrentPage('home');
-  }
+  }, [resetChat]);
 
-  function handleOpenConversation(sessionId: string) {
-    if (loadConversationSession(sessionId)) {
-      setCurrentPage('chat');
-    }
-  }
+  const handleOpenConversation = useCallback(
+    (sessionId: string) => {
+      if (loadConversationSession(sessionId)) {
+        setCurrentPage('chat');
+      }
+    },
+    [loadConversationSession]
+  );
 
-  function handleContinueLatestConversation() {
+  const handleOpenFollowUp = useCallback(
+    (recordId: string) => {
+      if (openFollowUpRecord(recordId)) {
+        setCurrentPage('chat');
+      }
+    },
+    [openFollowUpRecord]
+  );
+
+  const handleContinueLatestConversation = useCallback(() => {
     const latestSession = conversationSessions[0];
     if (latestSession) {
       handleOpenConversation(latestSession.id);
@@ -122,7 +214,116 @@ export default function App() {
     }
 
     handleResetChat();
-  }
+  }, [conversationSessions, handleOpenConversation, handleResetChat]);
+
+  const recordsCenterFollowUps = useMemo(() => {
+    return pendingFollowUpRecords.map((record) => {
+      const matchedSession = findMatchingConversation(record.summary, conversationSessions);
+      const matchedCase = findMatchingCase(record.summary, workspace.recentCases);
+      const summaryContext =
+        matchedSession?.diagnosisResult?.reason ??
+        matchedCase?.assistantPreview ??
+        `系统已为“${record.summary}”生成后续跟进提醒，建议补充症状变化和就诊进度。`;
+
+      return {
+        id: record.id,
+        title: record.summary,
+        summary: trimText(`围绕这次记录继续补充变化：${summaryContext}`),
+        statusLabel: activeFollowUpRecord?.id === record.id ? '正在回复' : '待跟进',
+        metaLabel: `回访时间 · ${formatDateTimeLabel(record.dueAt)}`,
+        sourceLabel: matchedSession
+          ? `${getConversationSourceLabel(matchedSession.storage)} · 原问诊`
+          : matchedCase
+            ? `${getCaseSourceLabel(matchedCase.source)} · 问诊摘要`
+            : '自动随访',
+        riskLevel: matchedSession?.riskLevel ?? matchedCase?.triageLevel ?? record.level,
+        tags: [record.district],
+        isActive: activeFollowUpRecord?.id === record.id,
+        primaryAction: {
+          label: activeFollowUpRecord?.id === record.id ? '继续回复' : '回复随访',
+          onClick: () => handleOpenFollowUp(record.id),
+          tone: 'primary' as const,
+        },
+        secondaryAction: matchedSession
+          ? {
+              label: '打开记录',
+              onClick: () => handleOpenConversation(matchedSession.id),
+            }
+          : undefined,
+      };
+    });
+  }, [
+    activeFollowUpRecord,
+    conversationSessions,
+    handleOpenConversation,
+    handleOpenFollowUp,
+    pendingFollowUpRecords,
+    workspace.recentCases,
+  ]);
+
+  const recordsCenterSummaries = useMemo(() => {
+    const items: RecordsCenterSummaryItem[] = [];
+    const linkedSessionIds = new Set<string>();
+
+    completedFollowUpRecords.slice(0, 3).forEach((record) => {
+      const matchedSession = findMatchingConversation(record.summary, conversationSessions);
+      const matchedCase = findMatchingCase(record.summary, workspace.recentCases);
+      if (matchedSession) {
+        linkedSessionIds.add(matchedSession.id);
+      }
+
+      const responseLabel = record.response ? `最近一次随访反馈：${record.response}。` : '该随访已完成。';
+      const contextSummary =
+        matchedSession?.diagnosisResult?.reason ??
+        matchedCase?.assistantPreview ??
+        '可继续打开相关记录，回看上次的问诊判断与后续建议。';
+
+      items.push({
+        id: `followup-summary-${record.id}`,
+        title: `随访 · ${record.summary}`,
+        summary: trimText(`${responseLabel}${contextSummary}`),
+        metaLabel: `完成于 ${formatDateTimeLabel(record.respondedAt ?? record.createdAt)}`,
+        sourceLabel: matchedSession
+          ? `${getConversationSourceLabel(matchedSession.storage)} · 已完成随访`
+          : matchedCase
+            ? `${getCaseSourceLabel(matchedCase.source)} · 已完成随访`
+            : '已完成随访',
+        departments: matchedSession?.diagnosisResult?.departments ?? matchedCase?.departments ?? [],
+        riskLevel: matchedSession?.riskLevel ?? matchedCase?.triageLevel ?? record.level,
+        primaryAction: matchedSession
+          ? {
+              label: '继续咨询',
+              onClick: () => handleOpenConversation(matchedSession.id),
+              tone: 'primary',
+            }
+          : undefined,
+      });
+    });
+
+    conversationSessions
+      .filter((session) => session.diagnosisResult && !linkedSessionIds.has(session.id))
+      .slice(0, Math.max(0, 4 - items.length))
+      .forEach((session) => {
+        items.push({
+          id: session.id,
+          title: session.title,
+          summary: trimText(
+            session.diagnosisResult?.reason ?? '已生成分诊摘要，可继续回到原会话补充新的变化。'
+          ),
+          metaLabel: `更新于 ${formatDateTimeLabel(session.updatedAt)}`,
+          sourceLabel: getConversationSourceLabel(session.storage),
+          departments: session.diagnosisResult?.departments ?? [],
+          riskLevel: session.riskLevel ?? session.diagnosisResult?.level ?? null,
+          primaryAction: {
+            label: '继续咨询',
+            onClick: () => handleOpenConversation(session.id),
+            tone: 'primary',
+          },
+        });
+      });
+
+    return items;
+  }, [completedFollowUpRecords, conversationSessions, handleOpenConversation, workspace.recentCases]);
 
   const effectivePage = currentPage === 'home' && messages.length > 0 ? 'chat' : currentPage;
   const showWorkspace = effectivePage === 'workspace';
@@ -173,6 +374,21 @@ export default function App() {
                   conversationSessions.length > 0 ? handleContinueLatestConversation : undefined
                 }
                 onOpenMap={() => setCurrentPage('map')}
+              />
+
+              <RecordsCenterPanel
+                statusLabel={
+                  pendingFollowUpRecords.length > 0 ? '待处理随访与最近摘要' : '随访与记录'
+                }
+                helperText={
+                  pendingFollowUpRecords.length > 0
+                    ? '优先回复待跟进项目，再继续打开最近完成的摘要或原问诊记录。'
+                    : '新的随访提醒和最近完成的摘要会统一汇总在这里，方便随时回看和继续咨询。'
+                }
+                followUps={recordsCenterFollowUps}
+                recentSummaries={recordsCenterSummaries}
+                emptyFollowUpsMessage="当前没有待回复随访。新的复诊提醒或观察任务出现后，会自动汇总在这里。"
+                emptySummariesMessage="还没有最近完成的摘要。完成一次问诊或随访后，记录中心会自动展示可继续打开的记录。"
               />
 
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px] items-start">

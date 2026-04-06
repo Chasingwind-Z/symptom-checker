@@ -1,4 +1,5 @@
 import { ArrowRight, Clock3, MessageSquareText, Plus } from 'lucide-react';
+import { getRiskPresentation } from '../lib/riskPresentation';
 import type { ConversationSession } from '../types';
 
 interface ConversationHistoryPanelProps {
@@ -14,14 +15,6 @@ interface ConversationHistoryPanelProps {
   showStartButton?: boolean;
   startButtonLabel?: string;
 }
-
-const RISK_STYLES: Record<string, string> = {
-  green: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-  yellow: 'bg-amber-50 text-amber-700 border-amber-100',
-  orange: 'bg-orange-50 text-orange-700 border-orange-100',
-  red: 'bg-rose-50 text-rose-700 border-rose-100',
-  pending: 'bg-slate-100 text-slate-600 border-slate-200',
-};
 
 function stripMetadata(content: string): string {
   return content
@@ -51,21 +44,6 @@ function formatUpdatedAt(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function getRiskLabel(level: ConversationSession['riskLevel']): string {
-  switch (level) {
-    case 'green':
-      return '低风险';
-    case 'yellow':
-      return '建议就诊';
-    case 'orange':
-      return '今日处理';
-    case 'red':
-      return '紧急';
-    default:
-      return '进行中';
-  }
 }
 
 function getStorageLabel(storage: ConversationSession['storage']): string {
@@ -124,7 +102,7 @@ export function ConversationHistoryPanel({
       ) : isShelf ? (
         <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
           {visibleSessions.map((session) => {
-            const riskKey = session.riskLevel ?? 'pending';
+            const riskMeta = getRiskPresentation(session.riskLevel ?? 'pending');
             const isActive = activeSessionId === session.id;
 
             return (
@@ -143,11 +121,9 @@ export function ConversationHistoryPanel({
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
                       <span
-                        className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                          RISK_STYLES[riskKey]
-                        }`}
+                        className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
                       >
-                        {getRiskLabel(session.riskLevel)}
+                        {riskMeta.label}
                       </span>
                       {isActive && (
                         <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
@@ -182,7 +158,7 @@ export function ConversationHistoryPanel({
         <>
           <div className="mt-3 grid grid-cols-1 gap-2.5">
             {visibleSessions.map((session) => {
-              const riskKey = session.riskLevel ?? 'pending';
+              const riskMeta = getRiskPresentation(session.riskLevel ?? 'pending');
               const isActive = activeSessionId === session.id;
 
               return (
@@ -203,11 +179,9 @@ export function ConversationHistoryPanel({
                           {session.title}
                         </p>
                         <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                            RISK_STYLES[riskKey]
-                          }`}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
                         >
-                          {getRiskLabel(session.riskLevel)}
+                          {riskMeta.label}
                         </span>
                         {isActive && (
                           <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
