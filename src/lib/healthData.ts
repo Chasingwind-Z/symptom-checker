@@ -1,5 +1,5 @@
 import type { DiagnosisResult, Message } from '../types';
-import { getSupabaseBootstrapStatus, getSupabaseClient } from './supabase';
+import { getSupabaseBootstrapStatus, getSupabaseClient, maskEmail } from './supabase';
 import {
   buildCombinedMedicalNotes,
   getDefaultDemoPersonaWorkspace,
@@ -397,13 +397,17 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
   } = await client.auth.getUser();
 
   if (authError) {
+    if (import.meta.env.DEV) {
+      console.warn('[Supabase] 读取云端会话失败，已回退到本机缓存：', authError.message);
+    }
+
     return {
       mode: bootstrap.state === 'error' ? 'error' : 'cloud-ready',
-      statusLabel: bootstrap.state === 'error' ? '云端同步暂不可用' : '游客模式（登录后可同步）',
+      statusLabel: bootstrap.state === 'error' ? '邮箱同步暂不可用' : '邮箱同步待连接',
       helperText:
         bootstrap.state === 'error'
           ? '暂时无法读取云端会话，当前会继续保存在浏览器中。'
-          : '还没有读取到有效登录态，你可以重新发送邮箱登录链接继续同步。',
+          : '暂未读取到有效邮箱会话。若刚打开邮件，请回到这里后刷新一次状态。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,
@@ -412,15 +416,15 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
 
   if (!user) {
     return {
-        mode: 'cloud-ready',
+      mode: 'cloud-ready',
       statusLabel:
         localProfile.profileMode === 'demo'
-          ? '游客模式（可登录后同步这份参考档案）'
-          : '游客模式（登录后可同步档案）',
+          ? '游客模式（登录后可保留这份参考档案）'
+          : '邮箱同步待开启',
       helperText:
         localProfile.profileMode === 'demo'
-          ? '当前已经带上一份可编辑参考档案；登录后可继续保留或改成自己的资料再同步。'
-          : '你可以先以游客方式使用；登录后档案和历史会话会自动跟随邮箱账号同步。',
+          ? '当前已经带上一份可编辑参考档案；输入邮箱后即可继续保留，或先改成自己的资料再同步。'
+          : '你可以先继续使用；输入邮箱后，我们会用登录链接帮你继续同步档案和历史会话。',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,
@@ -441,6 +445,17 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
       .order('created_at', { ascending: false })
       .limit(limit),
   ]);
+
+  const hasSyncFallback = Boolean(profileResponse.error || caseResponse.error);
+
+  if (import.meta.env.DEV) {
+    if (profileResponse.error) {
+      console.warn('[Supabase] 读取云端档案失败，已回退到本机缓存：', profileResponse.error.message);
+    }
+    if (caseResponse.error) {
+      console.warn('[Supabase] 读取云端问诊摘要失败，已回退到本机缓存：', caseResponse.error.message);
+    }
+  }
 
   const syncedProfile = profileResponse.data
     ? {
@@ -492,9 +507,11 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
 
   return {
     mode: 'cloud-session',
-    statusLabel: user.email ? `已连接云端账号：${user.email}` : '已连接云端账号',
+    statusLabel: user.email ? `已连接邮箱：${maskEmail(user.email)}` : '已连接邮箱',
     helperText:
-      recentCases.length > 0
+      hasSyncFallback
+        ? '邮箱已连接，但这次云端资料加载不完整；已先回退到本机缓存，稍后可刷新重试。'
+        : recentCases.length > 0
         ? `已同步 ${recentCases.length} 条最近问诊，可跨设备继续查看档案与历史摘要。`
         : '云端账号已连接，新的档案修改和问诊结果会自动尝试同步。',
     profile: syncedProfile,

@@ -8,12 +8,17 @@ import {
   Thermometer,
   UserRound,
 } from 'lucide-react'
+import type { ConversationSession } from '../types'
+import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 import { SymptomTags } from './SymptomTags'
 
 interface WelcomeScreenProps {
   onSendMessage: (text: string) => void
   onToggleMap: () => void
   onOpenWorkspace: () => void
+  recentSessions: ConversationSession[]
+  activeSessionId?: string | null
+  onOpenConversation: (sessionId: string) => void
 }
 
 const COMMON_SCENARIOS = [
@@ -53,103 +58,138 @@ const GUARDIAN_MODES = [
   },
 ] as const
 
-export function WelcomeScreen({ onSendMessage, onToggleMap, onOpenWorkspace }: WelcomeScreenProps) {
+export function WelcomeScreen({
+  onSendMessage,
+  onToggleMap,
+  onOpenWorkspace,
+  recentSessions,
+  activeSessionId,
+  onOpenConversation,
+}: WelcomeScreenProps) {
+  const hasRecentSessions = recentSessions.length > 0
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-5">
-      <div className="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm mb-4">
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 mb-3">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          无需登录，直接开始症状自查
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
-          先描述不适，系统会帮你判断下一步
-        </h1>
-        <p className="text-slate-500 text-sm mt-2 leading-relaxed max-w-2xl">
-          适合发热、咳嗽、头痛、腹痛、乏力等常见情况。系统会继续追问，并给出风险等级、建议科室与附近医院参考。
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-2 mt-4">
-          <button
-            onClick={() => onSendMessage('我想做一次症状自查，请按标准流程开始问我第一个问题。')}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-            >
-              <MessageCircle size={16} />
-            立即开始
-          </button>
-          <button
-            onClick={onOpenWorkspace}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-medium text-cyan-700 hover:bg-cyan-100 transition-colors"
-          >
-            <LogIn size={16} />
-            登录 / 健康空间
-          </button>
-          <button
-            onClick={onToggleMap}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            查看疾病地图
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 mb-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <p className="text-slate-800 text-sm font-semibold">常见问题</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
-            {COMMON_SCENARIOS.map((item) => {
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.label}
-                  onClick={() => onSendMessage(item.sendText)}
-                  className="bg-white border border-slate-200 rounded-2xl p-3 text-left hover:border-blue-300 hover:bg-slate-50 transition-all duration-200 cursor-pointer"
-                >
-                  <Icon size={18} className="text-blue-400 mb-2" />
-                  <p className="text-slate-700 text-xs font-medium leading-snug">{item.label}</p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-4">
-          <p className="text-slate-800 text-sm font-semibold">按人群快速开始</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
-            {GUARDIAN_MODES.map((mode) => {
-              const Icon = mode.icon
-              return (
-                <button
-                  key={mode.label}
-                  onClick={() => onSendMessage(mode.sendText)}
-                  className={`rounded-2xl border px-3 py-3 text-left transition-all hover:shadow-sm ${mode.className}`}
-                >
-                  <Icon size={16} className="mb-2" />
-                  <p className="text-xs font-semibold">{mode.label}</p>
-                  <p className="text-[11px] opacity-80 mt-1">{mode.subtitle}</p>
-                </button>
-              )
-            })}
-          </div>
-          <p className="text-slate-400 text-xs mt-3 mb-2">更多常见症状</p>
-          <SymptomTags onSelect={onSendMessage} />
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 rounded-xl bg-cyan-50 p-2 text-cyan-600">
-              <ShieldPlus size={16} />
+    <div className="max-w-6xl mx-auto px-4 py-5">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.25fr)_360px]">
+        <div className="space-y-4">
+          <div className="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              无需登录，直接开始症状自查
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-800">登录后可使用健康空间</p>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                保存档案、同步历史记录、跨设备继续上次问诊，都集中放在空间里，不影响游客直接使用。
-              </p>
-              <p className="text-[11px] text-cyan-700 mt-2">
-                也可以先载入可编辑参考档案，快速了解个性化推荐和随访提示。
-              </p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
+              先描述不适，系统会帮你判断下一步
+            </h1>
+            <p className="text-slate-500 text-sm mt-2 leading-relaxed max-w-2xl">
+              适合发热、咳嗽、头痛、腹痛、乏力等常见情况。系统会继续追问，并给出风险等级、建议科室与附近医院参考。
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <button
+                onClick={() => onSendMessage('我想做一次症状自查，请按标准流程开始问我第一个问题。')}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+              >
+                <MessageCircle size={16} />
+                立即开始
+              </button>
+              <button
+                onClick={onOpenWorkspace}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-medium text-cyan-700 hover:bg-cyan-100 transition-colors"
+              >
+                <LogIn size={16} />
+                登录 / 健康空间
+              </button>
+              <button
+                onClick={onToggleMap}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                查看疾病地图
+              </button>
+            </div>
+
+            {hasRecentSessions && (
+              <div className="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-3">
+                <p className="text-xs font-semibold text-cyan-800">
+                  最近 {recentSessions.length} 段对话已保留在首页
+                </p>
+                <p className="text-[11px] text-cyan-700 mt-1 leading-relaxed">
+                  返回主界面后就能继续上次问诊，不用再去健康空间里翻找历史记录。
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4">
+              <p className="text-slate-800 text-sm font-semibold">常见问题</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                {COMMON_SCENARIOS.map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => onSendMessage(item.sendText)}
+                      className="bg-white border border-slate-200 rounded-2xl p-3 text-left hover:border-blue-300 hover:bg-slate-50 transition-all duration-200 cursor-pointer"
+                    >
+                      <Icon size={18} className="text-blue-400 mb-2" />
+                      <p className="text-slate-700 text-xs font-medium leading-snug">{item.label}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-4">
+              <p className="text-slate-800 text-sm font-semibold">按人群快速开始</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+                {GUARDIAN_MODES.map((mode) => {
+                  const Icon = mode.icon
+                  return (
+                    <button
+                      key={mode.label}
+                      onClick={() => onSendMessage(mode.sendText)}
+                      className={`rounded-2xl border px-3 py-3 text-left transition-all hover:shadow-sm ${mode.className}`}
+                    >
+                      <Icon size={16} className="mb-2" />
+                      <p className="text-xs font-semibold">{mode.label}</p>
+                      <p className="text-[11px] opacity-80 mt-1">{mode.subtitle}</p>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-slate-400 text-xs mt-3 mb-2">更多常见症状</p>
+              <SymptomTags onSelect={onSendMessage} />
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-cyan-50 p-2 text-cyan-600">
+                  <ShieldPlus size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">登录后可使用健康空间</p>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    保存档案、同步历史记录、跨设备继续上次问诊，都集中放在空间里，不影响游客直接使用。
+                  </p>
+                  <p className="text-[11px] text-cyan-700 mt-2">
+                    也可以先载入可编辑参考档案，快速了解个性化推荐和随访提示。
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        <ConversationHistoryPanel
+          sessions={recentSessions}
+          activeSessionId={activeSessionId}
+          onOpenSession={onOpenConversation}
+          title="继续最近对话"
+          description="最近聊天线程会直接展示在首页，返回后能马上接着问，不必再去健康空间里翻找。"
+          maxItems={5}
+          showStartButton={false}
+          emptyMessage="完成第一次问诊后，最近对话会出现在这里。下次回来时可以直接继续，不必重新描述全部症状。"
+        />
       </div>
     </div>
   )

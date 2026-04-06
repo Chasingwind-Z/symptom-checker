@@ -21,9 +21,71 @@ export interface SupabaseBootstrapStatus {
 export interface SupabaseAuthActionResult {
   ok: boolean;
   message: string;
+  email?: string;
+  nextStep?: 'magic-link-sent' | 'verify-email' | 'signed-in' | 'signed-out';
 }
 
 const shouldLogSupabase = import.meta.env.DEV;
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+export function maskEmail(email: string | null | undefined) {
+  if (!email) return '';
+
+  const normalizedEmail = normalizeEmail(email);
+  const [localPart, domain] = normalizedEmail.split('@');
+  if (!localPart || !domain) {
+    return normalizedEmail;
+  }
+
+  const visibleLocal = localPart.slice(0, Math.min(2, localPart.length));
+  return `${visibleLocal}${'*'.repeat(Math.max(localPart.length - visibleLocal.length, 1))}@${domain}`;
+}
+
+function toFriendlyAuthErrorMessage(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes('unable to validate email address') ||
+    normalizedMessage.includes('invalid email')
+  ) {
+    return '请输入有效的邮箱地址。';
+  }
+
+  if (normalizedMessage.includes('invalid login credentials')) {
+    return '邮箱或密码不正确，请检查后重试，也可以改用邮箱登录链接。';
+  }
+
+  if (normalizedMessage.includes('email not confirmed')) {
+    return '这个邮箱还没有完成验证，请先打开验证邮件，或重新发送邮箱登录链接。';
+  }
+
+  if (
+    normalizedMessage.includes('already registered') ||
+    normalizedMessage.includes('user already registered')
+  ) {
+    return '这个邮箱已经有账号了，直接登录或发送邮箱登录链接即可。';
+  }
+
+  if (
+    normalizedMessage.includes('rate limit') ||
+    normalizedMessage.includes('security purposes')
+  ) {
+    return '发送过于频繁，请稍等约 1 分钟后再试。';
+  }
+
+  if (
+    normalizedMessage.includes('failed to fetch') ||
+    normalizedMessage.includes('network request failed') ||
+    normalizedMessage.includes('networkerror')
+  ) {
+    return '网络连接不稳定，暂时无法连接云端，请稍后重试。';
+  }
+
+  return message;
+}
 
 export function getSupabaseClient(): AppSupabaseClient | null {
   if (!isSupabaseConfigured) return null;
@@ -56,23 +118,23 @@ export function getSupabaseBootstrapStatus(): SupabaseBootstrapStatus {
   if (initError) {
     return {
       state: 'error',
-      label: '云端同步暂不可用',
-      helperText: '当前自动降级为游客模式，资料仍会保存在当前浏览器。',
+      label: '邮箱同步暂不可用',
+      helperText: '当前先回退到游客模式，资料仍会保存在当前浏览器。',
     };
   }
 
   if (!isSupabaseConfigured) {
     return {
       state: 'unconfigured',
-      label: '游客模式（仅当前浏览器保存）',
-      helperText: '可直接开始问诊；登录后可同步档案、历史会话和随访结果。',
+      label: '游客模式（仅保存在当前浏览器）',
+      helperText: '可直接开始问诊；接入 Supabase 后即可启用邮箱登录同步。',
     };
   }
 
   return {
     state: 'ready',
-    label: '已支持邮箱登录同步',
-    helperText: '登录后可跨设备查看健康档案、历史会话与同步结果。',
+    label: '支持邮箱登录同步',
+    helperText: '先输入邮箱即可继续；登录后可跨设备查看档案、历史会话与同步结果。',
   };
 }
 
@@ -107,7 +169,7 @@ export async function getSupabaseUser(): Promise<User | null> {
 }
 
 export async function sendMagicLink(email: string): Promise<SupabaseAuthActionResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) {
     return {
       ok: false,
@@ -139,13 +201,16 @@ export async function sendMagicLink(email: string): Promise<SupabaseAuthActionRe
     }
     return {
       ok: false,
-      message: error.message,
+      email: normalizedEmail,
+      message: toFriendlyAuthErrorMessage(error.message),
     };
   }
 
   return {
     ok: true,
-    message: `登录链接已发送到 ${normalizedEmail}，请在邮箱中打开后返回本页继续使用。`,
+    email: normalizedEmail,
+    nextStep: 'magic-link-sent',
+    message: `登录链接已发送到 ${maskEmail(normalizedEmail)}。请打开邮件中的继续登录按钮，然后回到这里继续同步。`,
   };
 }
 
@@ -154,12 +219,12 @@ export async function signInWithMagicLink(email: string): Promise<SupabaseAuthAc
 }
 
 export async function signUpWithPassword(email: string, password: string): Promise<SupabaseAuthActionResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail || !password) {
     return { ok: false, message: '请输入邮箱和密码。' };
   }
   if (password.length < 6) {
-    return { ok: false, message: '密码至少需要 6 位。' };
+    return { ok: false, message: '请设置至少 6 位密码。' };
   }
 
   const client = getSupabaseClient();
@@ -167,23 +232,89 @@ export async function signUpWithPassword(email: string, password: string): Promi
     return { ok: false, message: '云端服务暂不可用，请稍后重试。' };
   }
 
-  const { error } = await client.auth.signUp({
+  const { data, error } = await client.auth.signUp({
     email: normalizedEmail,
     password,
+    options: {
+      emailRedirectTo: getEmailRedirectUrl(),
+    },
   });
 
   if (error) {
-    if (error.message.includes('already registered')) {
-      return { ok: false, message: '该邮箱已注册，请直接登录。' };
-    }
-    return { ok: false, message: error.message };
+    return {
+      ok: false,
+      email: normalizedEmail,
+      message: toFriendlyAuthErrorMessage(error.message),
+    };
   }
 
-  return { ok: true, message: '注册成功！请检查邮箱完成验证后登录。' };
+  const isExistingAccount =
+    Array.isArray(data.user?.identities) && data.user.identities.length === 0;
+
+  if (isExistingAccount) {
+    return {
+      ok: false,
+      email: normalizedEmail,
+      message: '这个邮箱已经有账号了，直接登录或发送邮箱登录链接即可。',
+    };
+  }
+
+  if (data.session) {
+    return {
+      ok: true,
+      email: normalizedEmail,
+      nextStep: 'signed-in',
+      message: '注册完成，正在同步你的资料。',
+    };
+  }
+
+  return {
+    ok: true,
+    email: normalizedEmail,
+    nextStep: 'verify-email',
+    message: `验证邮件已发送到 ${maskEmail(normalizedEmail)}。完成验证后即可回到这里继续同步。`,
+  };
+}
+
+export async function resendVerificationEmail(
+  email: string
+): Promise<SupabaseAuthActionResult> {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return { ok: false, message: '请输入常用邮箱后再继续。' };
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return { ok: false, message: '云端服务暂不可用，请稍后重试。' };
+  }
+
+  const { error } = await client.auth.resend({
+    type: 'signup',
+    email: normalizedEmail,
+    options: {
+      emailRedirectTo: getEmailRedirectUrl(),
+    },
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      email: normalizedEmail,
+      message: toFriendlyAuthErrorMessage(error.message),
+    };
+  }
+
+  return {
+    ok: true,
+    email: normalizedEmail,
+    nextStep: 'verify-email',
+    message: `验证邮件已重新发送到 ${maskEmail(normalizedEmail)}。请打开邮件完成验证。`,
+  };
 }
 
 export async function signInWithPassword(email: string, password: string): Promise<SupabaseAuthActionResult> {
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail || !password) {
     return { ok: false, message: '请输入邮箱和密码。' };
   }
@@ -199,13 +330,20 @@ export async function signInWithPassword(email: string, password: string): Promi
   });
 
   if (error) {
-    if (error.message.includes('Invalid login credentials')) {
-      return { ok: false, message: '邮箱或密码不正确，请检查后重试。' };
-    }
-    return { ok: false, message: error.message };
+    return {
+      ok: false,
+      email: normalizedEmail,
+      nextStep: error.message.toLowerCase().includes('email not confirmed') ? 'verify-email' : undefined,
+      message: toFriendlyAuthErrorMessage(error.message),
+    };
   }
 
-  return { ok: true, message: '登录成功！' };
+  return {
+    ok: true,
+    email: normalizedEmail,
+    nextStep: 'signed-in',
+    message: `欢迎回来，${maskEmail(normalizedEmail)} 的资料正在同步。`,
+  };
 }
 
 export async function signOutSupabase(): Promise<SupabaseAuthActionResult> {
@@ -226,13 +364,14 @@ export async function signOutSupabase(): Promise<SupabaseAuthActionResult> {
     }
     return {
       ok: false,
-      message: error.message,
+      message: toFriendlyAuthErrorMessage(error.message),
     };
   }
 
   return {
     ok: true,
-    message: '已退出云端账号，当前继续使用本机缓存。',
+    nextStep: 'signed-out',
+    message: '已退出邮箱同步，当前继续使用本机缓存。',
   };
 }
 

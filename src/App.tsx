@@ -97,6 +97,8 @@ export default function App() {
   const effectivePage = currentPage === 'home' && messages.length > 0 ? 'chat' : currentPage;
   const showWorkspace = effectivePage === 'workspace';
   const showWelcome = !showWorkspace && messages.length === 0;
+  const showConversationShelf = !showWorkspace && !showWelcome && conversationSessions.length > 0;
+  const contentWidthClass = showWorkspace ? 'max-w-5xl' : showWelcome ? 'max-w-6xl' : 'max-w-4xl';
 
   if (effectivePage === 'map') {
     return <EpidemicDashboard onBack={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')} />
@@ -125,7 +127,7 @@ export default function App() {
         className="flex-1 overflow-y-auto px-3 md:px-6"
         style={{ paddingTop: '8px', paddingBottom: '132px' }}
       >
-        <div className={`${showWorkspace ? 'max-w-5xl' : 'max-w-2xl'} mx-auto w-full`}>
+        <div className={`${contentWidthClass} mx-auto w-full`}>
           {showWorkspace && (
             <div className="py-5 space-y-4">
               <section className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
@@ -180,11 +182,28 @@ export default function App() {
               onSendMessage={handleSendMessage}
               onOpenWorkspace={() => setCurrentPage('workspace')}
               onToggleMap={() => setCurrentPage('map')}
+              recentSessions={conversationSessions}
+              activeSessionId={activeSessionId}
+              onOpenConversation={handleOpenConversation}
             />
           )}
 
           {!showWorkspace && messages.length > 0 && (
-            <div className="mt-2">
+            <div className="mt-2 space-y-3">
+              {showConversationShelf && (
+                <ConversationHistoryPanel
+                  sessions={conversationSessions}
+                  activeSessionId={activeSessionId}
+                  onOpenSession={handleOpenConversation}
+                  onStartNewSession={handleResetChat}
+                  title="最近对话"
+                  description="在主聊天界面就能切换到之前的问诊线程，继续补充新的症状变化。"
+                  maxItems={6}
+                  variant="shelf"
+                  startButtonLabel="新对话"
+                />
+              )}
+
               {/* Progress bar — in-flow, scrolls with content */}
               <DiagnosisProgress messages={messages} diagnosisResult={diagnosisResult} />
               {messages.map((msg) => (

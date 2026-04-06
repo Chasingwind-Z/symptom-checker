@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   applyDemoPersona,
   getDefaultProfileDraft,
@@ -22,14 +22,31 @@ const INITIAL_WORKSPACE: HealthWorkspaceSnapshot = {
 export function useHealthWorkspace() {
   const [workspace, setWorkspace] = useState<HealthWorkspaceSnapshot>(INITIAL_WORKSPACE);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshRequestRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestId = refreshRequestRef.current + 1;
+    refreshRequestRef.current = requestId;
     setIsRefreshing(true);
+
     try {
       const snapshot = await loadHealthWorkspace();
-      setWorkspace(snapshot);
+      if (refreshRequestRef.current === requestId) {
+        setWorkspace(snapshot);
+      }
+    } catch {
+      if (refreshRequestRef.current === requestId) {
+        setWorkspace((prev) => ({
+          ...prev,
+          mode: 'error',
+          statusLabel: '个人空间刷新失败',
+          helperText: '这次没有成功读取邮箱同步状态，已保留当前资料和本机缓存，可稍后重试。',
+        }));
+      }
     } finally {
-      setIsRefreshing(false);
+      if (refreshRequestRef.current === requestId) {
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
