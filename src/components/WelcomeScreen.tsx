@@ -190,9 +190,9 @@ export function WelcomeScreen({
   const hasPersonalizedScenarios = personalizedScenarios.length > 0
 
   return (
-    <div className="w-full py-5">
-      <div className="space-y-3">
-        <div className="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm">
+    <div className="w-full py-6 sm:py-7">
+      <div className="space-y-4">
+        <div className="rounded-3xl border border-slate-200 bg-white/95 px-5 pb-5 pt-4 shadow-sm">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
             <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
             {sessionEmail ? `已同步 · ${maskedSessionEmail}` : '无需登录，直接开始症状自查'}
@@ -233,37 +233,24 @@ export function WelcomeScreen({
               健康地图
             </button>
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3">
-          <div className="space-y-2">
-            {hasPersonalizedScenarios && (
-              <p className="text-xs text-slate-500">
-                已优先参考你保存的档案和近期记录；不符合的话，也可以直接描述这次不适。
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {scenarioChips.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => onSendMessage(item.sendText)}
-                  className="rounded-full border px-4 py-2 text-xs text-slate-700 transition-colors hover:border-blue-300 hover:bg-slate-50"
-                >
-                  {item.label}
-                </button>
-              ))}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">选择更贴近的问诊模式</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  儿童、老人和慢病人群会直接走更保守的追问和风险判断。
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {GUARDIAN_MODES.map((mode) => {
                 const Icon = mode.icon
                 return (
                   <button
                     key={mode.label}
                     onClick={() => onSendMessage(mode.sendText)}
-                    className={`rounded-2xl border px-3 py-2 text-left transition-all hover:shadow-sm ${mode.className}`}
+                    className={`rounded-2xl border px-3 py-3 text-left transition-all hover:shadow-sm ${mode.className}`}
                   >
                     <Icon size={16} className="mb-2" />
                     <p className="text-xs font-semibold">{mode.label}</p>
@@ -275,17 +262,38 @@ export function WelcomeScreen({
           </div>
         </div>
 
-        <div className="lg:hidden">
-          <ConversationHistoryPanel
-            sessions={recentSessions}
-            activeSessionId={activeSessionId}
-            onOpenSession={onOpenConversation}
-            title="最近对话"
-            description="手机端也能在这里继续之前的问诊线程。"
-            maxItems={5}
-            showStartButton={false}
-            emptyMessage="完成第一次问诊后，最近对话会出现在这里。下次回来时可以直接继续，不必重新描述全部症状。"
-          />
+        <div className="grid grid-cols-1 gap-3">
+          <div className="space-y-2">
+            {hasPersonalizedScenarios && (
+              <p className="text-xs text-slate-500">
+                这些入口已结合你保存的档案和近期记录；不符合的话，也可以直接描述这次不适。
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {scenarioChips.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => onSendMessage(item.sendText)}
+                  className="rounded-full border border-transparent bg-slate-100 px-3.5 py-1.5 text-xs text-slate-700 transition-colors hover:bg-slate-200"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="lg:hidden">
+            <ConversationHistoryPanel
+              sessions={recentSessions}
+              activeSessionId={activeSessionId}
+              onOpenSession={onOpenConversation}
+              title="最近对话"
+              description="手机端也能在这里继续之前的问诊线程。"
+              maxItems={5}
+              showStartButton={false}
+              emptyMessage="完成第一次问诊后，最近对话会出现在这里。下次回来时可以直接继续，不必重新描述全部症状。"
+            />
+          </div>
         </div>
       </div>
     </div>

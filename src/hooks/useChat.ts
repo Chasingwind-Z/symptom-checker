@@ -129,7 +129,7 @@ function buildAttachmentContext(attachments: ChatImageAttachment[]): string {
     `用户本轮附带了 ${attachments.length} 张医疗相关图片。${
       VISION_INPUT_ENABLED
         ? '当前模型可接收图片，请先概括你能直接看到的异常、药盒/报告上的可读文字，再明确哪些结论仍不能仅凭图片确认。'
-        : '当前环境未启用像素级视觉识别，请把图片当作辅助背景，并主动要求用户补充部位、持续时间、疼痛/瘙痒/发热等文字信息。'
+        : '当前 AI 环境不具备图片像素识别能力，图片未以视觉方式传入，下方仅为文件元数据。请主动引导用户用文字描述图片内容（部位、颜色、范围、持续时间等），不要依赖图片信息做分诊判断。'
     }`,
     ...attachments.map(
       (attachment, index) =>

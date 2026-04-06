@@ -37,6 +37,10 @@ import type {
   ToolCall,
 } from '../types';
 
+const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
+  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
+);
+
 const DISTRICTS = [
   '朝阳区',
   '海淀区',
@@ -1003,7 +1007,9 @@ export function ResultCard({
                         </p>
                         {latestImageAttachmentCount > 0 && (
                           <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-                            本次已上传 {latestImageAttachmentCount} 张图片；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。
+                            {VISION_INPUT_ENABLED
+                              ? `本次已上传并发送了 ${latestImageAttachmentCount} 张图片给视觉模型；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`
+                              : `本次已上传 ${latestImageAttachmentCount} 张图片（以文字上下文辅助分析）；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`}
                           </p>
                         )}
                       </div>

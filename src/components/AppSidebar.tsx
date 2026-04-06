@@ -26,8 +26,8 @@ export type SidebarSection =
   | 'medication'
   | 'settings';
 
-export const DESKTOP_SIDEBAR_EXPANDED_WIDTH = 320;
-export const DESKTOP_SIDEBAR_COLLAPSED_WIDTH = 96;
+export const DESKTOP_SIDEBAR_EXPANDED_WIDTH = 256;
+export const DESKTOP_SIDEBAR_COLLAPSED_WIDTH = 72;
 
 interface AppSidebarProps {
   activeSection: SidebarSection | 'chat' | 'map' | null;
@@ -99,12 +99,12 @@ function SidebarNavButton({
       aria-current={isActive ? 'page' : undefined}
       className={`relative flex w-full items-center rounded-xl text-left transition-colors ${
         isCollapsed
-          ? `justify-center px-0 py-3 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`
-          : `gap-2.5 px-3 py-2 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`
+          ? `justify-center px-0 py-2 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`
+          : `gap-2 px-2.5 py-1.5 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`
       }`}
     >
       <span
-        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
           isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'
         }`}
       >
@@ -263,8 +263,8 @@ export function AppSidebar({
 
   return (
     <aside
-      className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-slate-200 bg-white/92 py-4 backdrop-blur-xl transition-[width,padding] duration-300 lg:flex ${
-        isCollapsed ? 'w-24 px-3' : 'w-[320px] px-4'
+      className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-slate-200 bg-white/92 py-3 backdrop-blur-xl transition-[width,padding] duration-300 lg:flex ${
+        isCollapsed ? 'w-[72px] px-2' : 'w-[256px] px-3'
       }`}
     >
       <div
@@ -294,15 +294,15 @@ export function AppSidebar({
         type="button"
         onClick={onStartNewSession}
         title="新建问诊"
-        className={`mt-3 inline-flex items-center justify-center rounded-xl bg-blue-600 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 ${
-          isCollapsed ? 'h-11 w-11 self-center px-0' : 'gap-2 px-4 py-2'
+        className={`mt-2 inline-flex items-center justify-center rounded-xl bg-blue-600 text-[13px] font-medium text-white transition-colors hover:bg-blue-700 ${
+          isCollapsed ? 'h-9 w-9 self-center px-0' : 'gap-2 px-3 py-1.5'
         }`}
       >
         <Plus size={15} />
         {!isCollapsed && '新建问诊'}
       </button>
 
-      <nav className={`mt-3 ${isCollapsed ? 'space-y-2' : 'space-y-0.5'}`}>
+      <nav className={`mt-2 ${isCollapsed ? 'space-y-1.5' : 'space-y-0.5'}`}>
         <SidebarNavButton
           label="当前问诊"
           isActive={activeSection === 'chat'}
@@ -355,7 +355,7 @@ export function AppSidebar({
         />
       </nav>
 
-      <div className="mt-3 border-t border-slate-100 pt-3">
+      <div className="mt-2 border-t border-slate-100 pt-2">
         <SidebarNavButton
           label="问诊设置"
           isActive={activeSection === 'settings'}
@@ -367,7 +367,7 @@ export function AppSidebar({
 
       {!isCollapsed && (
         <>
-          <section className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-2.5 py-2.5">
+          <section className="mt-2 rounded-xl border border-slate-100 bg-slate-50/80 px-2 py-2">
             <p className="px-2 text-[11px] font-medium tracking-[0.08em] text-slate-500">为你推荐</p>
             <div className="mt-1.5 space-y-0.5">
               {personalizedItems.map((item) => (
@@ -399,7 +399,7 @@ export function AppSidebar({
             </div>
           </section>
 
-          <div className="mt-3 min-h-0 flex-1 overflow-hidden">
+          <div className="mt-2 min-h-0 flex-1 overflow-hidden">
             <ConversationHistoryPanel
               sessions={sessions}
               activeSessionId={activeSessionId}
@@ -423,7 +423,7 @@ export function AppSidebar({
         </>
       )}
 
-      <div className="mt-3 border-t border-slate-100 px-1 pt-3">
+      <div className="mt-2 border-t border-slate-100 px-1 pt-2">
         {isCollapsed ? (
           <div className="space-y-3">
             <div className="flex justify-center">

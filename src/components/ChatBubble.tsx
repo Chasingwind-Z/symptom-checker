@@ -7,6 +7,10 @@ import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { ToolCallIndicator } from './ToolCallIndicator';
 
+const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
+  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
+);
+
 interface ChatBubbleProps {
   message: Message;
   isStreaming?: boolean;
@@ -251,7 +255,9 @@ export function ChatBubble({
               >
                 <div className="flex flex-col items-center gap-2">
                   <ImageIcon size={18} className="opacity-80" />
-                  <p className="text-xs font-medium">图片已在本次会话中用于辅助分析</p>
+                  <p className="text-xs font-medium">
+                    {VISION_INPUT_ENABLED ? '图片已发送给视觉模型' : '图片文件名已包含在分析上下文中'}
+                  </p>
                   <p className="text-[11px] leading-relaxed opacity-80">
                     为避免浏览器缓存超限，刷新后只保留文件名，不再展示完整预览。
                   </p>
@@ -272,7 +278,13 @@ export function ChatBubble({
                     : 'border border-slate-200 bg-white text-slate-500'
                 }`}
               >
-                {attachment.previewUrl ? '仅作辅助参考' : '预览已省略'}
+                {attachment.previewUrl
+                  ? VISION_INPUT_ENABLED
+                    ? '已发送给视觉模型'
+                    : '辅助文字分析'
+                  : VISION_INPUT_ENABLED
+                    ? '已发送（预览已省略）'
+                    : '辅助分析（预览已省略）'}
               </span>
             </div>
           </div>

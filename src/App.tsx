@@ -816,13 +816,13 @@ export default function App() {
       ? 'max-w-6xl'
       : 'max-w-5xl'
     : showWelcome
-      ? 'max-w-5xl'
+      ? 'max-w-4xl'
       : experienceSettings.chatDensity === 'compact'
         ? 'max-w-5xl'
         : 'max-w-4xl';
   const chatThreadClass =
     experienceSettings.chatDensity === 'compact' ? 'mt-1 space-y-2 py-3' : 'mt-2 space-y-3 py-4';
-  const chatScrollPaddingBottom = showWorkspace
+  const chatScrollPaddingBottom = showWorkspace || showWelcome
     ? '40px'
     : `${Math.max(148, chatInputLayout.height + chatInputLayout.keyboardOffset + 20)}px`;
 
@@ -1302,6 +1302,14 @@ export default function App() {
               />
             )}
 
+            {showWelcome && (
+              <ChatInput
+                variant="inline"
+                onSend={handleSendMessage}
+                isLoading={isLoading}
+              />
+            )}
+
             {!showWorkspace && messages.length > 0 && (
               <div className={chatThreadClass}>
                 {showConversationShelf && (
@@ -1419,7 +1427,7 @@ export default function App() {
           </div>
         </div>
 
-        {!showWorkspace && (
+        {!showWorkspace && !showWelcome && (
           <ChatInput
             onSend={handleSendMessage}
             isLoading={isLoading}

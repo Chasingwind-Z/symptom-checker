@@ -23,6 +23,9 @@ interface ChatInputProps {
   withDesktopSidebar?: boolean;
   desktopSidebarWidth?: number;
   onLayoutChange?: (layout: ChatInputLayoutMetrics) => void;
+  /** 'floating' (default) – fixed overlay used in active chat.
+   *  'inline' – normal-flow card used on the home/welcome screen. */
+  variant?: 'floating' | 'inline';
 }
 
 const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
@@ -124,12 +127,12 @@ function buildHelperText(attachmentCount: number): string {
   if (attachmentCount === 0) {
     return VISION_INPUT_ENABLED
       ? '支持文字、语音和最多 3 张图片；药盒、检查单图片会优先尝试识别可见文字。'
-      : '支持文字、语音和最多 3 张图片；当前环境仍以文字判断为主。';
+      : '支持文字、语音和图片（最多 3 张）。当前 AI 不直接识别像素，图片以文件名与类型作为文字上下文辅助分析。';
   }
 
   return VISION_INPUT_ENABLED
     ? `已附加 ${attachmentCount} 张图片，可先看图中异常或可读文字；建议继续补充部位、持续时间和伴随症状。`
-    : `已附加 ${attachmentCount} 张图片；当前未启用视觉模型，建议继续补充部位、持续时间和伴随症状。`;
+    : `已附加 ${attachmentCount} 张图片（文件名已作为文字上下文）；请继续描述部位、持续时间和症状以便更准确分析。`;
 }
 
 function buildPlaceholder(attachmentCount: number): string {
@@ -146,9 +149,11 @@ export function ChatInput({
   onSend,
   isLoading,
   withDesktopSidebar = false,
-  desktopSidebarWidth = 320,
+  desktopSidebarWidth = 256,
   onLayoutChange,
+  variant = 'floating',
 }: ChatInputProps) {
+  const isInline = variant === 'inline';
   const [value, setValue] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState<ChatImageAttachment[]>([]);
@@ -279,7 +284,7 @@ export function ChatInput({
     const SpeechRecognition =
       speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('您的浏览器不支持语音输入，请使用 Chrome 或 Safari');
+      setUploadError('当前浏览器不支持语音输入，请使用 Chrome / Safari，或直接输入文字描述。');
       return;
     }
 
@@ -321,7 +326,11 @@ export function ChatInput({
     if (!file) return;
 
     if (attachmentCount >= MAX_IMAGE_ATTACHMENTS) {
-      setUploadError(`最多上传 ${MAX_IMAGE_ATTACHMENTS} 张图片，请先移除不需要的图片。`);
+      setUploadError(
+        VISION_INPUT_ENABLED
+          ? `最多同时附加 ${MAX_IMAGE_ATTACHMENTS} 张图片——超过后单轮 token 用量会过大。请先移除不需要的图片。`
+          : `最多同时附加 ${MAX_IMAGE_ATTACHMENTS} 张图片——图片文件信息会以文字形式加入提示词，超过后提示词会过长。请先移除不需要的图片。`
+      );
       return;
     }
 
@@ -355,21 +364,27 @@ export function ChatInput({
     }
   };
 
-  const containerStyle: CSSProperties & Record<'--desktop-sidebar-width', string> = {
-    bottom: `${keyboardOffset}px`,
-    paddingBottom: keyboardOffset > 0 ? '12px' : 'max(12px, env(safe-area-inset-bottom))',
-    '--desktop-sidebar-width': withDesktopSidebar ? `${desktopSidebarWidth}px` : '0px',
-  };
+  const containerStyle: CSSProperties & Record<'--desktop-sidebar-width', string> = isInline
+    ? { '--desktop-sidebar-width': '0px' }
+    : {
+        bottom: `${keyboardOffset}px`,
+        paddingBottom: keyboardOffset > 0 ? '12px' : 'max(12px, env(safe-area-inset-bottom))',
+        '--desktop-sidebar-width': withDesktopSidebar ? `${desktopSidebarWidth}px` : '0px',
+      };
 
   return (
     <div
       ref={containerRef}
-      className={`fixed left-0 right-0 z-40 bg-gradient-to-t from-white/95 via-white/88 to-transparent px-3 pt-3 ${
-        withDesktopSidebar ? 'lg:left-[var(--desktop-sidebar-width)]' : ''
-      } sm:px-4`}
+      className={
+        isInline
+          ? 'w-full pt-2 pb-4'
+          : `fixed left-0 right-0 z-40 bg-gradient-to-t from-white/95 via-white/88 to-transparent px-3 pt-3 ${
+              withDesktopSidebar ? 'lg:left-[var(--desktop-sidebar-width)]' : ''
+            } sm:px-4`
+      }
       style={containerStyle}
     >
-      <div className="mx-auto max-w-2xl">
+      <div className={isInline ? 'w-full' : 'mx-auto max-w-2xl'}>
         <input
           ref={fileInputRef}
           type="file"
@@ -380,8 +395,14 @@ export function ChatInput({
           disabled={isLoading || attachmentCount >= MAX_IMAGE_ATTACHMENTS}
         />
 
-        <div className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/95 shadow-[0_-16px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl">
-          <div className="h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
+        <div
+          className={
+            isInline
+              ? 'overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-sm'
+              : 'overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/95 shadow-[0_-16px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl'
+          }
+        >
+          {!isInline && <div className="h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />}
 
           <div className="px-3 pb-3 pt-3 sm:px-4">
             {uploadError && (
@@ -413,7 +434,7 @@ export function ChatInput({
                         已附加 {attachmentCount} 张图片
                       </p>
                       <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                        {VISION_INPUT_ENABLED ? '图片辅助分析已启用' : '仍以文字判断为主'}
+                        {VISION_INPUT_ENABLED ? '图片将直接发送给视觉模型' : '图片以文字上下文方式辅助'}
                       </span>
                       {remainingAttachmentSlots > 0 && (
                         <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
@@ -481,7 +502,9 @@ export function ChatInput({
             <div
               className={`rounded-[26px] border px-2.5 py-2.5 transition-all duration-200 ${
                 isInputFocused
-                  ? 'border-blue-300 bg-white shadow-[0_10px_30px_rgba(59,130,246,0.14)]'
+                  ? isInline
+                    ? 'border-blue-300 bg-white shadow-sm'
+                    : 'border-blue-300 bg-white shadow-[0_10px_30px_rgba(59,130,246,0.14)]'
                   : 'border-slate-200 bg-slate-50/90 shadow-sm'
               }`}
             >
@@ -585,16 +608,18 @@ export function ChatInput({
               </div>
             </div>
 
-            <div className="mt-2 flex items-start gap-2 rounded-2xl bg-slate-50/90 px-3 py-2.5 text-[11px] text-slate-500">
-              <ShieldAlert size={12} className="mt-0.5 flex-shrink-0 text-amber-500" />
-              <p className="leading-relaxed">
-                可上传最多 3 张皮疹、伤口、化验单或药盒照片作为辅助信息。
-                {VISION_INPUT_ENABLED
-                  ? ' 当前模型若支持视觉，会先参考图片里可见的异常或文字，再结合你的文字做谨慎分诊。'
-                  : ' 当前环境未启用真实视觉模型，系统会把图片当作辅助背景，引导你补充更关键的文字信息。'}
-                不会仅凭图片下诊断，完整图片预览主要保留在当前会话中。
-              </p>
-            </div>
+            {!isInline && (
+              <div className="mt-2 flex items-start gap-2 rounded-2xl bg-slate-50/90 px-3 py-2.5 text-[11px] text-slate-500">
+                <ShieldAlert size={12} className="mt-0.5 flex-shrink-0 text-amber-500" />
+                <p className="leading-relaxed">
+                  可上传最多 3 张皮疹、伤口、化验单或药盒照片（3 张限制是为了控制单轮提示词长度）。
+                  {VISION_INPUT_ENABLED
+                    ? ' 当前视觉模型已启用，图片像素会直接发送给 AI，可先参考图片里可见的异常或文字，再结合你的描述做谨慎分诊。'
+                    : ' 当前 AI 环境不具备图片像素识别能力，图片不会被模型"看到"——仅文件名与类型以文字形式告知助手，用于引导你补充描述。'}
+                  不会仅凭图片下诊断，完整图片预览主要保留在当前会话中。
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
