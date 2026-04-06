@@ -369,9 +369,9 @@ function createDistrictRiskData(params: {
     ),
     sourceNote:
       params.sourceNote ??
-      `当前口径综合了官方公开资料摘要、季节/天气因子与匿名症状样本（${seasonalSignal.label}）。`,
+      `此卡属于趋势参考口径：综合官方公开资料摘要、季节/天气因子与匿名症状样本（${seasonalSignal.label}），用于解释区域变化方向，不等同于疾控通报。`,
     lastUpdated: getLastUpdatedLabel(),
-    dataLabel: params.dataLabel ?? `趋势参考 · ${seasonalSignal.label}`,
+    dataLabel: params.dataLabel ?? `趋势参考口径 · ${seasonalSignal.label}`,
   }
 }
 
@@ -690,9 +690,9 @@ export function mergeLocalReports(data: DistrictRiskData[]): DistrictRiskData[] 
           : '近期回访提醒权重小幅抬升',
         ...d.alertReasons,
       ].slice(0, 3),
-      sourceNote: `匿名问诊上报与回访信号已实时叠加（近 48 小时 ${recentReports || extra} 条上报，${unresolvedFollowUps} 条待恢复回访） + ${d.sourceNote}`,
+      sourceNote: `已叠加近 48 小时脱敏匿名分诊与回访信号（${recentReports || extra} 条新增上报，${unresolvedFollowUps} 条待恢复回访），用于提升早期感知灵敏度；${d.sourceNote}`,
       lastUpdated: getLastUpdatedLabel(),
-      dataLabel: '近期自查信号已叠加',
+      dataLabel: '匿名信号叠加 · 趋势参考',
     }
   })
 }

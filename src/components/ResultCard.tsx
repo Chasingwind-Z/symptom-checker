@@ -556,6 +556,17 @@ export function ResultCard({
     [profile, recentCases, result]
   );
   const medicationAdvice = useMemo(() => getMedicationGuidance(result, profile), [result, profile]);
+  const hasMedicationProfileContext = useMemo(() => {
+    if (!profile) return false;
+
+    return Boolean(
+      profile.birthYear ||
+        profile.medicalNotes.trim() ||
+        profile.chronicConditions.trim() ||
+        profile.allergies.trim() ||
+        profile.currentMedications.trim()
+    );
+  }, [profile]);
 
   function toggleCheck(i: 0 | 1 | 2) {
     setChecked((prev) => {
@@ -819,6 +830,11 @@ export function ResultCard({
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                   优先给出更安全的 OTC / 家庭处理方向；若风险较高，会明确提醒尽快线下就医。
                 </p>
+                {hasMedicationProfileContext && (
+                  <div className="mt-2 inline-flex items-center rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-[10px] text-violet-700">
+                    已结合年龄、慢病、过敏史和现用药做过一轮筛选
+                  </div>
+                )}
                 <div className="mt-3 space-y-2.5">
                   {medicationAdvice.map((item) => (
                     <div

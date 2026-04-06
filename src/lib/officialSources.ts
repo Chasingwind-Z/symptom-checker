@@ -261,8 +261,10 @@ function createSyncStatus(
     freshness:
       overrides.freshness ?? deriveFreshness(lastSyncTime || latestRecordTime, fallbackActive),
     sourceLabel: overrides.sourceLabel ?? DEFAULT_SOURCE_LABEL,
-    summary: overrides.summary ?? '已准备官方公开资料摘要。',
-    note: overrides.note ?? '仅展示公开来源摘要，供与本次问诊结果交叉参考，不替代线下医生诊断。',
+    summary: overrides.summary ?? '已整理相关官方公开资料。',
+    note:
+      overrides.note ??
+      '用于与趋势参考交叉阅读，帮助核对防护建议、就医路径与疾病背景，不替代医生诊疗。',
     lastSyncTime,
     latestRecordTime,
     fallbackActive,
@@ -338,11 +340,11 @@ function readPersistedBundle(contextKey: string): OfficialSourceBundle | null {
           summary:
             typeof parsed.syncStatus?.summary === 'string'
               ? parsed.syncStatus.summary
-              : '显示最近一次同步的官方公开资料摘要。',
+              : '显示最近一次已核对的官方公开资料摘要。',
           note:
             typeof parsed.syncStatus?.note === 'string'
               ? parsed.syncStatus.note
-              : '当前网络不可用时，会继续展示最近一次成功同步的官方参考摘要。',
+              : '当前无法刷新时，会继续展示最近一次可用的公开资料摘要。',
           lastSyncTime:
             typeof parsed.syncStatus?.lastSyncTime === 'string' ? parsed.syncStatus.lastSyncTime : '',
           latestRecordTime,
@@ -440,12 +442,12 @@ function toOfficialSourceRecord(value: unknown, index: number): OfficialSourceRe
     sourceType:
       typeof value.sourceType === 'string' && value.sourceType.trim()
         ? value.sourceType.trim()
-        : '云端摘要',
+        : '公开摘要',
     status:
       typeof value.status === 'string' && value.status.trim()
         ? value.status.trim()
         : url
-        ? '云端同步'
+        ? '公开资料'
         : '摘要摘录',
     lastUpdated:
       typeof value.lastUpdated === 'string' && value.lastUpdated.trim()
@@ -479,17 +481,17 @@ function createSeededBundle(
     syncStatus: createSyncStatus(state, {
       mode: 'seeded-local',
       freshness: 'seeded',
-      sourceLabel: overrides.sourceLabel ?? '官方资料卡',
-        summary:
-          overrides.summary ??
-          (gatewayAvailable
-            ? '正在同步云端官方公开资料，当前先展示人工整理的公开摘要。'
-            : '当前未启用云端同步，展示人工整理的官方公开资料摘要。'),
-        note:
-          overrides.note ??
-          (gatewayAvailable
-            ? '若云端网关可用，会自动更新为更完整的官方公开资料；否则继续保留稳定兜底。'
-            : '当前以本地整理资料为主，优先保证页面稳定与可读性。'),
+      sourceLabel: overrides.sourceLabel ?? '官方公开资料',
+      summary:
+        overrides.summary ??
+        (gatewayAvailable
+          ? '正在更新官方公开资料，当前先展示已核对的公开摘要。'
+          : '当前展示已核对的官方公开资料摘要。'),
+      note:
+        overrides.note ??
+        (gatewayAvailable
+          ? '如检测到更新的公开资料，会自动补充到此处；当前内容仍可作为权威对照层。'
+          : '当前以已核对的公开资料作为权威对照层，便于与趋势信号交叉阅读。'),
       lastSyncTime: overrides.lastSyncTime ?? '',
       latestRecordTime,
       fallbackActive: overrides.fallbackActive ?? true,
@@ -558,8 +560,8 @@ function normalizeGatewayBundle(
       : typeof payload.message === 'string' && payload.message.trim()
       ? payload.message
       : fallbackActive
-      ? '服务端暂未返回新增官方摘要，当前保留内置公开资料卡。'
-      : `已通过服务端同步 ${records.length} 条官方公开摘要。`;
+      ? '当前暂未获取到新的公开资料，先保留已核对的官方资料卡。'
+      : `已同步 ${records.length} 条官方公开资料摘要。`;
 
   const note =
     typeof payloadStatus?.note === 'string' && payloadStatus.note.trim()
@@ -567,7 +569,7 @@ function normalizeGatewayBundle(
       : typeof payload.note === 'string' && payload.note.trim()
       ? payload.note
       : fallbackActive
-      ? '当前仍以人工维护的公开资料摘要为主；待服务端配置后会自动拉取云端官方参考。'
+      ? '当前继续展示已核对的公开资料，便于与趋势参考共同判断。'
       : '仅摘录官方公开网页摘要，请以原文和线下医生意见为准。';
 
   return {
@@ -641,8 +643,8 @@ function createInitialBundle(context: OfficialSourceContext): OfficialSourceBund
       syncStatus: createSyncStatus('loading', {
         ...cached.syncStatus,
         mode: cached.syncStatus.mode === 'server-live' ? 'server-cache' : cached.syncStatus.mode,
-        summary: '正在刷新官方公开资料摘要，先展示最近一次同步结果。',
-        note: '若本次刷新失败，会继续保留最近一次成功同步的公开资料摘要。',
+        summary: '正在核对较新的官方公开资料，当前先展示最近一次结果。',
+        note: '如本次刷新失败，会继续保留最近一次可用的官方公开资料摘要。',
         fallbackActive: true,
         freshness: 'stale',
       }),
@@ -740,7 +742,7 @@ export async function syncOfficialSourceBundle(
       persistBundle(contextKey, bundle);
       return bundle;
     } catch (error) {
-      const message = error instanceof Error ? error.message : '云端同步失败';
+      const message = error instanceof Error ? error.message : '官方公开资料更新失败';
 
       if (cached) {
         const staleBundle: OfficialSourceBundle = {
@@ -750,8 +752,8 @@ export async function syncOfficialSourceBundle(
             mode: cached.syncStatus.mode === 'server-live' ? 'server-cache' : cached.syncStatus.mode,
             fallbackActive: true,
             freshness: 'stale',
-            summary: '云端刷新失败，当前展示最近一次同步结果。',
-            note: '网络或服务端暂不可用，已保留最近一次成功同步的官方公开资料摘要。',
+            summary: '更新较新的官方公开资料失败，当前展示最近一次结果。',
+            note: '网络暂不可用时，会继续保留最近一次可用的官方公开资料摘要。',
             error: message,
           }),
         };
@@ -762,8 +764,8 @@ export async function syncOfficialSourceBundle(
 
       const fallback = createSeededBundle(normalized, {
         state: 'error',
-        summary: '云端官方同步暂不可用，已切回内置公开资料摘要。',
-        note: '当前未能完成服务端刷新，不影响继续查看人工维护的官方公开资料卡。',
+        summary: '暂时无法更新较新的官方公开资料，当前展示已核对摘要。',
+        note: '当前未能完成刷新，不影响继续查看已整理的官方公开资料卡。',
         error: message,
       });
       officialSourceMemoryCache.set(contextKey, fallback);
