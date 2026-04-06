@@ -19,7 +19,11 @@ import { OfficialSourceComparison } from './OfficialSourceComparison';
 import { RiskGauge } from './RiskGauge';
 import { ReportExport } from './ReportExport';
 import * as officialSourceHelpers from '../lib/officialSources';
-import { getMedicationGuidance, getPersonalizedInsights } from '../lib/personalization';
+import {
+  getMedicationGuidance,
+  getPersonalizedInsights,
+  hasMedicationProfileContext as hasMedicationProfileContextData,
+} from '../lib/personalization';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import type {
   DiagnosisResult,
@@ -556,17 +560,10 @@ export function ResultCard({
     [profile, recentCases, result]
   );
   const medicationAdvice = useMemo(() => getMedicationGuidance(result, profile), [result, profile]);
-  const hasMedicationProfileContext = useMemo(() => {
-    if (!profile) return false;
-
-    return Boolean(
-      profile.birthYear ||
-        profile.medicalNotes.trim() ||
-        profile.chronicConditions.trim() ||
-        profile.allergies.trim() ||
-        profile.currentMedications.trim()
-    );
-  }, [profile]);
+  const hasMedicationProfileContext = useMemo(
+    () => hasMedicationProfileContextData(profile),
+    [profile]
+  );
 
   function toggleCheck(i: 0 | 1 | 2) {
     setChecked((prev) => {

@@ -1,10 +1,6 @@
 import type { DiagnosisResult, Message } from '../types';
 import { getSupabaseBootstrapStatus, getSupabaseClient, maskEmail } from './supabase';
-import {
-  buildCombinedMedicalNotes,
-  getDefaultDemoPersonaWorkspace,
-  getDemoPersonaWorkspace,
-} from './personalization';
+import { buildCombinedMedicalNotes, getDemoPersonaWorkspace } from './personalization';
 
 const PROFILE_DRAFT_STORAGE_KEY = 'symptom_profile_draft_v1';
 const CASE_HISTORY_STORAGE_KEY = 'symptom_case_history_v1';
@@ -82,39 +78,6 @@ function writeLocalJson<T>(storageKey: string, value: T) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(storageKey, JSON.stringify(value));
   dispatchWorkspaceUpdated();
-}
-
-function isProfileEffectivelyEmpty(profile: ProfileDraft): boolean {
-  return ![
-    profile.displayName,
-    profile.birthYear,
-    profile.gender,
-    profile.medicalNotes,
-    profile.chronicConditions,
-    profile.allergies,
-    profile.currentMedications,
-    profile.careFocus,
-  ].some(Boolean);
-}
-
-function ensureGuestDemoSeeded() {
-  if (typeof window === 'undefined') return false;
-
-  const currentProfile = readLocalJson<ProfileDraft>(PROFILE_DRAFT_STORAGE_KEY, DEFAULT_PROFILE_DRAFT);
-  const currentCases = readLocalJson<CaseHistoryItem[]>(CASE_HISTORY_STORAGE_KEY, []);
-  const alreadySeeded = localStorage.getItem(GUEST_DEMO_SEED_KEY) === 'done';
-
-  if (alreadySeeded || !isProfileEffectivelyEmpty(currentProfile) || currentCases.length > 0) {
-    return false;
-  }
-
-  const demoWorkspace = getDefaultDemoPersonaWorkspace();
-  if (!demoWorkspace) return false;
-
-  writeLocalJson(PROFILE_DRAFT_STORAGE_KEY, demoWorkspace.profile);
-  writeLocalJson(CASE_HISTORY_STORAGE_KEY, demoWorkspace.recentCases);
-  localStorage.setItem(GUEST_DEMO_SEED_KEY, 'done');
-  return true;
 }
 
 function toPreview(text: string, fallback: string) {
@@ -245,8 +208,8 @@ export async function applyDemoPersona(personaId: string) {
   if (!demoWorkspace) {
     return {
       ok: false,
-      statusLabel: '参考档案未找到',
-      helperText: '请稍后重试或选择其他参考档案。',
+      statusLabel: '场景资料未找到',
+      helperText: '请稍后重试或选择其他常见场景。',
     };
   }
 
@@ -259,7 +222,7 @@ export async function applyDemoPersona(personaId: string) {
 
   return {
     ok: true,
-    statusLabel: `已切换到参考档案：${demoWorkspace.label}`,
+    statusLabel: `已切换到常见场景：${demoWorkspace.label}`,
     helperText: '你可以直接继续问诊，也可以把这份资料改成自己的真实情况后再保存。',
   };
 }
@@ -368,7 +331,6 @@ export async function persistCaseRecord(input: PersistCaseRecordInput) {
 }
 
 export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSnapshot> {
-  const seededDemo = ensureGuestDemoSeeded();
   const bootstrap = getSupabaseBootstrapStatus();
   const localProfile = readLocalProfileDraft();
   const localCases = readLocalCaseHistory().slice(0, limit);
@@ -378,12 +340,10 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
     return {
       mode: bootstrap.state === 'error' ? 'error' : 'local',
       statusLabel:
-        localProfile.profileMode === 'demo' && seededDemo
-          ? '已载入参考档案（游客模式）'
-          : bootstrap.label,
+        localProfile.profileMode === 'demo' ? '当前使用预设场景（游客模式）' : bootstrap.label,
       helperText:
         localProfile.profileMode === 'demo'
-          ? '已为你预置一份可编辑参考资料与历史问诊记录，方便先体验完整流程。'
+          ? '你可以直接继续问诊，也可以先把这份资料改成自己的真实情况后再保存。'
           : bootstrap.helperText,
       profile: localProfile,
       recentCases: localCases,
@@ -419,11 +379,11 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
       mode: 'cloud-ready',
       statusLabel:
         localProfile.profileMode === 'demo'
-          ? '游客模式（登录后可保留这份参考档案）'
+          ? '预设场景待确认（登录后可同步）'
           : '邮箱同步待开启',
       helperText:
         localProfile.profileMode === 'demo'
-          ? '当前已经带上一份可编辑参考档案；输入邮箱后即可继续保留，或先改成自己的资料再同步。'
+          ? '当前是一份可编辑的场景资料；建议先改成自己的真实资料后再开启同步。'
           : '你可以先继续使用；输入邮箱后，我们会用登录链接帮你继续同步档案和历史会话。',
       profile: localProfile,
       recentCases: localCases,

@@ -5,6 +5,7 @@ import { maskEmail } from '../lib/supabase';
 import type { ConversationSession } from '../types';
 
 interface WorkspaceOverviewPanelProps {
+  title?: string;
   sessionEmail: string | null;
   statusLabel: string;
   helperText: string;
@@ -18,6 +19,7 @@ interface WorkspaceOverviewPanelProps {
 }
 
 export function WorkspaceOverviewPanel({
+  title = '个人空间',
   sessionEmail,
   statusLabel,
   helperText,
@@ -41,7 +43,7 @@ export function WorkspaceOverviewPanel({
             <Cloud size={13} className="text-cyan-600" />
             {statusLabel}
           </div>
-          <h2 className="mt-3 text-xl font-semibold text-slate-900">个人空间</h2>
+          <h2 className="mt-3 text-xl font-semibold text-slate-900">{title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">{helperText}</p>
         </div>
 

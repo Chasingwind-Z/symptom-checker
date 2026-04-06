@@ -197,6 +197,18 @@ export function buildCombinedMedicalNotes(profile?: Partial<ProfileDraft> | null
     .join('；');
 }
 
+export function hasMedicationProfileContext(profile?: Partial<ProfileDraft> | null): boolean {
+  if (!profile) return false;
+
+  return Boolean(
+    profile.birthYear ||
+      profile.medicalNotes?.trim() ||
+      profile.chronicConditions?.trim() ||
+      profile.allergies?.trim() ||
+      profile.currentMedications?.trim()
+  );
+}
+
 function addMedicationAdvice(list: MedicationAdvice[], advice: MedicationAdvice) {
   if (!list.some((item) => item.id === advice.id)) {
     list.push(advice);
@@ -552,10 +564,10 @@ export function getPersonalizedInsights(params: {
   if (profile?.displayName || profile?.profileMode === 'demo') {
     insights.push({
       id: 'persona',
-      title: profile?.profileMode === 'demo' ? '当前使用参考档案' : '你的健康画像',
+      title: profile?.profileMode === 'demo' ? '当前使用预设场景' : '你的健康画像',
       summary:
         profile?.profileMode === 'demo'
-          ? '已为你预置一份可编辑的参考资料和历史记录，方便快速了解个性化推荐效果。'
+          ? '已为你载入一组可编辑的场景资料和历史记录，方便快速感受个性化建议会如何变化。'
           : '后续问诊会自动复用这些资料，减少重复提问并让建议更贴近你的情况。',
       details: [
         profile?.careFocus ? `当前关注：${profile.careFocus}` : '可继续补充你的用药、过敏和慢病信息。',

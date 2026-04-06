@@ -436,7 +436,7 @@ export function CloudSyncCard({
       | undefined;
     setAuthState({
       kind: result?.ok === false ? 'error' : 'success',
-      message: result?.helperText ?? '参考档案已载入，可继续修改成自己的情况。',
+      message: result?.helperText ?? '常见场景资料已载入，可继续修改成自己的情况。',
     });
     setIsApplyingPersona(null);
   }
@@ -773,9 +773,9 @@ export function CloudSyncCard({
               <div className="rounded-2xl border border-violet-100 bg-violet-50/60 px-3 py-3">
                 <div className="flex items-start justify-between gap-2 flex-wrap">
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">快速填充参考档案</p>
+                    <p className="text-sm font-semibold text-slate-800">快速载入常见场景</p>
                     <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      如果想先体验个性化推荐和历史会话能力，可以先加载一份可编辑的参考资料。
+                      如果想先看看系统如何结合档案给出建议，可以先载入一组可编辑的常见场景资料。
                     </p>
                   </div>
                   <Sparkles size={16} className="text-violet-600" />
@@ -811,13 +811,13 @@ export function CloudSyncCard({
             )}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">我的健康档案</p>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    这些信息会被 Memory Agent 用来减少重复追问、提升个性化建议。
-                  </p>
-                </div>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">我的健康档案</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      下次问诊会自动复用这些信息，减少重复追问，并过滤掉更不适合你的建议方向。
+                    </p>
+                  </div>
                 <button
                   type="button"
                   onClick={handleSaveProfile}

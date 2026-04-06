@@ -11,7 +11,7 @@ interface ConversationHistoryPanelProps {
   description?: string;
   emptyMessage?: string;
   maxItems?: number;
-  variant?: 'default' | 'shelf';
+  variant?: 'default' | 'shelf' | 'sidebar';
   showStartButton?: boolean;
   startButtonLabel?: string;
 }
@@ -67,15 +67,22 @@ export function ConversationHistoryPanel({
     typeof maxItems === 'number' && maxItems > 0 ? sessions.slice(0, maxItems) : sessions;
   const hiddenCount = Math.max(0, sessions.length - visibleSessions.length);
   const isShelf = variant === 'shelf';
+  const isSidebar = variant === 'sidebar';
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+    <section
+      className={
+        isSidebar
+          ? 'flex h-full min-h-0 flex-col'
+          : 'rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm'
+      }
+    >
+      <div className={`flex items-start justify-between gap-3 flex-wrap ${isSidebar ? 'px-1' : ''}`}>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <MessageSquareText size={16} className="text-cyan-600" />
             <p className="text-sm font-semibold text-slate-800">{title}</p>
-            {hiddenCount > 0 && isShelf && (
+            {hiddenCount > 0 && (isShelf || isSidebar) && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
                 +{hiddenCount}
               </span>
@@ -96,9 +103,65 @@ export function ConversationHistoryPanel({
       </div>
 
       {visibleSessions.length === 0 ? (
-        <div className="mt-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+        <div
+          className={`mt-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 ${
+            isSidebar ? 'text-xs text-slate-500' : 'text-sm text-slate-500'
+          }`}
+        >
           {emptyMessage}
         </div>
+      ) : isSidebar ? (
+        <>
+          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+            {visibleSessions.map((session) => {
+              const riskMeta = getRiskPresentation(session.riskLevel ?? 'pending');
+              const isActive = activeSessionId === session.id;
+
+              return (
+                <button
+                  key={session.id}
+                  type="button"
+                  onClick={() => onOpenSession(session.id)}
+                  className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
+                    isActive
+                      ? 'border-cyan-300 bg-cyan-50/80 shadow-sm'
+                      : 'border-slate-200 bg-white hover:border-cyan-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
+                        {isActive && (
+                          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                            当前
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                        {getPreviewText(session)}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                    >
+                      {riskMeta.label}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                    <span>{formatUpdatedAt(session.updatedAt)}</span>
+                    <span>{session.messages.length} 条</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {hiddenCount > 0 && (
+            <p className="mt-3 px-1 text-[11px] text-slate-400">
+              另外还有 {hiddenCount} 段较早对话，可在历史会话里继续查看。
+            </p>
+          )}
+        </>
       ) : isShelf ? (
         <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
           {visibleSessions.map((session) => {

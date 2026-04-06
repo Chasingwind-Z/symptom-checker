@@ -5,6 +5,7 @@ import type { ChatImageAttachment, SendMessageInput } from '../types';
 interface ChatInputProps {
   onSend: (input: string | SendMessageInput) => void;
   isLoading: boolean;
+  withDesktopSidebar?: boolean;
 }
 
 const MAX_IMAGE_SIZE_BYTES = 6 * 1024 * 1024;
@@ -58,7 +59,11 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export function ChatInput({ onSend, isLoading }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  isLoading,
+  withDesktopSidebar = false,
+}: ChatInputProps) {
   const [value, setValue] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [selectedAttachment, setSelectedAttachment] = useState<ChatImageAttachment | null>(null);
@@ -166,7 +171,9 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4"
+      className={`fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 ${
+        withDesktopSidebar ? 'lg:left-[320px]' : ''
+      }`}
       style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
     >
       <div className="max-w-2xl mx-auto">
