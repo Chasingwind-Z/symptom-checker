@@ -279,7 +279,9 @@ async function runWebSearch(query: string): Promise<string> {
 
       return JSON.stringify(payload);
     } catch (error) {
-      console.warn('[Official Source Gateway] 服务端检索失败，尝试浏览器降级。', error);
+      if (import.meta.env.DEV) {
+        console.warn('[Official Source Gateway] 服务端检索失败，尝试浏览器降级。', error);
+      }
     }
   }
 
@@ -289,7 +291,7 @@ async function runWebSearch(query: string): Promise<string> {
       source: 'tavily',
       sourceLabel: '官方信源检索（本地降级）',
       fetchedAt: new Date().toISOString(),
-      message: '未配置 Tavily API Key，当前跳过联网搜索，继续使用内置官方资料卡。',
+      message: '当前使用内置官方资料卡作为参考信息来源。',
       officialDomains: OFFICIAL_SOURCE_DOMAINS,
     });
   }

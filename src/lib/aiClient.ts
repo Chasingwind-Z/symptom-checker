@@ -202,12 +202,16 @@ async function requestChatCompletion(
         return response;
       }
 
-      console.warn('[AI Gateway] 服务端请求失败，已回退到浏览器直连模式。', response.status);
+      if (import.meta.env.DEV) {
+        console.warn('[AI Gateway] 服务端请求失败，已回退到浏览器直连模式。', response.status);
+      }
     } catch (error) {
       if (!DIRECT_BASE_URL) {
         throw error;
       }
-      console.warn('[AI Gateway] 服务端网关不可用，已回退到浏览器直连模式。', error);
+      if (import.meta.env.DEV) {
+        console.warn('[AI Gateway] 服务端网关不可用，已回退到浏览器直连模式。', error);
+      }
     }
   }
 

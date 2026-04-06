@@ -432,7 +432,9 @@ export async function primeCloudMedicalKnowledgeDocuments(
       return cloudSnapshot;
     } catch (error) {
       const message = error instanceof Error ? error.message : '云端知识库加载失败';
-      console.warn('[MedicalKnowledge] 云端知识库加载失败，已回退到本地语料：', message);
+      if (import.meta.env.DEV) {
+        console.warn('[MedicalKnowledge] 云端知识库加载失败，已回退到本地语料：', message);
+      }
 
       cloudSnapshot =
         cloudSnapshot.documents.length > 0

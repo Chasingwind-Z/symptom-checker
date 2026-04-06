@@ -34,7 +34,7 @@ const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: 'urban-commuter',
     label: '都市通勤型',
-    subtitle: '适合演示呼吸道 / 过敏场景',
+    subtitle: '适合呼吸道 / 过敏场景',
     tags: ['上班族', '过敏', '夜间作息晚'],
     profile: {
       displayName: '林晨',
@@ -74,7 +74,7 @@ const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: 'senior-chronic',
     label: '长辈慢病型',
-    subtitle: '适合演示高风险守护场景',
+    subtitle: '适合高风险守护场景',
     tags: ['老年人', '高血压', '需更保守判断'],
     profile: {
       displayName: '王阿姨',
@@ -114,7 +114,7 @@ const DEMO_PERSONAS: DemoPersona[] = [
   {
     id: 'family-guardian',
     label: '家庭守护型',
-    subtitle: '适合演示儿童 / 家庭管理',
+    subtitle: '适合儿童 / 家庭管理',
     tags: ['儿童照护', '家庭药箱', '夜间咳嗽'],
     profile: {
       displayName: '张妈妈',
@@ -312,10 +312,10 @@ export function getPersonalizedInsights(params: {
   if (profile?.displayName || profile?.profileMode === 'demo') {
     insights.push({
       id: 'persona',
-      title: profile?.profileMode === 'demo' ? '当前为体验画像' : '你的健康画像',
+      title: profile?.profileMode === 'demo' ? '当前使用参考档案' : '你的健康画像',
       summary:
         profile?.profileMode === 'demo'
-          ? '已为你预置一份可编辑的体验档案和历史记录，方便直接感受个性化推荐效果。'
+          ? '已为你预置一份可编辑的参考资料和历史记录，方便快速了解个性化推荐效果。'
           : '后续问诊会自动复用这些资料，减少重复提问并让建议更贴近你的情况。',
       details: [
         profile?.careFocus ? `当前关注：${profile.careFocus}` : '可继续补充你的用药、过敏和慢病信息。',

@@ -223,7 +223,9 @@ export async function saveProfileDraft(draft: ProfileDraft) {
   );
 
   if (error) {
-    console.warn('[Supabase] 档案同步失败：', error.message);
+    if (import.meta.env.DEV) {
+      console.warn('[Supabase] 档案同步失败：', error.message);
+    }
     return {
       storedIn: 'local' as const,
       statusLabel: '云端同步待重试',
@@ -243,8 +245,8 @@ export async function applyDemoPersona(personaId: string) {
   if (!demoWorkspace) {
     return {
       ok: false,
-      statusLabel: '体验档案未找到',
-      helperText: '请稍后重试或选择其他体验画像。',
+      statusLabel: '参考档案未找到',
+      helperText: '请稍后重试或选择其他参考档案。',
     };
   }
 
@@ -257,7 +259,7 @@ export async function applyDemoPersona(personaId: string) {
 
   return {
     ok: true,
-    statusLabel: `已切换到体验画像：${demoWorkspace.label}`,
+    statusLabel: `已切换到参考档案：${demoWorkspace.label}`,
     helperText: '你可以直接继续问诊，也可以把这份资料改成自己的真实情况后再保存。',
   };
 }
@@ -310,7 +312,9 @@ export async function persistCaseRecord(input: PersistCaseRecordInput) {
     .single();
 
   if (caseError || !caseRow) {
-    console.warn('[Supabase] 病例写入失败，已保留本机缓存：', caseError?.message);
+    if (import.meta.env.DEV) {
+      console.warn('[Supabase] 病例写入失败，已保留本机缓存：', caseError?.message);
+    }
     return {
       storedIn: 'local' as const,
       caseId: localItem.id,
@@ -342,7 +346,9 @@ export async function persistCaseRecord(input: PersistCaseRecordInput) {
   if (messageRows.length > 0) {
     const { error: messageError } = await dataClient.from('case_messages').insert(messageRows);
     if (messageError) {
-      console.warn('[Supabase] 对话详情写入失败：', messageError.message);
+      if (import.meta.env.DEV) {
+        console.warn('[Supabase] 对话详情写入失败：', messageError.message);
+      }
     }
   }
 
@@ -373,11 +379,11 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
       mode: bootstrap.state === 'error' ? 'error' : 'local',
       statusLabel:
         localProfile.profileMode === 'demo' && seededDemo
-          ? '已载入体验画像（游客模式）'
+          ? '已载入参考档案（游客模式）'
           : bootstrap.label,
       helperText:
         localProfile.profileMode === 'demo'
-          ? '已为你预置一份可编辑的体验档案与示例问诊记录，用来展示个性化推荐效果。'
+          ? '已为你预置一份可编辑参考资料与历史问诊记录，方便先体验完整流程。'
           : bootstrap.helperText,
       profile: localProfile,
       recentCases: localCases,
@@ -406,14 +412,14 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
 
   if (!user) {
     return {
-      mode: 'cloud-ready',
+        mode: 'cloud-ready',
       statusLabel:
         localProfile.profileMode === 'demo'
-          ? '游客模式（可登录后同步这份体验档案）'
+          ? '游客模式（可登录后同步这份参考档案）'
           : '游客模式（登录后可同步档案）',
       helperText:
         localProfile.profileMode === 'demo'
-          ? '当前已经带上一份可编辑体验画像；登录后可继续保留或改成自己的资料再同步。'
+          ? '当前已经带上一份可编辑参考档案；登录后可继续保留或改成自己的资料再同步。'
           : '你可以先以游客方式使用；登录后档案和历史会话会自动跟随邮箱账号同步。',
       profile: localProfile,
       recentCases: localCases,

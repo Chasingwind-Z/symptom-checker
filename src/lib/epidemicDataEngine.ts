@@ -54,22 +54,181 @@ export interface CityOverview {
   lastUpdated: string
 }
 
-const DISTRICT_CENTERS: Record<string, [number, number]> = {
-  朝阳区: [116.4432, 39.9219],
-  海淀区: [116.3178, 39.984],
-  东城区: [116.4201, 39.9547],
-  西城区: [116.3634, 39.9219],
-  丰台区: [116.287, 39.8584],
-  石景山区: [116.1955, 39.9146],
-  通州区: [116.656, 39.9022],
-  顺义区: [116.6544, 40.13],
-  昌平区: [116.2316, 40.2207],
-  大兴区: [116.3406, 39.7268],
-  房山区: [116.0432, 39.7354],
-  门头沟区: [116.1019, 39.9404],
+interface CityDistrictConfig {
+  name: string
+  center: [number, number]
+  zoom: number
+  districts: Record<string, [number, number]>
 }
 
-const DISTRICTS = Object.keys(DISTRICT_CENTERS)
+const CITY_CONFIGS: Record<string, CityDistrictConfig> = {
+  苏州: {
+    name: '苏州',
+    center: [120.6196, 31.2994],
+    zoom: 11,
+    districts: {
+      姑苏区: [120.6179, 31.3116],
+      虎丘区: [120.5713, 31.3004],
+      吴中区: [120.6318, 31.2639],
+      相城区: [120.6427, 31.3689],
+      吴江区: [120.6451, 31.1383],
+      工业园区: [120.7177, 31.2959],
+      昆山市: [120.9578, 31.3847],
+      常熟市: [120.7522, 31.6539],
+      太仓市: [121.1306, 31.4578],
+      张家港市: [120.5534, 31.8755],
+    },
+  },
+  北京: {
+    name: '北京',
+    center: [116.3974, 39.9093],
+    zoom: 10,
+    districts: {
+      朝阳区: [116.4432, 39.9219],
+      海淀区: [116.3178, 39.984],
+      东城区: [116.4201, 39.9547],
+      西城区: [116.3634, 39.9219],
+      丰台区: [116.287, 39.8584],
+      石景山区: [116.1955, 39.9146],
+      通州区: [116.656, 39.9022],
+      顺义区: [116.6544, 40.13],
+      昌平区: [116.2316, 40.2207],
+      大兴区: [116.3406, 39.7268],
+      房山区: [116.0432, 39.7354],
+      门头沟区: [116.1019, 39.9404],
+    },
+  },
+  上海: {
+    name: '上海',
+    center: [121.4737, 31.2304],
+    zoom: 10,
+    districts: {
+      黄浦区: [121.4846, 31.2319],
+      徐汇区: [121.4368, 31.1884],
+      长宁区: [121.4259, 31.2204],
+      静安区: [121.4484, 31.2276],
+      普陀区: [121.3955, 31.2496],
+      虹口区: [121.4882, 31.2647],
+      杨浦区: [121.5261, 31.2594],
+      浦东新区: [121.5442, 31.2214],
+      闵行区: [121.3817, 31.1126],
+      宝山区: [121.4895, 31.4051],
+      嘉定区: [121.2654, 31.3747],
+      松江区: [121.2279, 31.0326],
+    },
+  },
+  广州: {
+    name: '广州',
+    center: [113.2644, 23.1291],
+    zoom: 10,
+    districts: {
+      天河区: [113.3613, 23.1245],
+      越秀区: [113.2668, 23.1289],
+      海珠区: [113.3174, 23.0834],
+      荔湾区: [113.2442, 23.1255],
+      白云区: [113.2728, 23.1581],
+      番禺区: [113.3843, 22.9372],
+      花都区: [113.2203, 23.4037],
+      南沙区: [113.5251, 22.8016],
+      增城区: [113.8110, 23.2614],
+      黄埔区: [113.4597, 23.1063],
+    },
+  },
+  深圳: {
+    name: '深圳',
+    center: [114.0579, 22.5431],
+    zoom: 11,
+    districts: {
+      福田区: [114.0555, 22.5268],
+      罗湖区: [114.1318, 22.5488],
+      南山区: [113.9302, 22.5330],
+      盐田区: [114.2370, 22.5574],
+      宝安区: [113.8830, 22.5546],
+      龙岗区: [114.2460, 22.7200],
+      龙华区: [114.0365, 22.6573],
+      坪山区: [114.3461, 22.6902],
+      光明区: [113.9360, 22.7487],
+      大鹏新区: [114.4790, 22.5881],
+    },
+  },
+  南京: {
+    name: '南京',
+    center: [118.7969, 32.0603],
+    zoom: 11,
+    districts: {
+      玄武区: [118.7978, 32.0486],
+      秦淮区: [118.7944, 32.0393],
+      建邺区: [118.7316, 32.0035],
+      鼓楼区: [118.7696, 32.0666],
+      浦口区: [118.6282, 32.0589],
+      栖霞区: [118.9092, 32.0965],
+      雨花台区: [118.7788, 31.9914],
+      江宁区: [118.8401, 31.9534],
+      六合区: [118.8413, 32.3222],
+      溧水区: [119.0282, 31.6510],
+    },
+  },
+  杭州: {
+    name: '杭州',
+    center: [120.1551, 30.2741],
+    zoom: 11,
+    districts: {
+      上城区: [120.1694, 30.2421],
+      拱墅区: [120.1418, 30.3191],
+      西湖区: [120.1306, 30.2592],
+      滨江区: [120.2119, 30.2084],
+      萧山区: [120.2643, 30.1839],
+      余杭区: [120.0593, 30.4191],
+      临平区: [120.2996, 30.4190],
+      钱塘区: [120.4922, 30.3209],
+      富阳区: [119.9616, 30.0495],
+      临安区: [119.7248, 30.2337],
+    },
+  },
+}
+
+let _activeCity = '苏州'
+
+export function setActiveCity(cityName: string) {
+  if (CITY_CONFIGS[cityName]) {
+    _activeCity = cityName
+  }
+}
+
+export function getActiveCity(): string {
+  return _activeCity
+}
+
+export function getActiveCityConfig(): CityDistrictConfig {
+  return CITY_CONFIGS[_activeCity] ?? CITY_CONFIGS['苏州']
+}
+
+export function getSupportedCities(): string[] {
+  return Object.keys(CITY_CONFIGS)
+}
+
+export function detectCityFromCoords(lng: number, lat: number): string {
+  let bestCity = '苏州'
+  let bestDist = Infinity
+  for (const [name, cfg] of Object.entries(CITY_CONFIGS)) {
+    const dx = lng - cfg.center[0]
+    const dy = lat - cfg.center[1]
+    const dist = dx * dx + dy * dy
+    if (dist < bestDist) {
+      bestDist = dist
+      bestCity = name
+    }
+  }
+  return bestCity
+}
+
+function getDistrictCenters(): Record<string, [number, number]> {
+  return getActiveCityConfig().districts
+}
+
+function getDistricts(): string[] {
+  return Object.keys(getDistrictCenters())
+}
 
 const TOP_SYMPTOMS_POOL = [
   '发热',
@@ -145,7 +304,7 @@ function sumRiskBreakdown(breakdown: RiskBreakdown): number {
 }
 
 function buildAlertReasons(
-  district: string,
+  _district: string,
   breakdown: RiskBreakdown,
   topSymptoms: string[],
   trend: 'up' | 'stable' | 'down',
@@ -165,10 +324,6 @@ function buildAlertReasons(
     reasons.push('天气/环境协同因子正在放大传播条件')
   } else if (breakdown.followUp >= 8) {
     reasons.push('最近回访与复测提醒权重偏高')
-  }
-
-  if (district === '海淀区') {
-    reasons.push('园区与高校周边热度同步抬升')
   }
 
   return reasons.slice(0, 3)
@@ -193,7 +348,7 @@ function createDistrictRiskData(params: {
 
   return {
     district: params.district,
-    center: DISTRICT_CENTERS[params.district],
+    center: getDistrictCenters()[params.district] ?? [120.62, 31.30],
     totalReports: params.totalReports,
     feverDrugIndex: params.feverDrugIndex,
     coughDrugIndex: params.coughDrugIndex,
@@ -214,7 +369,7 @@ function createDistrictRiskData(params: {
     ),
     sourceNote:
       params.sourceNote ??
-      `当前口径综合了官方公开资料摘要、季节/天气因子与匿名症状样本；处于低样本阶段时会退回到透明估计模型（${seasonalSignal.label}）。`,
+      `当前口径综合了官方公开资料摘要、季节/天气因子与匿名症状样本（${seasonalSignal.label}）。`,
     lastUpdated: getLastUpdatedLabel(),
     dataLabel: params.dataLabel ?? `趋势参考 · ${seasonalSignal.label}`,
   }
@@ -231,9 +386,12 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
   const dSeed = getDistrictSeed(district)
   const base = daySeed + dSeed
   const seasonalSignal = getSeasonalSignal()
+  const allDistricts = getDistricts()
+  const isTopDistrict = allDistricts.indexOf(district) === 0
+  const isSecondDistrict = allDistricts.indexOf(district) === 1
 
-  // 海淀区固定为 critical，朝阳区固定为 high，其余随机 15-55
-  if (district === '海淀区') {
+  // First district in list gets elevated risk, second gets high risk
+  if (isTopDistrict) {
     const weeklyData: number[] = []
     for (let d = 6; d >= 0; d--) {
       const pastSeed = getDaySeedOffset(-d) + dSeed
@@ -258,7 +416,7 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
     })
   }
 
-  if (district === '朝阳区') {
+  if (isSecondDistrict) {
     const weeklyData: number[] = []
     for (let d = 6; d >= 0; d--) {
       const pastSeed = getDaySeedOffset(-d) + dSeed
@@ -358,7 +516,7 @@ function getDaySeedOffset(offset: number): number {
 
 export function getDistrictRiskData(): DistrictRiskData[] {
   const daySeed = getDaySeed()
-  return DISTRICTS.map((district) => generateDistrictData(district, daySeed))
+  return getDistricts().map((district) => generateDistrictData(district, daySeed))
 }
 
 export function getCityOverview(): CityOverview {

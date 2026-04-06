@@ -549,7 +549,7 @@ export function ResultCard({
         : null,
     };
   }, [messages, result]);
-  const { records: officialSources, syncStatus: officialSourceSyncStatus } =
+  const { records: officialSources } =
     useOfficialSourceComparisonSafe(officialSourceContext);
   const personalizedInsights = useMemo(
     () => getPersonalizedInsights({ profile, recentCases, diagnosis: result }),
@@ -761,12 +761,6 @@ export function ResultCard({
         <div className="mb-5">
             <OfficialSourceComparison
               records={officialSources}
-              syncStatus={officialSourceSyncStatus}
-              subtitle={
-                webSources.length > 0
-                  ? '用于和联网检索结果做权威对照，帮助快速判断哪些建议来自官方或公共卫生机构。'
-                  : '即使联网检索暂不可用，也会展示内置的官方公开资料摘要，保证页面稳定可信。'
-              }
             />
         </div>
 

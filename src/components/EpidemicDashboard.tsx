@@ -17,6 +17,11 @@ import {
   getDrugTrendData,
   getAIWarningText,
   mergeLocalReports,
+  getActiveCityConfig,
+  getActiveCity,
+  setActiveCity,
+  getSupportedCities,
+  detectCityFromCoords,
 } from '../lib/epidemicDataEngine'
 import { OfficialSourceComparison } from './OfficialSourceComparison'
 import * as officialSourceHelpers from '../lib/officialSources'
@@ -66,14 +71,17 @@ const useDashboardOfficialSourcesSafe =
 export function EpidemicDashboard({ onBack }: Props) {
   const mapKey = (import.meta.env.VITE_AMAP_JS_KEY as string | undefined)?.trim() ?? ''
   const [currentTime, setCurrentTime] = useState<string>('')
-  const cityOverview = useMemo(() => getCityOverview(), [])
-  const districtData = useMemo<DistrictRiskData[]>(() => mergeLocalReports(getDistrictRiskData()), [])
+  const [currentCity, setCurrentCity] = useState(getActiveCity())
+  const supportedCities = getSupportedCities()
+  const cityConfig = getActiveCityConfig()
+  const cityOverview = useMemo(() => getCityOverview(), [currentCity])
+  const districtData = useMemo<DistrictRiskData[]>(() => mergeLocalReports(getDistrictRiskData()), [currentCity])
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
   const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'fallback'>(
     mapKey ? 'loading' : 'fallback'
   )
   const [mapNote, setMapNote] = useState(
-    mapKey ? '正在载入热力图…' : '当前未配置地图 Key，已自动切换为趋势参考视图。'
+    mapKey ? '正在载入热力图…' : '地图组件未加载，已切换为趋势参考视图。'
   )
   const mapContainerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,6 +103,34 @@ export function EpidemicDashboard({ onBack }: Props) {
     return () => clearInterval(timer)
   }, [])
 
+  // 根据用户定位自动选择城市
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const detected = detectCityFromCoords(pos.coords.longitude, pos.coords.latitude)
+        if (detected !== currentCity) {
+          setActiveCity(detected)
+          setCurrentCity(detected)
+        }
+      },
+      () => { /* 定位失败时保持默认城市 */ },
+      { timeout: 5000 }
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function handleCityChange(city: string) {
+    setActiveCity(city)
+    setCurrentCity(city)
+    // 销毁旧地图重新绘制
+    circlesRef.current.forEach(c => c.setMap?.(null))
+    circlesRef.current = []
+    mapRef.current?.destroy?.()
+    mapRef.current = null
+    setMapStatus(mapKey ? 'loading' : 'fallback')
+  }
+
   // 绘制地图覆盖物
   useEffect(() => {
     if (districtData.length === 0) return
@@ -112,8 +148,8 @@ export function EpidemicDashboard({ onBack }: Props) {
 
         if (!mapRef.current) {
           mapRef.current = new AMap.Map(mapContainerRef.current, {
-            zoom: 10,
-            center: [116.3974, 39.9093],
+            zoom: cityConfig.zoom,
+            center: cityConfig.center,
             mapStyle: 'amap://styles/dark',
           })
         }
@@ -208,7 +244,7 @@ export function EpidemicDashboard({ onBack }: Props) {
       circlesRef.current.forEach(c => c.setMap?.(null))
       circlesRef.current = []
     }
-  }, [districtData, mapKey])
+  }, [districtData, mapKey, currentCity, cityConfig])
 
   // 卸载时销毁地图
   useEffect(() => {
@@ -227,7 +263,7 @@ export function EpidemicDashboard({ onBack }: Props) {
   const warningText = districtData.length > 0 ? getAIWarningText(districtData) : ''
   const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   const focusDistrict = sortedDistricts[0] ?? null
-  const { records: dashboardSources, syncStatus: dashboardSyncStatus } = useDashboardOfficialSourcesSafe(
+  const { records: dashboardSources } = useDashboardOfficialSourcesSafe(
     activeDistrict?.topSymptoms ?? focusDistrict?.topSymptoms ?? []
   )
   const breakdownItems = activeDistrict
@@ -311,23 +347,29 @@ export function EpidemicDashboard({ onBack }: Props) {
       <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center">
           <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse mr-3 flex-shrink-0" />
-          <span className="text-white font-bold text-xl">城市健康趋势参考</span>
-          <span className="text-white/40 text-xs ml-4 tracking-widest hidden md:block">
-            公共健康趋势 · 官方公开资料 + 匿名信号
-          </span>
+          <span className="text-white font-bold text-xl">{currentCity} · 健康趋势参考</span>
+          <select
+            value={currentCity}
+            onChange={(e) => handleCityChange(e.target.value)}
+            className="ml-3 bg-white/10 text-white/80 text-xs px-2 py-1 rounded-lg border border-white/20 outline-none cursor-pointer"
+          >
+            {supportedCities.map(city => (
+              <option key={city} value={city} className="text-slate-900">{city}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center gap-4">
           <span className="text-white/60 text-sm font-mono">{currentTime}</span>
-          <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full">
-            低样本阶段 · 官方摘要 + 季节/天气 + 匿名样本估计
+          <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full hidden md:inline">
+            综合官方资料 + 季节因子 + 匿名样本
           </span>
           <button
             onClick={onBack}
             className="flex items-center gap-1 text-white/60 hover:text-white text-sm cursor-pointer transition-colors"
           >
             <ArrowLeft size={14} />
-            返回问诊
+            返回
           </button>
         </div>
       </div>
@@ -410,7 +452,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             </div>
             <div className="hidden xl:flex items-center gap-2 flex-wrap justify-end">
               <span className="bg-white/8 border border-white/10 text-white/65 text-[11px] px-2.5 py-1 rounded-full">
-                当前口径：透明估计模型
+                综合趋势参考
               </span>
               {focusDistrict.alertReasons.slice(0, 2).map(reason => (
                 <span
@@ -453,7 +495,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                     { color: '#F59E0B', label: '中风险' },
                     { color: '#F97316', label: '高风险' },
                     { color: '#EF4444', label: '紧急' },
-                    { color: '#67E8F9', label: '低样本估计' },
+                    { color: '#67E8F9', label: '趋势参考' },
                   ].map(item => (
                     <div key={item.label} className="flex items-center gap-1">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
@@ -500,7 +542,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                     </div>
                     <p className="text-[11px] text-white/65 mt-1 leading-relaxed">
                       {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，趋势{formatTrendDelta(focusDistrict.trend, focusDistrict.trendPercent)}，
-                      当前为低样本阶段趋势估计，适合联动下方信号卡和官方资料做交叉验证。
+                      建议结合下方信号卡和官方资料综合判断。
                     </p>
                   </div>
                 )}
@@ -844,9 +886,8 @@ export function EpidemicDashboard({ onBack }: Props) {
 
             <OfficialSourceComparison
               records={dashboardSources}
-              syncStatus={dashboardSyncStatus}
               theme="dark"
-              subtitle="优先展示疾控、卫健委与 WHO 的公开资料；云端暂不可用时，会自动保留人工整理的本地摘要。"
+              subtitle="以下资料来源于疾控中心、卫健委及 WHO 等公开渠道，供对照参考。"
             />
           </div>
         </div>

@@ -145,7 +145,7 @@ export function WelcomeScreen({ onSendMessage, onToggleMap, onOpenWorkspace }: W
                 保存档案、同步历史记录、跨设备继续上次问诊，都集中放在空间里，不影响游客直接使用。
               </p>
               <p className="text-[11px] text-cyan-700 mt-2">
-                也可以先载入虚拟体验画像，直接查看个性化推荐和随访效果。
+                也可以先载入可编辑参考档案，快速了解个性化推荐和随访提示。
               </p>
             </div>
           </div>

@@ -43,7 +43,9 @@ export function getSupabaseClient(): AppSupabaseClient | null {
   } catch (error) {
     initError = error instanceof Error ? error : new Error('Supabase 初始化失败');
     if (shouldLogSupabase) {
-      console.warn('[Supabase] 初始化失败，已回退到游客模式。', initError);
+      if (import.meta.env.DEV) {
+        console.warn('[Supabase] 初始化失败，已回退到游客模式。', initError);
+      }
     }
   }
 
@@ -89,7 +91,9 @@ export async function getSupabaseSession(): Promise<Session | null> {
   const { data, error } = await client.auth.getSession();
   if (error) {
     if (shouldLogSupabase) {
-      console.warn('[Supabase] 获取会话失败：', error.message);
+      if (import.meta.env.DEV) {
+        console.warn('[Supabase] 获取会话失败：', error.message);
+      }
     }
     return null;
   }
@@ -129,7 +133,9 @@ export async function sendMagicLink(email: string): Promise<SupabaseAuthActionRe
 
   if (error) {
     if (shouldLogSupabase) {
-      console.warn('[Supabase] 发送 magic link 失败：', error.message);
+      if (import.meta.env.DEV) {
+        console.warn('[Supabase] 发送 magic link 失败：', error.message);
+      }
     }
     return {
       ok: false,
@@ -147,6 +153,61 @@ export async function signInWithMagicLink(email: string): Promise<SupabaseAuthAc
   return sendMagicLink(email);
 }
 
+export async function signUpWithPassword(email: string, password: string): Promise<SupabaseAuthActionResult> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !password) {
+    return { ok: false, message: '请输入邮箱和密码。' };
+  }
+  if (password.length < 6) {
+    return { ok: false, message: '密码至少需要 6 位。' };
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return { ok: false, message: '云端服务暂不可用，请稍后重试。' };
+  }
+
+  const { error } = await client.auth.signUp({
+    email: normalizedEmail,
+    password,
+  });
+
+  if (error) {
+    if (error.message.includes('already registered')) {
+      return { ok: false, message: '该邮箱已注册，请直接登录。' };
+    }
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: '注册成功！请检查邮箱完成验证后登录。' };
+}
+
+export async function signInWithPassword(email: string, password: string): Promise<SupabaseAuthActionResult> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !password) {
+    return { ok: false, message: '请输入邮箱和密码。' };
+  }
+
+  const client = getSupabaseClient();
+  if (!client) {
+    return { ok: false, message: '云端服务暂不可用，请稍后重试。' };
+  }
+
+  const { error } = await client.auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  });
+
+  if (error) {
+    if (error.message.includes('Invalid login credentials')) {
+      return { ok: false, message: '邮箱或密码不正确，请检查后重试。' };
+    }
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: '登录成功！' };
+}
+
 export async function signOutSupabase(): Promise<SupabaseAuthActionResult> {
   const client = getSupabaseClient();
   if (!client) {
@@ -159,7 +220,9 @@ export async function signOutSupabase(): Promise<SupabaseAuthActionResult> {
   const { error } = await client.auth.signOut();
   if (error) {
     if (shouldLogSupabase) {
-      console.warn('[Supabase] 退出登录失败：', error.message);
+      if (import.meta.env.DEV) {
+        console.warn('[Supabase] 退出登录失败：', error.message);
+      }
     }
     return {
       ok: false,

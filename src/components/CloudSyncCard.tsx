@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
 import {
   BadgeCheck,
-  Sparkles,
   ChevronDown,
   ChevronUp,
+  Clock,
   Cloud,
   Database,
-  History,
+  Eye,
+  EyeOff,
+  Lock,
   LogOut,
   Mail,
   RefreshCw,
   Save,
   ShieldCheck,
+  Sparkles,
   UserRound,
 } from 'lucide-react';
 import type { CaseHistoryItem, HealthWorkspaceSnapshot, ProfileDraft } from '../lib/healthData';
 import { getDemoPersonaSummaries } from '../lib/personalization';
-import { sendMagicLink, signOutSupabase } from '../lib/supabase';
+import { sendMagicLink, signInWithPassword, signOutSupabase, signUpWithPassword } from '../lib/supabase';
 
 interface CloudSyncCardProps {
   mode: HealthWorkspaceSnapshot['mode'];
@@ -57,11 +60,14 @@ export function CloudSyncCard({
   const [isSaving, setIsSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'done' | 'error'>('idle');
   const [authEmail, setAuthEmail] = useState(sessionEmail ?? '');
+  const [authPassword, setAuthPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'magic-link'>('login');
   const [authState, setAuthState] = useState<{ kind: 'idle' | 'success' | 'error'; message: string }>({
     kind: 'idle',
     message: '',
   });
-  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isApplyingPersona, setIsApplyingPersona] = useState<string | null>(null);
   const demoPersonas = getDemoPersonaSummaries();
@@ -105,14 +111,21 @@ export function CloudSyncCard({
   const isCloudConfigured = mode === 'cloud-ready' || mode === 'cloud-session';
   const isSignedIn = Boolean(sessionEmail);
 
-  async function handleSendMagicLink() {
-    setIsSendingMagicLink(true);
-    const result = await sendMagicLink(authEmail);
-    setAuthState({
-      kind: result.ok ? 'success' : 'error',
-      message: result.message,
-    });
-    setIsSendingMagicLink(false);
+  async function handleAuth() {
+    setIsAuthLoading(true);
+    let result;
+    if (authMode === 'magic-link') {
+      result = await sendMagicLink(authEmail);
+    } else if (authMode === 'register') {
+      result = await signUpWithPassword(authEmail, authPassword);
+    } else {
+      result = await signInWithPassword(authEmail, authPassword);
+    }
+    setAuthState({ kind: result.ok ? 'success' : 'error', message: result.message });
+    setIsAuthLoading(false);
+    if (result.ok && authMode === 'login') {
+      await Promise.resolve(onRefresh());
+    }
   }
 
   async function handleSignOut() {
@@ -150,7 +163,7 @@ export function CloudSyncCard({
       | undefined;
     setAuthState({
       kind: result?.ok === false ? 'error' : 'success',
-      message: result?.helperText ?? '体验画像已加载，可继续修改成自己的情况。',
+      message: result?.helperText ?? '参考档案已载入，可继续修改成自己的情况。',
     });
     setIsApplyingPersona(null);
   }
@@ -247,7 +260,7 @@ export function CloudSyncCard({
 
         <div className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-3">
           <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
-            <History size={12} />
+            <Clock size={12} />
             问诊摘要
           </div>
           <p className="text-sm font-semibold text-slate-800 mt-2">{recentCases.length} 条</p>
@@ -318,29 +331,72 @@ export function CloudSyncCard({
                 </div>
               ) : isCloudConfigured ? (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 px-3 py-3">
-                  <label className="flex flex-col gap-1 text-[11px] text-slate-500">
-                    邮箱登录（magic link）
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="email"
-                        value={authEmail}
-                        onChange={(event) => setAuthEmail(event.target.value)}
-                        placeholder="请输入常用邮箱，如 name@example.com"
-                        className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300"
-                      />
-                  <button
-                    type="button"
-                    onClick={handleSendMagicLink}
-                    disabled={isSendingMagicLink}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors"
+                  <div className="flex gap-1 mb-3">
+                    {(['login', 'register', 'magic-link'] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setAuthMode(m)}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] transition-colors ${
+                          authMode === m
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
                       >
-                        <Mail size={13} />
-                        {isSendingMagicLink ? '发送中…' : '发送登录链接'}
+                        {m === 'login' ? '登录' : m === 'register' ? '注册' : '邮箱链接'}
                       </button>
-                    </div>
-                  </label>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="email"
+                      value={authEmail}
+                      onChange={(event) => setAuthEmail(event.target.value)}
+                      placeholder="请输入邮箱"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300"
+                    />
+                    {authMode !== 'magic-link' && (
+                      <div className="relative">
+                        <Lock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={authPassword}
+                          onChange={(event) => setAuthPassword(event.target.value)}
+                          placeholder={authMode === 'register' ? '设置密码（至少6位）' : '请输入密码'}
+                          className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((p) => !p)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAuth}
+                      disabled={isAuthLoading}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors"
+                    >
+                      <Mail size={13} />
+                      {isAuthLoading
+                        ? '处理中…'
+                        : authMode === 'login'
+                          ? '登录'
+                          : authMode === 'register'
+                            ? '注册'
+                            : '发送登录链接'}
+                    </button>
+                  </div>
                   <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-                    收到邮件后按提示打开即可继续使用，成功后这里会显示你的邮箱和同步状态。
+                    {authMode === 'magic-link'
+                      ? '收到邮件后按提示打开即可登录，无需密码。'
+                      : authMode === 'register'
+                        ? '注册后会收到一封验证邮件，请查收后即可登录。'
+                        : '使用邮箱和密码登录，登录后数据跨设备同步。'}
                   </p>
                 </div>
               ) : (
@@ -364,9 +420,9 @@ export function CloudSyncCard({
               <div className="rounded-2xl border border-violet-100 bg-violet-50/60 px-3 py-3">
                 <div className="flex items-start justify-between gap-2 flex-wrap">
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">一键载入体验画像</p>
+                    <p className="text-sm font-semibold text-slate-800">快速填充参考档案</p>
                     <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      为了更直观看到个性化推荐和健康空间效果，可以先加载一份虚拟用户资料。
+                      如果想先体验个性化推荐和历史会话能力，可以先加载一份可编辑的参考资料。
                     </p>
                   </div>
                   <Sparkles size={16} className="text-violet-600" />
