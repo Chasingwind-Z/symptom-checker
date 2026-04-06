@@ -369,7 +369,7 @@ function createDistrictRiskData(params: {
     ),
     sourceNote:
       params.sourceNote ??
-      `此卡属于趋势参考口径：综合官方公开资料摘要、季节/天气因子与匿名症状样本（${seasonalSignal.label}），用于解释区域变化方向，不等同于疾控通报。`,
+      `综合官方公开资料摘要、季节/天气因子与社区症状动态（${seasonalSignal.label}），用于解释区域变化方向，不等同于疾控通报。`,
     lastUpdated: getLastUpdatedLabel(),
     dataLabel: params.dataLabel ?? `趋势参考口径 · ${seasonalSignal.label}`,
   }
@@ -590,7 +590,7 @@ export function getAIWarningText(data: DistrictRiskData[]): string {
   const top1 = topTwo[0]
   const top2 = topTwo[1] ?? top1
 
-  return `以下内容为基于匿名症状信号、近 7 日变化和公开资料摘要生成的趋势参考，用于辅助观察近期健康压力，不替代官方疫情通报。
+  return `以下内容为基于综合症状信号、近 7 日变化和公开资料摘要生成的健康动态，用于辅助观察近期健康压力，不替代官方疫情通报。
 
 近期值得优先留意的是 ${top1.district}，当前风险分 ${Math.round(top1.riskScore)}，主要集中在${top1.topSymptoms.join('、')}等信号。
 
@@ -682,7 +682,7 @@ export function mergeLocalReports(data: DistrictRiskData[]): DistrictRiskData[] 
       totalReports: d.totalReports + extra,
       topSymptoms: [...new Set([...reportSymptoms, ...d.topSymptoms])].slice(0, 3),
       alertReasons: [
-        `近 48 小时新增 ${recentReports || extra} 条匿名分诊上报`,
+        `近 48 小时新增 ${recentReports || extra} 条分诊上报`,
         unresolvedFollowUps > 0
           ? `${unresolvedFollowUps} 条回访仍未明显好转`
           : followUpCases > 0
@@ -690,9 +690,9 @@ export function mergeLocalReports(data: DistrictRiskData[]): DistrictRiskData[] 
           : '近期回访提醒权重小幅抬升',
         ...d.alertReasons,
       ].slice(0, 3),
-      sourceNote: `已叠加近 48 小时脱敏匿名分诊与回访信号（${recentReports || extra} 条新增上报，${unresolvedFollowUps} 条待恢复回访），用于提升早期感知灵敏度；${d.sourceNote}`,
+      sourceNote: `已叠加近 48 小时脱敏分诊与回访信号（${recentReports || extra} 条新增上报，${unresolvedFollowUps} 条待恢复回访），用于提升早期感知灵敏度；${d.sourceNote}`,
       lastUpdated: getLastUpdatedLabel(),
-      dataLabel: '匿名信号叠加 · 趋势参考',
+      dataLabel: '多源信号叠加 · 综合趋势',
     }
   })
 }

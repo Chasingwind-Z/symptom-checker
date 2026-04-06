@@ -564,7 +564,7 @@ export function getPersonalizedInsights(params: {
   if (profile?.displayName || profile?.profileMode === 'demo') {
     insights.push({
       id: 'persona',
-      title: profile?.profileMode === 'demo' ? '当前使用预设场景' : '你的健康画像',
+      title: profile?.profileMode === 'demo' ? '当前使用常见场景' : '你的健康画像',
       summary:
         profile?.profileMode === 'demo'
           ? '已为你载入一组可编辑的场景资料和历史记录，方便快速感受个性化建议会如何变化。'

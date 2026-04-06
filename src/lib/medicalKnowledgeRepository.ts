@@ -413,7 +413,7 @@ export async function primeCloudMedicalKnowledgeDocuments(
         cloudSnapshot = createSnapshot('idle', {
           storageMode: 'supabase-fallback-local',
           retrievalMode: 'hybrid-local',
-          error: '云端知识库暂时为空，继续使用本地 seeded corpus。',
+          error: '云端知识库暂时为空，已使用本地医学资料库。',
         });
         return cloudSnapshot;
       }

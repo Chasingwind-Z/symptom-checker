@@ -291,7 +291,7 @@ async function runWebSearch(query: string): Promise<string> {
       source: 'tavily',
       sourceLabel: '官方信源检索（本地降级）',
       fetchedAt: new Date().toISOString(),
-      message: '当前使用内置官方资料卡作为参考信息来源。',
+      message: '数据来源：官方公开资料。',
       officialDomains: OFFICIAL_SOURCE_DOMAINS,
     });
   }

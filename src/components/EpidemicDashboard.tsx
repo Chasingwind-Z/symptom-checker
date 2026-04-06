@@ -299,7 +299,7 @@ export function EpidemicDashboard({ onBack }: Props) {
       label: '趋势参考层',
       title: '地图热力与 7 日曲线',
       badge: '估算口径',
-      summary: '综合匿名分诊、购药波动、季节和天气因子估算近期方向，适合比较区域变化与服务压力。',
+      summary: '综合社区分诊、购药波动、季节和天气因子估算近期方向，适合比较区域变化与服务压力。',
       note: '用于看相对变化，不代表官方通报病例数。',
       wrapperClass: 'border-cyan-500/20 bg-cyan-500/5',
       labelClass: 'text-cyan-200',
@@ -308,11 +308,11 @@ export function EpidemicDashboard({ onBack }: Props) {
     {
       id: 'anonymous',
       label: '早期感知层',
-      title: '匿名问诊与回访',
+      title: '社区问诊与回访',
       badge: '近 48 小时',
       summary: '汇总脱敏自查上报与回访状态，帮助识别局部抬升和恢复缓慢区域，便于做早期观察。',
       note: signalDistrict
-        ? `当前重点观察 ${signalDistrict.district} 的匿名分诊与回访变化。`
+        ? `当前重点观察 ${signalDistrict.district} 的社区分诊与回访变化。`
         : '需结合个人症状和线下诊疗共同判断。',
       wrapperClass: 'border-amber-400/20 bg-amber-500/5',
       labelClass: 'text-amber-200',
@@ -330,7 +330,7 @@ export function EpidemicDashboard({ onBack }: Props) {
           label: '症状上报',
           value: activeDistrict.riskBreakdown.symptomReports,
           color: '#38BDF8',
-          description: '来自匿名分诊与自查上报的早期观察信号',
+          description: '来自社区分诊与自查上报的早期观察信号',
         },
         {
           label: '趋势变化',
@@ -405,7 +405,7 @@ export function EpidemicDashboard({ onBack }: Props) {
         <div className="flex items-center gap-4">
           <span className="text-white/60 text-sm font-mono">{currentTime}</span>
           <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full hidden md:inline">
-            官方资料对照 · 趋势参考 · 匿名信号
+            官方资料对照 · 综合趋势 · 健康动态
           </span>
           <button
             onClick={onBack}
@@ -425,7 +425,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-white">{cityOverview.totalReports}</p>
-                <p className="text-white/50 text-xs mt-1">近 24 小时症状参考信号</p>
+                <p className="text-white/50 text-xs mt-1">近 24 小时健康动态</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                 <Activity size={18} className="text-blue-400" />
@@ -487,7 +487,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   </span>
                 </div>
                 <p className="text-white/75 text-xs mt-1 leading-relaxed">
-                  近 7 日{focusDistrict.topSymptoms.slice(0, 2).join('、')}相关匿名分诊与回访信号持续抬升，
+                  近 7 日{focusDistrict.topSymptoms.slice(0, 2).join('、')}相关分诊与回访信号持续抬升，
                   当前主要由症状上报 {focusDistrict.riskBreakdown.symptomReports} 分和趋势变化{' '}
                   {focusDistrict.riskBreakdown.trendChange} 分驱动，建议先核对官方公开资料，再评估社区问诊与接诊压力。
                 </p>
@@ -643,7 +643,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   </span>
                 </div>
                 <p className="text-[11px] text-white/60 leading-relaxed">
-                  这张图将官方公开资料、趋势参考层和匿名问诊信号分开展示，帮助你快速分辨哪些信息用于核对正式建议，哪些信息用于观察变化方向。
+                  这张图将官方公开资料、趋势参考层和社区问诊信号分开展示，帮助你快速分辨哪些信息用于核对正式建议，哪些信息用于观察变化方向。
                 </p>
                 <div className="space-y-2.5 mt-3">
                   {sourceTierCards.map(card => (
@@ -688,7 +688,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                 {signalDistrict && (
                   <p className="text-[11px] text-white/60 leading-relaxed mb-3">
                     以 <span className="text-white/85">{signalDistrict.district}</span> 为当前观察窗口，
-                    当前结合匿名分诊、购药咨询与季节因子估算近期关注度，用于判断变化方向，不代表官方病例统计。
+                    当前结合社区分诊、购药咨询与季节因子估算近期关注度，用于判断变化方向，不代表官方病例统计。
                   </p>
                 )}
                 <div className="space-y-2.5">

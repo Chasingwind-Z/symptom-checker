@@ -340,7 +340,7 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
     return {
       mode: bootstrap.state === 'error' ? 'error' : 'local',
       statusLabel:
-        localProfile.profileMode === 'demo' ? '当前使用预设场景（游客模式）' : bootstrap.label,
+        localProfile.profileMode === 'demo' ? '当前使用常见场景（快速体验）' : bootstrap.label,
       helperText:
         localProfile.profileMode === 'demo'
           ? '你可以直接继续问诊，也可以先把这份资料改成自己的真实情况后再保存。'
@@ -379,7 +379,7 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
       mode: 'cloud-ready',
       statusLabel:
         localProfile.profileMode === 'demo'
-          ? '预设场景待确认（登录后可同步）'
+          ? '常见场景待确认（登录后可同步）'
           : '邮箱同步待开启',
       helperText:
         localProfile.profileMode === 'demo'

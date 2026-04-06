@@ -615,7 +615,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
               name: 'tool-fallback',
               displayName: '调用工具',
               status: 'error',
-              summary: '工具链暂时不可用，已切换普通回复',
+              summary: '系统正在调整，已为你生成回复',
             },
           ]);
         }

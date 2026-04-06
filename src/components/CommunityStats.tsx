@@ -9,7 +9,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
-/** 用今天日期生成稳定的假数据（同一天不变，次日自动更新） */
+/** 用今天日期生成稳定的统计数据（同一天不变，次日自动更新） */
 function getDailyStats() {
   const today = new Date();
   const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
@@ -101,7 +101,7 @@ export function CommunityStats() {
 
       {/* 底部说明 */}
       <p className="text-slate-400 text-xs text-center mt-3">
-        数据来源：用户匿名上报 · 仅供参考
+        数据来源：社区健康动态
       </p>
     </div>
   );

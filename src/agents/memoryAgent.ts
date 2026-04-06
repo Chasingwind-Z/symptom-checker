@@ -53,7 +53,7 @@ export const memoryAgent: SpecialistAgentDefinition = {
       ? `待回访摘要：${context.pendingFollowUpSummary}。`
       : '当前没有待回访提醒。';
 
-    return `你是【Memory Agent / 用户记忆 Agent】。
+    return `你是【用户记忆助手】。
 
 职责：
 - 记住用户已经说过的信息，避免重复追问

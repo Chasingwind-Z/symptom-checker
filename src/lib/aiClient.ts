@@ -173,7 +173,7 @@ function buildChatRequestBody(
 
 async function requestDirectChatCompletion(body: Record<string, unknown>): Promise<Response> {
   if (!DIRECT_BASE_URL) {
-    throw new Error('未配置 VITE_AI_BASE_URL，且服务端网关也尚未启用。');
+    throw new Error('AI 服务暂时不可用，请稍后重试。');
   }
 
   return fetch(`${DIRECT_BASE_URL.replace(/\/+$/, '')}/v1/chat/completions`, {

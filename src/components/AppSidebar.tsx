@@ -3,6 +3,7 @@ import {
   ClipboardList,
   HeartPulse,
   History,
+  LogIn,
   MapPin,
   MessageSquareText,
   Pill,
@@ -10,7 +11,6 @@ import {
   Search,
   Stethoscope,
 } from 'lucide-react';
-import { maskEmail } from '../lib/supabase';
 import type { ConversationSession } from '../types';
 import { ConversationHistoryPanel } from './ConversationHistoryPanel';
 
@@ -32,11 +32,14 @@ interface AppSidebarProps {
   onSelectRecords: () => void;
   onSelectMedication: () => void;
   onOpenMap: () => void;
-  onOpenAuth: () => void;
-  sessionEmail?: string | null;
+  accountLabel?: string;
   statusLabel: string;
+  statusHelperText?: string;
   profileCompletion: number;
   pendingFollowUpCount: number;
+  onOpenAuth?: () => void;
+  authActionLabel?: string;
+  sessionEmail?: string | null;
 }
 
 interface SidebarNavButtonProps {
@@ -49,7 +52,6 @@ interface SidebarNavButtonProps {
 
 function SidebarNavButton({
   label,
-  description,
   isActive,
   onClick,
   icon: Icon,
@@ -59,25 +61,14 @@ function SidebarNavButton({
       type="button"
       onClick={onClick}
       aria-current={isActive ? 'page' : undefined}
-      className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
+      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
         isActive
-          ? 'border-cyan-200 bg-cyan-50/80 shadow-sm'
-          : 'border-transparent bg-transparent hover:border-slate-200 hover:bg-slate-50'
+          ? 'bg-slate-100 text-slate-900'
+          : 'text-slate-600 hover:bg-slate-50'
       }`}
     >
-      <div className="flex items-start gap-3">
-        <div
-          className={`mt-0.5 rounded-xl p-2 ${
-            isActive ? 'bg-white text-cyan-700' : 'bg-white text-slate-500'
-          }`}
-        >
-          <Icon size={15} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-900">{label}</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{description}</p>
-        </div>
-      </div>
+      <Icon size={16} className={isActive ? 'text-slate-900' : 'text-slate-400'} />
+      <span className="text-[13px] font-medium">{label}</span>
     </button>
   );
 }
@@ -85,9 +76,7 @@ function SidebarNavButton({
 export function AppSidebar({
   activeSection,
   searchQuery,
-  onSearchQueryChange,
   sessions,
-  totalSessionCount,
   activeSessionId,
   onOpenSession,
   onStartNewSession,
@@ -98,111 +87,82 @@ export function AppSidebar({
   onSelectRecords,
   onSelectMedication,
   onOpenMap,
-  onOpenAuth,
-  sessionEmail,
+  accountLabel,
   statusLabel,
-  profileCompletion,
-  pendingFollowUpCount,
+  onOpenAuth,
+  authActionLabel,
 }: AppSidebarProps) {
-  const accountLabel = sessionEmail ? maskEmail(sessionEmail) : '游客模式';
-  const sessionSummary = searchQuery.trim()
-    ? `已按“${searchQuery}”筛到 ${sessions.length} 段会话`
-    : totalSessionCount > 0
-      ? '最近更新的问诊线程会固定显示在这里'
-      : '完成第一次问诊后，线程会自动保存在这里';
-
   return (
     <aside className="sticky top-0 hidden h-screen w-[320px] shrink-0 flex-col border-r border-slate-200 bg-white/92 px-4 py-4 backdrop-blur-xl lg:flex">
-      <div className="flex items-center gap-3 px-2">
-        <div className="rounded-2xl bg-blue-600 p-2 text-white shadow-sm">
-          <Stethoscope size={18} />
+      <div className="flex items-center gap-2.5 px-2">
+        <div className="rounded-lg bg-blue-600 p-1.5 text-white">
+          <Stethoscope size={16} />
         </div>
-        <div>
-          <p className="text-sm font-semibold text-slate-900">健康助手</p>
-          <p className="text-xs text-slate-500">把问诊、档案和记录集中到左侧</p>
-        </div>
+        <p className="text-sm font-semibold text-slate-900">健康助手</p>
       </div>
 
       <button
         type="button"
         onClick={onStartNewSession}
-        className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
+        className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-blue-700"
       >
-        <Plus size={16} />
+        <Plus size={15} />
         新建问诊
       </button>
 
-      <nav className="mt-4 space-y-1.5">
+      <nav className="mt-3 space-y-0.5">
         <SidebarNavButton
           label="当前问诊"
-          description="回到当前线程，继续补充新的症状变化"
+          description=""
           isActive={activeSection === 'chat'}
           onClick={onSelectChat}
           icon={MessageSquareText}
         />
         <SidebarNavButton
           label="搜索记录"
-          description={searchQuery.trim() ? `当前关键词：${searchQuery}` : '按症状、标题或建议快速查找'}
+          description=""
           isActive={activeSection === 'search'}
           onClick={onSelectSearch}
           icon={Search}
         />
         <SidebarNavButton
           label="健康档案"
-          description={`基础资料完整度 ${profileCompletion}%`}
+          description=""
           isActive={activeSection === 'profile'}
           onClick={onSelectProfile}
           icon={HeartPulse}
         />
         <SidebarNavButton
           label="历史会话"
-          description={totalSessionCount > 0 ? `${totalSessionCount} 段线程已保存` : '查看最近保存的问诊线程'}
+          description=""
           isActive={activeSection === 'history'}
           onClick={onSelectHistory}
           icon={History}
         />
         <SidebarNavButton
           label="记录中心"
-          description={
-            pendingFollowUpCount > 0
-              ? `${pendingFollowUpCount} 项待跟进`
-              : '随访提醒和最近摘要会汇总在这里'
-          }
+          description=""
           isActive={activeSection === 'records'}
           onClick={onSelectRecords}
           icon={ClipboardList}
         />
         <SidebarNavButton
           label="用药建议"
-          description="把最近问诊里的 OTC / 家庭处理方向前置查看"
+          description=""
           isActive={activeSection === 'medication'}
           onClick={onSelectMedication}
           icon={Pill}
         />
         <SidebarNavButton
           label="健康地图"
-          description="查看附近医院与地区健康趋势"
+          description=""
           isActive={activeSection === 'map'}
           onClick={onOpenMap}
           icon={MapPin}
         />
       </nav>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-3">
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-          <Search size={15} className="text-slate-400" />
-          <input
-            value={searchQuery}
-            onFocus={onSelectSearch}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            placeholder="搜索症状、会话或建议"
-            className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-          />
-        </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{sessionSummary}</p>
-      </div>
-
-      <div className="mt-4 min-h-0 flex-1 overflow-hidden">
+      <div className="mt-3 min-h-0 flex-1 overflow-hidden">
         <ConversationHistoryPanel
           sessions={sessions}
           activeSessionId={activeSessionId}
@@ -224,22 +184,24 @@ export function AppSidebar({
         />
       </div>
 
-      <button
-        type="button"
-        onClick={onOpenAuth}
-        className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-left transition-colors hover:bg-slate-100"
-      >
-        <p className="text-xs font-medium text-slate-500">{accountLabel}</p>
-        <p className="mt-1 text-sm font-semibold text-slate-900">
-          {sessionEmail ? statusLabel : '登录 / 注册'}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
-          <span className="rounded-full bg-white px-2.5 py-1">档案完整度 {profileCompletion}%</span>
-          <span className="rounded-full bg-white px-2.5 py-1">
-            {pendingFollowUpCount > 0 ? `${pendingFollowUpCount} 项待跟进` : '记录中心已整理'}
-          </span>
+      <div className="mt-3 border-t border-slate-100 px-2 pt-3">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium text-slate-900">{statusLabel}</p>
+            <p className="text-[11px] text-slate-500">{accountLabel ?? ''}</p>
+          </div>
+          {onOpenAuth && authActionLabel && (
+            <button
+              type="button"
+              onClick={onOpenAuth}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-100"
+            >
+              <LogIn size={13} />
+              {authActionLabel}
+            </button>
+          )}
         </div>
-      </button>
+      </div>
     </aside>
   );
 }
