@@ -15,6 +15,7 @@ import { InfoBar } from './components/WeatherBar';
 import { EpidemicDashboard } from './components/EpidemicDashboard';
 import { CloudSyncCard } from './components/CloudSyncCard';
 import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
+import { WorkspaceOverviewPanel } from './components/WorkspaceOverviewPanel';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import type { Hospital, SendMessageInput } from './types';
@@ -60,6 +61,25 @@ export default function App() {
   const [, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map'>('home');
+  const profileCompletion = useMemo(
+    () =>
+      Math.round(
+        ([
+          workspace.profile.displayName,
+          workspace.profile.city,
+          workspace.profile.birthYear,
+          workspace.profile.gender,
+          workspace.profile.medicalNotes,
+          workspace.profile.chronicConditions,
+          workspace.profile.allergies,
+          workspace.profile.currentMedications,
+          workspace.profile.careFocus,
+        ].filter(Boolean).length /
+          9) *
+          100
+      ) || 0,
+    [workspace.profile]
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -94,11 +114,21 @@ export default function App() {
     }
   }
 
+  function handleContinueLatestConversation() {
+    const latestSession = conversationSessions[0];
+    if (latestSession) {
+      handleOpenConversation(latestSession.id);
+      return;
+    }
+
+    handleResetChat();
+  }
+
   const effectivePage = currentPage === 'home' && messages.length > 0 ? 'chat' : currentPage;
   const showWorkspace = effectivePage === 'workspace';
   const showWelcome = !showWorkspace && messages.length === 0;
   const showConversationShelf = !showWorkspace && !showWelcome && conversationSessions.length > 0;
-  const contentWidthClass = showWorkspace ? 'max-w-5xl' : showWelcome ? 'max-w-6xl' : 'max-w-4xl';
+  const contentWidthClass = showWorkspace ? 'max-w-6xl' : showWelcome ? 'max-w-6xl' : 'max-w-4xl';
 
   if (effectivePage === 'map') {
     return <EpidemicDashboard onBack={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')} />
@@ -130,50 +160,68 @@ export default function App() {
         <div className={`${contentWidthClass} mx-auto w-full`}>
           {showWorkspace && (
             <div className="py-5 space-y-4">
-              <section className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">账号与健康档案</p>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      游客模式下，资料只保存在当前浏览器；登录后可同步档案、历史会话和问诊摘要。
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleResetChat}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
-                    >
-                      开始新对话
-                    </button>
-                    <button
-                      onClick={() => setCurrentPage('map')}
-                      className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-100 transition-colors"
-                    >
-                      查看疾病地图
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              <CloudSyncCard
-                mode={workspace.mode}
+              <WorkspaceOverviewPanel
+                sessionEmail={workspace.sessionEmail}
                 statusLabel={workspace.statusLabel}
                 helperText={workspace.helperText}
-                recentCases={workspace.recentCases}
-                profile={workspace.profile}
-                sessionEmail={workspace.sessionEmail}
-                onRefresh={workspace.refresh}
-                isRefreshing={workspace.isRefreshing}
-                onSaveProfile={workspace.updateProfile}
-                onApplyDemoPersona={workspace.loadDemoPersona}
+                profileCompletion={profileCompletion}
+                latestCase={workspace.recentCases[0]}
+                latestConversation={conversationSessions[0] ?? null}
+                conversationCount={conversationSessions.length}
+                onStartNewConversation={handleResetChat}
+                onContinueConversation={
+                  conversationSessions.length > 0 ? handleContinueLatestConversation : undefined
+                }
+                onOpenMap={() => setCurrentPage('map')}
               />
 
-              <ConversationHistoryPanel
-                sessions={conversationSessions}
-                activeSessionId={activeSessionId}
-                onOpenSession={handleOpenConversation}
-                onStartNewSession={handleResetChat}
-              />
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px] items-start">
+                <CloudSyncCard
+                  mode={workspace.mode}
+                  statusLabel={workspace.statusLabel}
+                  helperText={workspace.helperText}
+                  recentCases={workspace.recentCases}
+                  profile={workspace.profile}
+                  sessionEmail={workspace.sessionEmail}
+                  onRefresh={workspace.refresh}
+                  isRefreshing={workspace.isRefreshing}
+                  onSaveProfile={workspace.updateProfile}
+                  onApplyDemoPersona={workspace.loadDemoPersona}
+                />
+
+                <div className="space-y-4">
+                  <ConversationHistoryPanel
+                    sessions={conversationSessions}
+                    activeSessionId={activeSessionId}
+                    onOpenSession={handleOpenConversation}
+                    onStartNewSession={handleResetChat}
+                    title="最近记录与继续咨询"
+                    description="继续上次问诊、回看最近判断，或从这里快速打开新的症状线程。"
+                    maxItems={6}
+                  />
+
+                  <section className="rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-800">同步与隐私</p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                      {workspace.sessionEmail
+                        ? '当前邮箱已用于同步档案和最近问诊摘要；退出后仍会保留这台设备上的本机缓存。'
+                        : '未登录时，资料和历史记录只保存在当前浏览器；登录后会自动同步到你的个人空间。'}
+                    </p>
+                    <div className="mt-3 space-y-2 text-[11px] text-slate-500">
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-medium text-slate-700">当前状态</p>
+                        <p className="mt-1">{workspace.statusLabel}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 px-3 py-2">
+                        <p className="font-medium text-slate-700">接下来建议</p>
+                        <p className="mt-1">
+                          优先补齐基础资料和最近症状变化，这样后续问诊能更少重复追问。
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
             </div>
           )}
 

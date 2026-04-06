@@ -1,0 +1,137 @@
+import { ArrowRight, Cloud, MapPin, MessageSquareText, Plus, UserRound } from 'lucide-react';
+import type { CaseHistoryItem } from '../lib/healthData';
+import { maskEmail } from '../lib/supabase';
+import type { ConversationSession } from '../types';
+
+interface WorkspaceOverviewPanelProps {
+  sessionEmail: string | null;
+  statusLabel: string;
+  helperText: string;
+  profileCompletion: number;
+  latestCase?: CaseHistoryItem;
+  latestConversation?: ConversationSession | null;
+  conversationCount: number;
+  onStartNewConversation: () => void;
+  onOpenMap: () => void;
+  onContinueConversation?: () => void;
+}
+
+function getRiskMeta(level?: CaseHistoryItem['triageLevel'] | ConversationSession['riskLevel'] | null) {
+  switch (level) {
+    case 'green':
+      return { label: '低风险', tone: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+    case 'yellow':
+      return { label: '建议就诊', tone: 'bg-amber-50 text-amber-700 border-amber-100' };
+    case 'orange':
+      return { label: '今日处理', tone: 'bg-orange-50 text-orange-700 border-orange-100' };
+    case 'red':
+      return { label: '紧急', tone: 'bg-rose-50 text-rose-700 border-rose-100' };
+    default:
+      return { label: '进行中', tone: 'bg-slate-100 text-slate-600 border-slate-200' };
+  }
+}
+
+export function WorkspaceOverviewPanel({
+  sessionEmail,
+  statusLabel,
+  helperText,
+  profileCompletion,
+  latestCase,
+  latestConversation,
+  conversationCount,
+  onStartNewConversation,
+  onOpenMap,
+  onContinueConversation,
+}: WorkspaceOverviewPanelProps) {
+  const riskMeta = getRiskMeta(latestCase?.triageLevel ?? latestConversation?.riskLevel ?? null);
+  const latestTitle = latestCase?.chiefComplaint || latestConversation?.title || '还没有历史问诊';
+  const accountLabel = sessionEmail ? maskEmail(sessionEmail) : '游客使用中';
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
+            <Cloud size={13} className="text-cyan-600" />
+            {statusLabel}
+          </div>
+          <h2 className="mt-3 text-xl font-semibold text-slate-900">个人空间</h2>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500">{helperText}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {onContinueConversation && (
+            <button
+              type="button"
+              onClick={onContinueConversation}
+              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              <ArrowRight size={15} />
+              继续上次咨询
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onStartNewConversation}
+            className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <Plus size={15} />
+            新建对话
+          </button>
+          <button
+            type="button"
+            onClick={onOpenMap}
+            className="inline-flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+          >
+            <MapPin size={15} />
+            健康地图
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <UserRound size={12} />
+            当前账号
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{accountLabel}</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {sessionEmail ? '资料与历史会自动跨设备同步' : '未登录时仅保存在当前浏览器'}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <Cloud size={12} />
+            档案完整度
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{profileCompletion}%</p>
+          <p className="mt-1 text-[11px] text-slate-500">补齐基础资料后，问诊会更少重复追问。</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <MessageSquareText size={12} />
+            最近一次
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{latestTitle}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}>
+              {riskMeta.label}
+            </span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <MessageSquareText size={12} />
+            历史会话
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-800">{conversationCount} 段</p>
+          <p className="mt-1 text-[11px] text-slate-500">可在首页、聊天页和个人空间继续之前的对话线程。</p>
+        </div>
+      </div>
+    </section>
+  );
+}
