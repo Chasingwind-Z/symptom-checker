@@ -4,6 +4,7 @@ import type { ConversationSession } from '../types'
 
 export const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
   search: '统一搜索',
+  evidence: '判断依据',
   profile: '健康档案',
   history: '会话线程',
   records: '记录中心',

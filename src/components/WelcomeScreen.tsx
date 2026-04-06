@@ -17,12 +17,9 @@ import {
   getConsultationModePreset,
   type ConsultationModeId,
 } from '../lib/consultationModes'
+import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
-
-type WelcomeProfileContext = Pick<
-  ProfileDraft,
-  'city' | 'careFocus' | 'chronicConditions' | 'allergies' | 'currentMedications'
->
+import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
 
 interface ScenarioChip {
   label: string
@@ -36,12 +33,16 @@ interface WelcomeScreenProps {
   onSelectMode: (modeId: ConsultationModeId) => void
   onToggleMap: () => void
   sessionEmail?: string | null
-  profile?: WelcomeProfileContext | null
+  profile?: ProfileDraft | null
   weather?: WeatherData | null
   pendingFollowUpCount?: number
+  householdProfiles?: HouseholdProfileRecord[]
+  switchingHouseholdProfileId?: string | null
   recentCases?: CaseHistoryItem[]
   recentSessions: ConversationSession[]
   onOpenConversation: (sessionId: string) => void
+  onSelectHouseholdProfile: (record: HouseholdProfileRecord) => void
+  onManageProfiles: () => void
 }
 
 interface FocusPathCard {
@@ -102,7 +103,7 @@ function getRecentSessionReference(session: ConversationSession) {
 }
 
 function buildPersonalizedScenarios(params: {
-  profile?: WelcomeProfileContext | null
+  profile?: ProfileDraft | null
   recentCases?: CaseHistoryItem[]
   recentSessions: ConversationSession[]
 }) {
@@ -255,9 +256,13 @@ export function WelcomeScreen({
   profile,
   weather,
   pendingFollowUpCount = 0,
+  householdProfiles = [],
+  switchingHouseholdProfileId,
   recentCases = [],
   recentSessions,
   onOpenConversation,
+  onSelectHouseholdProfile,
+  onManageProfiles,
 }: WelcomeScreenProps) {
   const personalizedScenarios = buildPersonalizedScenarios({
     profile,
@@ -299,6 +304,25 @@ export function WelcomeScreen({
 
   return (
     <div className="space-y-4">
+        <HouseholdProfileSwitcher
+          currentProfile={profile ?? {
+            displayName: '',
+            city: '中国大陆',
+            birthYear: null,
+            gender: '',
+            medicalNotes: '',
+            chronicConditions: '',
+            allergies: '',
+            currentMedications: '',
+            careFocus: '',
+            profileMode: 'custom',
+          }}
+          householdProfiles={householdProfiles}
+          isSwitchingId={switchingHouseholdProfileId}
+          onSwitchProfile={onSelectHouseholdProfile}
+          onManageProfiles={onManageProfiles}
+        />
+
         {showReengagement && latestSession && (
           <button
             type="button"

@@ -19,6 +19,8 @@ import { HospitalCard } from './HospitalCard';
 import { OfficialSourceComparison } from './OfficialSourceComparison';
 import { RiskGauge } from './RiskGauge';
 import { ReportExport } from './ReportExport';
+import { AftercareTimeline } from './AftercareTimeline';
+import { buildAftercarePlan } from '../lib/aftercarePlan';
 import * as officialSourceHelpers from '../lib/officialSources';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import type { WeatherData } from '../lib/geolocation';
@@ -642,6 +644,7 @@ export function ResultCard({
     [profile, recentCases, result]
   );
   const medicationAdvice = useMemo(() => getMedicationGuidance(result, profile), [result, profile]);
+  const aftercarePlan = useMemo(() => buildAftercarePlan(result, profile), [profile, result]);
   const medicationSummarySections = useMemo(
     () => buildMedicationSummarySections(medicationAdvice),
     [medicationAdvice]
@@ -763,6 +766,8 @@ export function ResultCard({
             </div>
           ))}
         </div>
+
+        <AftercareTimeline plan={aftercarePlan} />
 
         {/* Action checklist */}
         <div className={`rounded-xl px-4 py-3 mb-4 ${config.bg}`}>

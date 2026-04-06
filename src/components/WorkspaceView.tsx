@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react'
 import type { SidebarSection } from './AppSidebar'
 import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 import { HealthSettingsPanel } from './HealthSettingsPanel'
+import { JudgmentBasisPanel } from './JudgmentBasisPanel'
 import { LazySurfaceFallback } from './LazySurfaceFallback'
 import {
   RecordsCenterPanel,
@@ -260,6 +261,14 @@ export function WorkspaceView({
             </section>
           )}
         </div>
+      )}
+
+      {workspaceSection === 'evidence' && (
+        <JudgmentBasisPanel
+          diagnosisResult={diagnosisResult}
+          knowledgeResult={knowledgeSearchPreview}
+          webSearch={connectedWebSearch}
+        />
       )}
 
       {workspaceSection === 'profile' && (

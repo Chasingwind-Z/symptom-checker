@@ -36,7 +36,10 @@ import {
 import { getRecommendedHospitals } from './lib/mockHospitals';
 import { searchMedicalKnowledge } from './lib/medicalKnowledge';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
-import { buildProfileCompletionGuide } from './lib/healthWorkspaceInsights';
+import {
+  buildProfileCompletionGuide,
+  type HouseholdProfileRecord,
+} from './lib/healthWorkspaceInsights';
 import {
   DEFAULT_EXPERIENCE_SETTINGS,
   loadExperienceSettings,
@@ -149,6 +152,7 @@ export default function App() {
     status: 'idle',
   });
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [switchingHouseholdProfileId, setSwitchingHouseholdProfileId] = useState<string | null>(null);
   const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
     height: 148,
     keyboardOffset: 0,
@@ -232,6 +236,34 @@ export default function App() {
       setWelcomeFocusSignal((current) => current + 1);
     }, 320);
   }, []);
+
+  const handleSelectHouseholdProfile = useCallback(
+    async (record: HouseholdProfileRecord) => {
+      setSwitchingHouseholdProfileId(record.id)
+
+      try {
+        await workspace.updateProfile(record.profile)
+
+        const age = record.profile.birthYear
+          ? new Date().getFullYear() - record.profile.birthYear
+          : null
+        const nextMode: ConsultationModeId =
+          age !== null && age < 18
+            ? 'child'
+            : age !== null && age >= 60
+              ? 'elderly'
+              : record.profile.chronicConditions.trim()
+                ? 'chronic'
+                : 'self'
+
+        setSelectedConsultationModeId(nextMode)
+        setWelcomeDraftValue('')
+      } finally {
+        setSwitchingHouseholdProfileId(null)
+      }
+    },
+    [workspace]
+  )
 
   const handleClearSelectedConsultationMode = useCallback(() => {
     setSelectedConsultationModeId(null);
@@ -796,6 +828,11 @@ export default function App() {
             title: '健康档案',
             subtitle: '管理基础资料、家庭成员和云端同步，后续问诊会自动沿用这些信息。',
           };
+        case 'evidence':
+          return {
+            title: '判断依据',
+            subtitle: '把这次分级的主要原因、医学知识参考和公开资料核对点整理在一起，方便理解为什么这样建议。',
+          };
         case 'history':
           return {
             title: '会话线程',
@@ -939,6 +976,7 @@ export default function App() {
         onDeleteSession={handleDeleteConversation}
         onStartNewSession={handleResetChat}
         onSelectSearch={() => handleOpenWorkspaceSection('search')}
+        onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
         onSelectProfile={() => handleOpenWorkspaceSection('profile')}
         onSelectHistory={() => handleOpenWorkspaceSection('history')}
         onSelectRecords={() => handleOpenWorkspaceSection('records')}
@@ -1062,9 +1100,13 @@ export default function App() {
                   profile={workspace.profile}
                   weather={weatherData}
                   pendingFollowUpCount={pendingFollowUpRecords.length}
+                  householdProfiles={workspace.householdProfiles}
+                  switchingHouseholdProfileId={switchingHouseholdProfileId}
                   recentCases={workspace.recentCases}
                   recentSessions={conversationSessions}
                   onOpenConversation={handleOpenConversation}
+                  onSelectHouseholdProfile={handleSelectHouseholdProfile}
+                  onManageProfiles={() => handleOpenWorkspaceSection('profile')}
                 />
                 <ChatInput
                   variant="inline"
@@ -1224,6 +1266,7 @@ export default function App() {
           authActionLabel={authActionLabel}
           onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
           onSelectSearch={() => handleOpenWorkspaceSection('search')}
+          onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
           onSelectRecords={() => handleOpenWorkspaceSection('records')}
           onSelectProfile={() => handleOpenWorkspaceSection('profile')}
           onSelectHistory={() => handleOpenWorkspaceSection('history')}

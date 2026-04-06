@@ -11,6 +11,7 @@ import {
   Plus,
   Search,
   Settings2,
+  ShieldCheck,
   Stethoscope,
 } from 'lucide-react';
 import { maskEmail } from '../lib/supabase';
@@ -19,6 +20,7 @@ import { ConversationHistoryPanel } from './ConversationHistoryPanel';
 
 export type SidebarSection =
   | 'search'
+  | 'evidence'
   | 'profile'
   | 'history'
   | 'records'
@@ -37,6 +39,7 @@ interface AppSidebarProps {
   onDeleteSession?: (sessionId: string) => void;
   onStartNewSession: () => void;
   onSelectSearch: () => void;
+  onSelectEvidence: () => void;
   onSelectProfile: () => void;
   onSelectHistory: () => void;
   onSelectRecords: () => void;
@@ -122,6 +125,7 @@ export function AppSidebar({
   onDeleteSession,
   onStartNewSession,
   onSelectSearch,
+  onSelectEvidence,
   onSelectProfile,
   onSelectHistory,
   onSelectRecords,
@@ -208,6 +212,13 @@ export function AppSidebar({
           isActive={activeSection === 'search'}
           onClick={onSelectSearch}
           icon={Search}
+          isCollapsed={isCollapsed}
+        />
+        <SidebarNavButton
+          label="判断依据"
+          isActive={activeSection === 'evidence'}
+          onClick={onSelectEvidence}
+          icon={ShieldCheck}
           isCollapsed={isCollapsed}
         />
         <SidebarNavButton

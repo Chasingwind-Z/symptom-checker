@@ -9,6 +9,7 @@ import {
   Pill,
   Search,
   Settings2,
+  ShieldCheck,
   Stethoscope,
   X,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ interface MobileBottomNavProps {
   authActionLabel: string;
   onSelectChat: () => void;
   onSelectSearch: () => void;
+  onSelectEvidence: () => void;
   onSelectRecords: () => void;
   onSelectProfile: () => void;
   onSelectHistory: () => void;
@@ -110,6 +112,7 @@ export function MobileBottomNav({
   authActionLabel,
   onSelectChat,
   onSelectSearch,
+  onSelectEvidence,
   onSelectRecords,
   onSelectProfile,
   onSelectHistory,
@@ -157,6 +160,11 @@ export function MobileBottomNav({
           </div>
 
           <div className="space-y-1">
+            <SheetItem
+              label="判断依据"
+              icon={ShieldCheck}
+              onClick={() => handleMoreItem(onSelectEvidence)}
+            />
             <SheetItem
               label="会话线程"
               icon={History}
