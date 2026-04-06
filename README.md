@@ -101,6 +101,7 @@ npm run lint -- --quiet
 | `VITE_GATEWAY_PROVIDER` | 可选 | 网关策略，常见值：`auto` / `supabase` |
 | `VITE_SUPABASE_URL` | 云端同步必需 | Supabase 项目地址 |
 | `VITE_SUPABASE_ANON_KEY` | 云端同步必需 | Supabase 前端匿名公钥 |
+| `VITE_SITE_URL` | 生产环境强烈建议 | 邮件跳回的根域名，如 `https://your-app.vercel.app/`；须与 Supabase 控制台 Allowed Redirect URLs 一致 |
 | `VITE_AMAP_JS_KEY` | 地图功能建议配置 | 高德地图 Web Key |
 | `VITE_TAVILY_API_KEY` | 可选 | 联网检索增强；未配置时自动退回内置官方资料 |
 
@@ -110,13 +111,31 @@ npm run lint -- --quiet
 
 ### Auth
 
-1. 打开 `Authentication -> Providers -> Email`
+1. 打开 `Authentication → Providers → Email`
 2. 同时启用：
    - **Email + Password**
    - **Magic Link**
-3. 在 `URL Configuration` 中加入：
-   - `http://localhost:5173`
-   - 你的线上域名
+3. 打开 `Authentication → URL Configuration`，配置以下两项：
+
+   **Site URL**（邮件默认跳回地址，每个项目只能填一个）：
+   ```
+   https://your-app.vercel.app
+   ```
+   本地开发期间可临时设为 `http://localhost:5173`，上线前务必改回生产域名。
+
+   **Allowed Redirect URLs**（白名单，支持多条，支持通配符）：
+   ```
+   http://localhost:5173/
+   https://your-app.vercel.app/
+   ```
+   > ⚠️ 列表中的每条 URL 必须与 `VITE_SITE_URL`（或当前 `window.location.origin + "/"`）**完全匹配**，否则 Supabase 会拒绝跳转。
+   > 如果使用了 Vercel 预览分支，可添加 `https://*.vercel.app/` 通配符条目。
+
+4. 在 `.env`（或 Vercel / 宿主平台的环境变量）中设置：
+   ```
+   VITE_SITE_URL=https://your-app.vercel.app/
+   ```
+   设置后，登录对话框会在邮件等待界面明确显示链接将跳回的地址，便于用户排查域名不对齐问题。
 
 ### 数据与函数
 

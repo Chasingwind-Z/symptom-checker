@@ -1,5 +1,6 @@
-import { Baby, HeartPulse, MessageCircle, ShieldPlus, UserRound } from 'lucide-react'
+import { Baby, HeartPulse, LogIn, MessageCircle, ShieldPlus, UserRound } from 'lucide-react'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
+import { maskEmail } from '../lib/supabase'
 import type { ConversationSession } from '../types'
 import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 
@@ -163,6 +164,10 @@ const GUARDIAN_MODES = [
 export function WelcomeScreen({
   onSendMessage,
   onToggleMap,
+  sessionEmail,
+  canOpenAuth,
+  onOpenAuth,
+  authActionLabel,
   profile,
   recentCases = [],
   recentSessions,
@@ -174,6 +179,8 @@ export function WelcomeScreen({
     recentCases,
     recentSessions,
   })
+  const canOpenAuthEntry = canOpenAuth !== false && Boolean(onOpenAuth)
+  const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : ''
   const scenarioChips =
     personalizedScenarios.length === 0
       ? COMMON_SCENARIOS
@@ -187,14 +194,14 @@ export function WelcomeScreen({
       <div className="space-y-3">
         <div className="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            无需登录，直接开始症状自查
+            <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+            {sessionEmail ? `已同步 · ${maskedSessionEmail}` : '无需登录，直接开始症状自查'}
           </div>
           <h1 className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">
             先描述不适，再决定下一步
           </h1>
 
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               onClick={() => onSendMessage('我想做一次症状自查，请按标准流程开始问我第一个问题。')}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
@@ -202,6 +209,23 @@ export function WelcomeScreen({
               <MessageCircle size={16} />
               立即开始
             </button>
+            {canOpenAuthEntry && !sessionEmail && (
+              <button
+                onClick={onOpenAuth}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100"
+              >
+                <LogIn size={16} />
+                {authActionLabel ?? '登录 / 注册'}
+              </button>
+            )}
+            {onOpenAuth && sessionEmail && (
+              <button
+                onClick={onOpenAuth}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-4 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
+              >
+                {authActionLabel ?? '管理账号'}
+              </button>
+            )}
             <button
               onClick={onToggleMap}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"

@@ -16,6 +16,13 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_FUNCTIONS_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /**
+   * Optional explicit site root URL used as the `emailRedirectTo` destination
+   * for magic-link and verification emails.  Must match one of the Allowed
+   * Redirect URLs configured in the Supabase Dashboard.
+   * Example: https://your-app.vercel.app
+   */
+  readonly VITE_SITE_URL?: string;
 }
 
 interface ImportMeta {

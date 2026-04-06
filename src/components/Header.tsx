@@ -84,10 +84,18 @@ export function Header({
           {onOpenAuth && !isSignedIn && (
             <button
               onClick={onOpenAuth}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm text-cyan-700 transition-colors hover:bg-cyan-100 lg:hidden"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm text-cyan-700 transition-colors hover:bg-cyan-100"
             >
               <LogIn size={14} />
-              <span className="hidden sm:inline">登录</span>
+              <span className="hidden sm:inline">登录 / 注册</span>
+            </button>
+          )}
+          {onOpenAuth && isSignedIn && (
+            <button
+              onClick={onOpenAuth}
+              className="hidden lg:inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              管理账号
             </button>
           )}
           {onOpenSettings && (

@@ -138,12 +138,29 @@ export function getSupabaseBootstrapStatus(): SupabaseBootstrapStatus {
   };
 }
 
-function getEmailRedirectUrl() {
+/**
+ * Resolves the URL that Supabase will redirect back to after a user clicks a
+ * magic-link or verification email.
+ *
+ * Resolution order:
+ *  1. `VITE_SITE_URL` env var — set this in production to the exact origin of
+ *     your deployment (e.g. https://your-app.vercel.app).  The value must also
+ *     appear in Supabase Dashboard → Authentication → URL Configuration →
+ *     Allowed Redirect URLs.
+ *  2. `window.location.origin + "/"` — stable root path, avoids accidentally
+ *     encoding a deep sub-path that is not in the allow-list.
+ */
+export function getEmailRedirectUrl(): string | undefined {
+  const envSiteUrl = import.meta.env.VITE_SITE_URL?.trim();
+  if (envSiteUrl) {
+    return envSiteUrl.endsWith('/') ? envSiteUrl : `${envSiteUrl}/`;
+  }
+
   if (typeof window === 'undefined') {
     return undefined;
   }
 
-  return `${window.location.origin}${window.location.pathname}`;
+  return `${window.location.origin}/`;
 }
 
 export async function getSupabaseSession(): Promise<Session | null> {

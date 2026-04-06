@@ -364,6 +364,7 @@ export default function App() {
     [workspace.profile]
   );
   const isSidebarCollapsed = experienceSettings.desktopSidebarMode === 'collapsed';
+  const authActionLabel = workspace.sessionEmail ? '管理账号' : '登录 / 注册';
   const desktopSidebarWidth = isSidebarCollapsed
     ? DESKTOP_SIDEBAR_COLLAPSED_WIDTH
     : DESKTOP_SIDEBAR_EXPANDED_WIDTH;
@@ -1017,6 +1018,7 @@ export default function App() {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebarCollapse}
         onOpenAuth={handleOpenAuthDialog}
+        authActionLabel={authActionLabel}
         sessionEmail={workspace.sessionEmail}
         currentCity={localCity}
         statusLabel={workspace.statusLabel}
@@ -1289,6 +1291,7 @@ export default function App() {
                 onSendMessage={handleSendMessage}
                 onOpenWorkspace={handleOpenWorkspace}
                 onOpenAuth={handleOpenAuthDialog}
+                authActionLabel={authActionLabel}
                 onToggleMap={handleOpenMap}
                 sessionEmail={workspace.sessionEmail}
                 profile={workspace.profile}

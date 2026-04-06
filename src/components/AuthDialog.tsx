@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
   Eye,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import type { HealthWorkspaceSnapshot } from '../lib/healthData';
 import {
+  getEmailRedirectUrl,
   maskEmail,
   resendVerificationEmail,
   sendMagicLink,
@@ -42,31 +43,32 @@ interface PendingEmailAction {
 }
 
 const RESEND_COOLDOWN_SECONDS = 45;
+const SUCCESS_AUTO_CLOSE_MS = 2200;
 const IDLE_AUTH_STATE: AuthState = {
   kind: 'idle',
   message: '',
 };
 
 function getAuthModeLabel(mode: AuthMode) {
-  if (mode === 'magic-link') return '推荐：邮箱链接';
-  return mode === 'login' ? '邮箱 + 密码' : '创建账号';
+  if (mode === 'magic-link') return '邮箱免密登录';
+  return mode === 'login' ? '密码登录' : '注册新账号';
 }
 
 function getAuthModeDescription(mode: AuthMode) {
   if (mode === 'magic-link') {
-    return '先输入邮箱，我们会发送一次登录链接。无需密码，适合快速继续同步。';
+    return '输入邮箱后会收到一封登录邮件。点击邮件里的继续登录后，浏览器会自动回到当前产品，无需记密码。';
   }
 
   if (mode === 'register') {
-    return '设置一个密码并完成邮箱验证后，以后可直接用同一邮箱登录同步。';
+    return '设置密码后会收到验证邮件。验证完成后，可长期使用同一邮箱同步档案和历史问诊。';
   }
 
-  return '如果已经设置过密码，可直接登录；若想更省事，也可以改用邮箱登录链接。';
+  return '如果已经设置过密码，可直接登录；若还没验证完成，也可以改用邮箱免密登录。';
 }
 
 function getPendingEmailTitle(pendingEmailAction: PendingEmailAction) {
   if (pendingEmailAction.type === 'magic-link') {
-    return '去邮箱完成登录';
+    return '去邮箱点击登录链接';
   }
 
   return pendingEmailAction.hasSentEmail ? '去邮箱完成验证' : '这个邮箱还没完成验证';
@@ -77,14 +79,14 @@ function getPendingEmailDescription(
   maskedEmail: string
 ) {
   if (pendingEmailAction.type === 'magic-link') {
-    return `我们已把登录链接发到 ${maskedEmail}。打开邮件中的继续登录按钮后，回到这里刷新即可。`;
+    return `我们已把登录邮件发到 ${maskedEmail}。点击邮件里的继续登录后，浏览器会自动跳回当前页面并完成登录。`;
   }
 
   if (pendingEmailAction.hasSentEmail) {
-    return `验证邮件已发到 ${maskedEmail}。完成验证后，可继续使用密码登录，或直接发送邮箱登录链接。`;
+    return `验证邮件已发到 ${maskedEmail}。完成验证后，浏览器会自动跳回当前页面；如果状态还没更新，可点下方“已完成，刷新状态”。`;
   }
 
-  return `${maskedEmail} 还没有完成邮箱验证。你可以重新发送验证邮件，验证完成后再回来继续同步。`;
+  return `${maskedEmail} 还没有完成邮箱验证。重新发送验证邮件后，完成验证即可回到这里继续同步。`;
 }
 
 function getResendButtonLabel(
@@ -117,9 +119,11 @@ export function AuthDialog({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [pendingEmailAction, setPendingEmailAction] = useState<PendingEmailAction | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
+  const previousSessionEmailRef = useRef(sessionEmail);
 
   const isCloudConfigured = mode === 'cloud-ready' || mode === 'cloud-session';
   const isSignedIn = Boolean(sessionEmail);
+  const redirectUrl = getEmailRedirectUrl() ?? (typeof window !== 'undefined' ? window.location.origin : '');
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : '';
   const maskedPendingEmail = pendingEmailAction ? maskEmail(pendingEmailAction.email) : '';
   const isAwaitingEmailAction = Boolean(pendingEmailAction) && !isSignedIn;
@@ -162,19 +166,22 @@ export function AuthDialog({
   }, [authEmail, isOpen, sessionEmail]);
 
   useEffect(() => {
-    if (!sessionEmail || !isOpen) return;
+    const previousSessionEmail = previousSessionEmailRef.current;
+    previousSessionEmailRef.current = sessionEmail;
+
+    if (!sessionEmail || !isOpen || previousSessionEmail === sessionEmail) return;
 
     clearPendingEmailAction();
     setAuthPassword('');
     setShowPassword(false);
     setAuthState({
       kind: 'success',
-      message: `已连接 ${maskEmail(sessionEmail)}，云端同步已开启。`,
+      message: `已连接 ${maskEmail(sessionEmail)}，档案、历史会话和最近问诊将自动同步。`,
     });
 
     const timer = window.setTimeout(() => {
       onClose();
-    }, 900);
+    }, SUCCESS_AUTO_CLOSE_MS);
 
     return () => window.clearTimeout(timer);
   }, [isOpen, onClose, sessionEmail]);
@@ -430,6 +437,10 @@ export function AuthDialog({
               <div className="flex items-start gap-3">
                 <Mail size={16} className="mt-0.5 text-cyan-600" />
                 <div className="min-w-0 flex-1">
+                  <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[10px] text-slate-500">
+                    <ShieldCheck size={12} className="shrink-0 text-cyan-600" />
+                    <span className="truncate">邮件完成后将返回当前产品 · {redirectUrl}</span>
+                  </div>
                   <p className="text-sm font-semibold text-slate-800">
                     {getPendingEmailTitle(pendingEmailAction)}
                   </p>
@@ -471,7 +482,7 @@ export function AuthDialog({
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-50"
                 >
                   <RefreshCw size={14} />
-                  刷新状态
+                  已完成，刷新状态
                 </button>
                 <button
                   type="button"
