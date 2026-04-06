@@ -5,7 +5,6 @@ import {
   History,
   LogIn,
   MapPin,
-  MessageSquareText,
   PanelLeftClose,
   PanelLeftOpen,
   Pill,
@@ -37,7 +36,6 @@ interface AppSidebarProps {
   onOpenSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
   onStartNewSession: () => void;
-  onSelectChat: () => void;
   onSelectSearch: () => void;
   onSelectProfile: () => void;
   onSelectHistory: () => void;
@@ -123,7 +121,6 @@ export function AppSidebar({
   onOpenSession,
   onDeleteSession,
   onStartNewSession,
-  onSelectChat,
   onSelectSearch,
   onSelectProfile,
   onSelectHistory,
@@ -204,15 +201,8 @@ export function AppSidebar({
 
       <nav className={`mt-2 ${isCollapsed ? 'space-y-1.5' : 'space-y-0.5'}`}>
         {!isCollapsed && (
-          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">问诊入口</p>
+          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">主功能</p>
         )}
-        <SidebarNavButton
-          label="当前问诊"
-          isActive={activeSection === 'chat'}
-          onClick={onSelectChat}
-          icon={MessageSquareText}
-          isCollapsed={isCollapsed}
-        />
         <SidebarNavButton
           label="统一搜索"
           isActive={activeSection === 'search'}
@@ -248,7 +238,7 @@ export function AppSidebar({
 
       <div className="mt-2 border-t border-slate-100 pt-2">
         {!isCollapsed && (
-          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">资料与设置</p>
+          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">个人</p>
         )}
         <SidebarNavButton
           label="健康档案"

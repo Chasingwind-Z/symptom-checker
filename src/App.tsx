@@ -1,11 +1,4 @@
-import {
-  AlertTriangle,
-  CheckCircle2,
-  RefreshCw,
-  Search,
-  Sparkles,
-  WifiOff,
-} from 'lucide-react';
+import { Search, Sparkles } from 'lucide-react';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppSidebar,
@@ -21,12 +14,15 @@ import { ConversationHistoryPanel } from './components/ConversationHistoryPanel'
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { Header } from './components/Header';
 import { HealthSettingsPanel } from './components/HealthSettingsPanel';
+import { LazySurfaceFallback } from './components/LazySurfaceFallback';
 import {
   RecordsCenterPanel,
   type RecordsCenterSummaryItem,
 } from './components/RecordsCenterPanel';
 import { SearchIntelligencePanel, type ConnectedWebSearchState } from './components/SearchIntelligencePanel';
+import { ShellStatusBanner } from './components/ShellStatusBanner';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
+import { MobileBottomNav, MOBILE_BOTTOM_NAV_HEIGHT } from './components/MobileBottomNav';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { InfoBar } from './components/WeatherBar';
 import { useChat } from './hooks/useChat';
@@ -34,7 +30,6 @@ import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import { searchWebSources } from './lib/agentTools';
-import type { CaseHistoryItem } from './lib/healthData';
 import { deleteCaseHistoryItem } from './lib/healthData';
 import {
   getConsultationModePreset,
@@ -59,16 +54,20 @@ import {
   buildPersonalizationRankingContext,
   getMedicationGuidance,
 } from './lib/personalization';
-import type { ConversationSession, Hospital, SendMessageInput } from './types';
-
-const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
-  search: '统一搜索',
-  profile: '健康档案',
-  history: '会话线程',
-  records: '记录中心',
-  medication: '买药 / 用药',
-  settings: '问诊设置',
-};
+import {
+  findMatchingCase,
+  findMatchingConversation,
+  formatDateTimeLabel,
+  getCaseSourceLabel,
+  getConversationReferenceText,
+  getConversationSourceLabel,
+  getReportCount,
+  matchesSearchQuery,
+  normalizeRecordKey,
+  trimText,
+  WORKSPACE_TAB_LABELS,
+} from './lib/appShellUtils';
+import type { Hospital, SendMessageInput } from './types';
 
 const LazyEpidemicDashboard = lazy(() =>
   import('./components/EpidemicDashboard').then((module) => ({
@@ -93,227 +92,6 @@ const LazyResultCard = lazy(() =>
     default: module.ResultCard,
   }))
 );
-
-type ShellBannerTone = 'warning' | 'success' | 'info';
-
-interface ShellBannerAction {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  isLoading?: boolean;
-}
-
-interface ShellStatusBannerProps {
-  tone: ShellBannerTone;
-  title: string;
-  description: string;
-  primaryAction?: ShellBannerAction;
-  secondaryAction?: ShellBannerAction;
-}
-
-const SHELL_BANNER_STYLES: Record<
-  ShellBannerTone,
-  {
-    container: string;
-    icon: string;
-    title: string;
-    description: string;
-    primaryButton: string;
-    secondaryButton: string;
-  }
-> = {
-  warning: {
-    container: 'border-amber-200 bg-amber-50/95',
-    icon: 'bg-amber-100 text-amber-700',
-    title: 'text-amber-950',
-    description: 'text-amber-900/80',
-    primaryButton: 'bg-amber-700 text-white hover:bg-amber-800',
-    secondaryButton: 'border border-amber-200 bg-white text-amber-900 hover:bg-amber-100',
-  },
-  success: {
-    container: 'border-emerald-200 bg-emerald-50/95',
-    icon: 'bg-emerald-100 text-emerald-700',
-    title: 'text-emerald-950',
-    description: 'text-emerald-900/80',
-    primaryButton: 'bg-emerald-700 text-white hover:bg-emerald-800',
-    secondaryButton: 'border border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-100',
-  },
-  info: {
-    container: 'border-sky-200 bg-sky-50/95',
-    icon: 'bg-sky-100 text-sky-700',
-    title: 'text-sky-950',
-    description: 'text-sky-900/80',
-    primaryButton: 'bg-sky-700 text-white hover:bg-sky-800',
-    secondaryButton: 'border border-sky-200 bg-white text-sky-900 hover:bg-sky-100',
-  },
-};
-
-function ShellStatusBanner({
-  tone,
-  title,
-  description,
-  primaryAction,
-  secondaryAction,
-}: ShellStatusBannerProps) {
-  const Icon = tone === 'warning' ? WifiOff : tone === 'success' ? CheckCircle2 : AlertTriangle;
-  const styles = SHELL_BANNER_STYLES[tone];
-
-  const renderAction = (
-    action: ShellBannerAction,
-    variant: 'primary' | 'secondary'
-  ) => (
-    <button
-      type="button"
-      onClick={action.onClick}
-      disabled={action.disabled || action.isLoading}
-      className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
-        variant === 'primary' ? styles.primaryButton : styles.secondaryButton
-      }`}
-    >
-      {action.isLoading && <RefreshCw size={14} className="animate-spin" />}
-      {action.label}
-    </button>
-  );
-
-  return (
-    <section
-      className={`rounded-2xl border px-4 py-3 shadow-sm ${styles.container}`}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className={`rounded-2xl p-2 ${styles.icon}`}>
-            <Icon size={18} />
-          </div>
-          <div className="min-w-0">
-            <p className={`text-sm font-semibold ${styles.title}`}>{title}</p>
-            <p className={`mt-1 text-sm leading-relaxed ${styles.description}`}>{description}</p>
-          </div>
-        </div>
-
-        {(secondaryAction || primaryAction) && (
-          <div className="flex flex-wrap gap-2">
-            {secondaryAction && renderAction(secondaryAction, 'secondary')}
-            {primaryAction && renderAction(primaryAction, 'primary')}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function LazySurfaceFallback({
-  title,
-  description,
-  fullHeight = false,
-}: {
-  title: string;
-  description: string;
-  fullHeight?: boolean;
-}) {
-  const content = (
-    <div className="mx-auto w-full max-w-3xl rounded-3xl border border-slate-200 bg-white/95 px-6 py-7 shadow-sm">
-      <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-        <RefreshCw size={14} className="animate-spin" />
-        正在准备内容
-      </div>
-      <h2 className="mt-3 text-lg font-semibold text-slate-900">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>
-    </div>
-  );
-
-  if (fullHeight) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 px-4 py-6 md:px-6">
-        {content}
-      </div>
-    );
-  }
-
-  return content;
-}
-
-function getReportCount(): number {
-  try {
-    return (JSON.parse(localStorage.getItem('symptom_reports') ?? '[]') as unknown[]).length;
-  } catch {
-    return 0;
-  }
-}
-
-function stripRecordMetadata(content: string): string {
-  return content
-    .replace(/```json[\s\S]*?```/g, '')
-    .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function normalizeRecordKey(content: string): string {
-  return stripRecordMetadata(content).replace(/[^a-z0-9\u4e00-\u9fff]/gi, '').toLowerCase();
-}
-
-function matchesSearchQuery(value: string | null | undefined, normalizedQuery: string): boolean {
-  if (!normalizedQuery) return true;
-  return normalizeRecordKey(value ?? '').includes(normalizedQuery);
-}
-
-function getConversationReferenceText(session: ConversationSession): string {
-  const firstUserMessage = session.messages.find((message) => message.role === 'user');
-  return stripRecordMetadata(firstUserMessage?.content ?? session.title);
-}
-
-function findMatchingConversation(
-  summary: string,
-  sessions: ConversationSession[]
-): ConversationSession | null {
-  const summaryKey = normalizeRecordKey(summary);
-  if (!summaryKey) return null;
-
-  return (
-    sessions.find((session) => {
-      const sessionKey = normalizeRecordKey(getConversationReferenceText(session));
-      return Boolean(sessionKey) && (sessionKey.includes(summaryKey) || summaryKey.includes(sessionKey));
-    }) ?? null
-  );
-}
-
-function findMatchingCase(summary: string, recentCases: CaseHistoryItem[]): CaseHistoryItem | null {
-  const summaryKey = normalizeRecordKey(summary);
-  if (!summaryKey) return null;
-
-  return (
-    recentCases.find((item) => {
-      const caseKey = normalizeRecordKey(item.chiefComplaint);
-      return Boolean(caseKey) && (caseKey.includes(summaryKey) || summaryKey.includes(caseKey));
-    }) ?? null
-  );
-}
-
-function formatDateTimeLabel(value: string | number): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return '刚刚';
-
-  return parsed.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function trimText(text: string, maxLength = 92): string {
-  return text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text;
-}
-
-function getConversationSourceLabel(storage: ConversationSession['storage']): string {
-  return storage === 'supabase' ? '云端会话' : '本机会话';
-}
-
-function getCaseSourceLabel(source: CaseHistoryItem['source']): string {
-  return source === 'supabase' ? '云端摘要' : '本机摘要';
-}
 
 export default function App() {
   const workspace = useHealthWorkspace();
@@ -963,6 +741,21 @@ export default function App() {
   const showWorkspace = effectivePage === 'workspace';
   const showWelcome = !showWorkspace && messages.length === 0;
   const showConversationShelf = !showWorkspace && !showWelcome && conversationSessions.length > 0;
+
+  // Mobile bottom nav is visible on home and workspace pages; hidden during active chat
+  // so it never overlaps the floating ChatInput.
+  const showMobileBottomNav = effectivePage !== 'chat';
+  const mobileBottomNavActivePrimaryTab: 'chat' | 'search' | 'records' | 'profile' | null =
+    showWorkspace && workspaceSection === 'search'
+      ? 'search'
+      : showWorkspace && workspaceSection === 'records'
+        ? 'records'
+        : showWorkspace && workspaceSection === 'profile'
+          ? 'profile'
+          : effectivePage === 'home'
+            ? 'chat'
+            : null;
+
   const contentWidthClass = showWorkspace
     ? workspaceSection === 'profile' || workspaceSection === 'settings'
       ? 'max-w-6xl'
@@ -974,8 +767,10 @@ export default function App() {
         : 'max-w-4xl';
   const chatThreadClass =
     experienceSettings.chatDensity === 'compact' ? 'mt-1 space-y-2 py-3' : 'mt-2 space-y-3 py-4';
+  // On chat page the floating input drives the bottom padding; on home/workspace add room
+  // for the mobile bottom nav bar (56 px) on small screens.
   const chatScrollPaddingBottom = showWorkspace || showWelcome
-    ? '40px'
+    ? `max(40px, calc(${MOBILE_BOTTOM_NAV_HEIGHT}px + env(safe-area-inset-bottom) + 8px))`
     : `${Math.max(148, chatInputLayout.height + chatInputLayout.keyboardOffset + 20)}px`;
 
   useEffect(() => {
@@ -1151,14 +946,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 lg:flex">
       <AppSidebar
-        activeSection={showWorkspace ? workspaceSection : effectivePage === 'chat' ? 'chat' : null}
+        activeSection={showWorkspace ? workspaceSection : null}
         searchQuery={recordSearchQuery}
         sessions={filteredConversationSessions}
         activeSessionId={activeSessionId}
         onOpenSession={handleOpenConversation}
         onDeleteSession={handleDeleteConversation}
         onStartNewSession={handleResetChat}
-        onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
         onSelectSearch={() => handleOpenWorkspaceSection('search')}
         onSelectProfile={() => handleOpenWorkspaceSection('profile')}
         onSelectHistory={() => handleOpenWorkspaceSection('history')}
@@ -1621,6 +1415,26 @@ export default function App() {
           />
         )}
       </div>
+
+      {showMobileBottomNav && (
+        <MobileBottomNav
+          activePrimaryTab={mobileBottomNavActivePrimaryTab}
+          pendingFollowUpCount={pendingFollowUpRecords.length}
+          profileCompletion={profileCompletion}
+          medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
+          currentCity={localCity}
+          authActionLabel={authActionLabel}
+          onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
+          onSelectSearch={() => handleOpenWorkspaceSection('search')}
+          onSelectRecords={() => handleOpenWorkspaceSection('records')}
+          onSelectProfile={() => handleOpenWorkspaceSection('profile')}
+          onSelectHistory={() => handleOpenWorkspaceSection('history')}
+          onSelectMedication={() => handleOpenWorkspaceSection('medication')}
+          onOpenMap={handleOpenMap}
+          onOpenSettings={handleOpenSettings}
+          onOpenAuth={handleOpenAuthDialog}
+        />
+      )}
 
       <AuthDialog
         isOpen={isAuthDialogOpen}
