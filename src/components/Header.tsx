@@ -2,6 +2,7 @@ import {
   CheckCircle2,
   Download,
   LayoutGrid,
+  LogIn,
   MapPin,
   Plus,
   Stethoscope,
@@ -13,6 +14,8 @@ interface HeaderProps {
   onReset: () => void;
   onOpenWorkspace?: () => void;
   onToggleMap?: () => void;
+  onOpenAuth?: () => void;
+  sessionEmail?: string | null;
   currentView?: 'home' | 'chat' | 'workspace';
   onInstallApp?: () => void;
   canInstallApp?: boolean;
@@ -25,11 +28,14 @@ export function Header({
   onReset,
   onOpenWorkspace,
   onToggleMap,
+  onOpenAuth,
+  sessionEmail,
   currentView = 'home',
   onInstallApp,
   canInstallApp = false,
   isAppInstalled = false,
 }: HeaderProps) {
+  const isSignedIn = Boolean(sessionEmail);
   const contextLabel =
     currentView === 'workspace' ? '健康空间' : currentView === 'chat' ? '当前问诊' : '症状自查';
 
@@ -70,6 +76,15 @@ export function Header({
             >
               <MapPin size={14} />
               <span className="hidden sm:inline">地图</span>
+            </button>
+          )}
+          {onOpenAuth && !isSignedIn && (
+            <button
+              onClick={onOpenAuth}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm text-cyan-700 transition-colors hover:bg-cyan-100 lg:hidden"
+            >
+              <LogIn size={14} />
+              <span className="hidden sm:inline">登录</span>
             </button>
           )}
           {onOpenWorkspace && currentView !== 'workspace' && (

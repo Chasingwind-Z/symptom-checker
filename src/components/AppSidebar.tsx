@@ -32,6 +32,7 @@ interface AppSidebarProps {
   onSelectRecords: () => void;
   onSelectMedication: () => void;
   onOpenMap: () => void;
+  onOpenAuth: () => void;
   sessionEmail?: string | null;
   statusLabel: string;
   profileCompletion: number;
@@ -97,6 +98,7 @@ export function AppSidebar({
   onSelectRecords,
   onSelectMedication,
   onOpenMap,
+  onOpenAuth,
   sessionEmail,
   statusLabel,
   profileCompletion,
@@ -222,16 +224,22 @@ export function AppSidebar({
         />
       </div>
 
-      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+      <button
+        type="button"
+        onClick={onOpenAuth}
+        className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-left transition-colors hover:bg-slate-100"
+      >
         <p className="text-xs font-medium text-slate-500">{accountLabel}</p>
-        <p className="mt-1 text-sm font-semibold text-slate-900">{statusLabel}</p>
+        <p className="mt-1 text-sm font-semibold text-slate-900">
+          {sessionEmail ? statusLabel : '登录 / 注册'}
+        </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
           <span className="rounded-full bg-white px-2.5 py-1">档案完整度 {profileCompletion}%</span>
           <span className="rounded-full bg-white px-2.5 py-1">
             {pendingFollowUpCount > 0 ? `${pendingFollowUpCount} 项待跟进` : '记录中心已整理'}
           </span>
         </div>
-      </div>
+      </button>
     </aside>
   );
 }

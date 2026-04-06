@@ -6,10 +6,6 @@ import {
   Clock,
   Cloud,
   Database,
-  Eye,
-  EyeOff,
-  Lock,
-  LogOut,
   Mail,
   RefreshCw,
   Save,
@@ -19,14 +15,7 @@ import {
 } from 'lucide-react';
 import type { CaseHistoryItem, HealthWorkspaceSnapshot, ProfileDraft } from '../lib/healthData';
 import { getDemoPersonaSummaries } from '../lib/personalization';
-import {
-  maskEmail,
-  resendVerificationEmail,
-  sendMagicLink,
-  signInWithPassword,
-  signOutSupabase,
-  signUpWithPassword,
-} from '../lib/supabase';
+import { maskEmail } from '../lib/supabase';
 
 interface CloudSyncCardProps {
   mode: HealthWorkspaceSnapshot['mode'];
@@ -39,6 +28,7 @@ interface CloudSyncCardProps {
   isRefreshing?: boolean;
   onSaveProfile?: (patch: Partial<ProfileDraft>) => Promise<unknown>;
   onApplyDemoPersona?: (personaId: string) => Promise<unknown>;
+  onOpenAuth?: () => void;
 }
 
 const TRIAGE_LABELS: Record<CaseHistoryItem['triageLevel'], string> = {
@@ -48,79 +38,6 @@ const TRIAGE_LABELS: Record<CaseHistoryItem['triageLevel'], string> = {
   red: '红色 · 立即急诊',
   pending: '待分诊',
 };
-
-type AuthMode = 'magic-link' | 'login' | 'register';
-
-type AuthState = {
-  kind: 'idle' | 'success' | 'error';
-  message: string;
-};
-
-interface PendingEmailAction {
-  type: 'magic-link' | 'verify-email';
-  email: string;
-  hasSentEmail: boolean;
-}
-
-const RESEND_COOLDOWN_SECONDS = 45;
-const IDLE_AUTH_STATE: AuthState = {
-  kind: 'idle',
-  message: '',
-};
-
-function getAuthModeLabel(mode: AuthMode) {
-  if (mode === 'magic-link') return '推荐：邮箱链接';
-  return mode === 'login' ? '邮箱 + 密码' : '创建账号';
-}
-
-function getAuthModeDescription(mode: AuthMode) {
-  if (mode === 'magic-link') {
-    return '先输入邮箱，我们会发送一次登录链接。无需密码，适合大多数用户快速继续同步。';
-  }
-
-  if (mode === 'register') {
-    return '设置一个密码并完成邮箱验证后，以后可直接用同一邮箱登录同步。';
-  }
-
-  return '如果你已经设置过密码，可直接登录；若想更省事，也可以改用邮箱登录链接。';
-}
-
-function getPendingEmailTitle(pendingEmailAction: PendingEmailAction) {
-  if (pendingEmailAction.type === 'magic-link') {
-    return '去邮箱完成登录';
-  }
-
-  return pendingEmailAction.hasSentEmail ? '去邮箱完成验证' : '这个邮箱还没完成验证';
-}
-
-function getPendingEmailDescription(
-  pendingEmailAction: PendingEmailAction,
-  maskedEmail: string
-) {
-  if (pendingEmailAction.type === 'magic-link') {
-    return `我们已把登录链接发到 ${maskedEmail}。打开邮件中的继续登录按钮后，回到这里即可自动同步。`;
-  }
-
-  if (pendingEmailAction.hasSentEmail) {
-    return `验证邮件已发到 ${maskedEmail}。完成验证后，可继续使用密码登录，或直接发送邮箱链接。`;
-  }
-
-  return `${maskedEmail} 还没有完成邮箱验证。你可以重新发送验证邮件，验证完成后再回来继续同步。`;
-}
-
-function getResendButtonLabel(
-  pendingEmailAction: PendingEmailAction,
-  resendCountdown: number
-) {
-  const baseLabel =
-    pendingEmailAction.type === 'magic-link'
-      ? '重新发送登录链接'
-      : pendingEmailAction.hasSentEmail
-        ? '重新发送验证邮件'
-        : '发送验证邮件';
-
-  return resendCountdown > 0 ? `${baseLabel} (${resendCountdown}s)` : baseLabel;
-}
 
 export function CloudSyncCard({
   mode,
@@ -133,54 +50,26 @@ export function CloudSyncCard({
   isRefreshing = false,
   onSaveProfile,
   onApplyDemoPersona,
+  onOpenAuth,
 }: CloudSyncCardProps) {
   const latestCase = recentCases[0];
   const [isExpanded, setIsExpanded] = useState(true);
   const [draft, setDraft] = useState<ProfileDraft>(profile);
   const [isSaving, setIsSaving] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'done' | 'error'>('idle');
-  const [authEmail, setAuthEmail] = useState(sessionEmail ?? '');
-  const [authPassword, setAuthPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [authMode, setAuthMode] = useState<AuthMode>('magic-link');
-  const [authState, setAuthState] = useState<AuthState>(IDLE_AUTH_STATE);
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [surfaceState, setSurfaceState] = useState<{
+    kind: 'idle' | 'success' | 'error';
+    message: string;
+  }>({
+    kind: 'idle',
+    message: '',
+  });
   const [isApplyingPersona, setIsApplyingPersona] = useState<string | null>(null);
-  const [pendingEmailAction, setPendingEmailAction] = useState<PendingEmailAction | null>(null);
-  const [resendCountdown, setResendCountdown] = useState(0);
   const demoPersonas = getDemoPersonaSummaries();
 
   useEffect(() => {
     setDraft(profile);
   }, [profile]);
-
-  useEffect(() => {
-    if (!sessionEmail) return;
-
-    setAuthEmail(sessionEmail);
-    setAuthPassword('');
-    setShowPassword(false);
-    setResendCountdown(0);
-
-    if (pendingEmailAction) {
-      setPendingEmailAction(null);
-      setAuthState({
-        kind: 'success',
-        message: `已连接 ${maskEmail(sessionEmail)}，云端同步已开启。`,
-      });
-    }
-  }, [pendingEmailAction, sessionEmail]);
-
-  useEffect(() => {
-    if (resendCountdown <= 0) return;
-
-    const timer = window.setTimeout(() => {
-      setResendCountdown((prev) => Math.max(prev - 1, 0));
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [resendCountdown]);
 
   const hasProfileInfo = Boolean(
     profile.displayName ||
@@ -213,204 +102,32 @@ export function CloudSyncCard({
   const isCloudConfigured = mode === 'cloud-ready' || mode === 'cloud-session';
   const isSignedIn = Boolean(sessionEmail);
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : '';
-  const maskedPendingEmail = pendingEmailAction ? maskEmail(pendingEmailAction.email) : '';
-  const isAwaitingEmailAction = Boolean(pendingEmailAction) && !isSignedIn;
-  const canSubmitAuth =
-    Boolean(authEmail.trim()) &&
-    (authMode === 'magic-link' || Boolean(authPassword));
   const statusChipClasses = isSignedIn
     ? 'border-emerald-100 bg-emerald-50'
-    : isAwaitingEmailAction
-      ? 'border-amber-100 bg-amber-50'
-      : isCloudConfigured
-        ? 'border-cyan-100 bg-cyan-50'
-        : 'border-slate-200 bg-slate-50';
+    : isCloudConfigured
+      ? 'border-cyan-100 bg-cyan-50'
+      : 'border-slate-200 bg-slate-50';
   const statusChipTextClasses = isSignedIn
     ? 'text-emerald-700'
-    : isAwaitingEmailAction
-      ? 'text-amber-700'
-      : isCloudConfigured
-        ? 'text-cyan-700'
-        : 'text-slate-700';
+    : isCloudConfigured
+      ? 'text-cyan-700'
+      : 'text-slate-700';
   const statusChipLabel = isSignedIn
     ? '云端同步已开启'
-    : isAwaitingEmailAction
-      ? '等待邮箱确认'
-      : isCloudConfigured
-        ? '邮箱同步待开启'
-        : '当前浏览器保存';
-  const topHelperText = isAwaitingEmailAction
-    ? pendingEmailAction
-      ? getPendingEmailDescription(pendingEmailAction, maskedPendingEmail || pendingEmailAction.email)
-      : helperText
-    : helperText;
+    : isCloudConfigured
+      ? '登录后可跨设备同步'
+      : '当前浏览器保存';
+  const topHelperText = helperText;
   const accountHeadline = isSignedIn
     ? maskedSessionEmail || sessionEmail || '已登录'
-    : isAwaitingEmailAction
-      ? `${maskedPendingEmail || pendingEmailAction?.email} 待完成`
-      : isCloudConfigured
-        ? '先输入邮箱开启同步'
-        : '仅当前浏览器保存';
+    : isCloudConfigured
+      ? '登录后可跨设备同步'
+      : '仅当前浏览器保存';
   const accountHelper = isSignedIn
     ? '档案与问诊摘要会自动跨设备同步'
-    : isAwaitingEmailAction
-      ? pendingEmailAction?.type === 'magic-link'
-        ? '打开邮件中的登录链接后，再回来刷新状态'
-        : '完成邮箱验证后，可继续登录并同步资料'
-      : isCloudConfigured
-        ? '默认推荐邮箱链接登录，不需要手机号'
-        : '不影响直接问诊';
-
-  function clearPendingEmailAction() {
-    setPendingEmailAction(null);
-    setResendCountdown(0);
-  }
-
-  function handleAuthModeChange(nextMode: AuthMode) {
-    setAuthMode(nextMode);
-    setAuthPassword('');
-    setShowPassword(false);
-    setAuthState(IDLE_AUTH_STATE);
-  }
-
-  function handleChangeEmail() {
-    if (pendingEmailAction?.email) {
-      setAuthEmail(pendingEmailAction.email);
-    }
-
-    clearPendingEmailAction();
-    setAuthState(IDLE_AUTH_STATE);
-  }
-
-  async function handleAuth() {
-    setIsAuthLoading(true);
-    setAuthState(IDLE_AUTH_STATE);
-
-    try {
-      const result =
-        authMode === 'magic-link'
-          ? await sendMagicLink(authEmail)
-          : authMode === 'register'
-            ? await signUpWithPassword(authEmail, authPassword)
-            : await signInWithPassword(authEmail, authPassword);
-
-      setAuthState({ kind: result.ok ? 'success' : 'error', message: result.message });
-
-      if (!result.ok) {
-        if (result.nextStep === 'verify-email' && result.email) {
-          setPendingEmailAction({
-            type: 'verify-email',
-            email: result.email,
-            hasSentEmail: false,
-          });
-          setResendCountdown(0);
-        }
-        return;
-      }
-
-      if (result.nextStep === 'magic-link-sent' && result.email) {
-        setPendingEmailAction({
-          type: 'magic-link',
-          email: result.email,
-          hasSentEmail: true,
-        });
-        setResendCountdown(RESEND_COOLDOWN_SECONDS);
-        setAuthPassword('');
-        setShowPassword(false);
-        return;
-      }
-
-      if (result.nextStep === 'verify-email' && result.email) {
-        setPendingEmailAction({
-          type: 'verify-email',
-          email: result.email,
-          hasSentEmail: true,
-        });
-        setResendCountdown(RESEND_COOLDOWN_SECONDS);
-        setAuthPassword('');
-        setShowPassword(false);
-        return;
-      }
-
-      clearPendingEmailAction();
-      setAuthPassword('');
-      setShowPassword(false);
-
-      if (result.nextStep === 'signed-in') {
-        await Promise.resolve(onRefresh());
-      }
-    } catch {
-      setAuthState({
-        kind: 'error',
-        message: '暂时无法完成邮箱操作，请稍后重试。',
-      });
-    } finally {
-      setIsAuthLoading(false);
-    }
-  }
-
-  async function handleResendPendingAction() {
-    if (!pendingEmailAction) return;
-
-    setIsAuthLoading(true);
-    setAuthState(IDLE_AUTH_STATE);
-
-    try {
-      const result =
-        pendingEmailAction.type === 'magic-link'
-          ? await sendMagicLink(pendingEmailAction.email)
-          : await resendVerificationEmail(pendingEmailAction.email);
-
-      setAuthState({ kind: result.ok ? 'success' : 'error', message: result.message });
-
-      if (result.ok) {
-        setPendingEmailAction({
-          type: pendingEmailAction.type,
-          email: result.email ?? pendingEmailAction.email,
-          hasSentEmail: true,
-        });
-        setResendCountdown(RESEND_COOLDOWN_SECONDS);
-      }
-    } catch {
-      setAuthState({
-        kind: 'error',
-        message: '暂时无法重新发送邮件，请稍后重试。',
-      });
-    } finally {
-      setIsAuthLoading(false);
-    }
-  }
-
-  async function handleRefreshAuthStatus() {
-    await Promise.resolve(onRefresh());
-  }
-
-  async function handleSignOut() {
-    setIsSigningOut(true);
-
-    try {
-      const result = await signOutSupabase();
-      setAuthState({
-        kind: result.ok ? 'success' : 'error',
-        message: result.message,
-      });
-
-      if (result.ok) {
-        clearPendingEmailAction();
-        setAuthPassword('');
-        setShowPassword(false);
-      }
-
-      await Promise.resolve(onRefresh());
-    } catch {
-      setAuthState({
-        kind: 'error',
-        message: '暂时无法退出登录，请稍后重试。',
-      });
-    } finally {
-      setIsSigningOut(false);
-    }
-  }
+    : isCloudConfigured
+      ? '使用专门的登录窗口完成邮箱登录、注册与同步'
+      : '不影响直接问诊';
 
   async function handleSaveProfile() {
     if (!onSaveProfile) return;
@@ -434,7 +151,7 @@ export function CloudSyncCard({
     const result = (await onApplyDemoPersona(personaId)) as
       | { ok?: boolean; helperText?: string; statusLabel?: string }
       | undefined;
-    setAuthState({
+    setSurfaceState({
       kind: result?.ok === false ? 'error' : 'success',
       message: result?.helperText ?? '常见场景资料已载入，可继续修改成自己的情况。',
     });
@@ -543,7 +260,7 @@ export function CloudSyncCard({
                 <div>
                   <p className="text-sm font-semibold text-slate-800">账号与同步</p>
                   <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    先输入邮箱即可继续同步；默认推荐邮箱链接登录，不需要手机号，也不用额外记密码。
+                    登录注册已移到专门窗口；这里主要保留同步状态和档案本身，不再把登录表单塞在用户中心里。
                   </p>
                 </div>
                 <ShieldCheck size={16} className="text-cyan-600" />
@@ -559,15 +276,15 @@ export function CloudSyncCard({
                         新的档案修改和最近问诊会自动尝试同步到云端。
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleSignOut}
-                      disabled={isSigningOut}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
-                    >
-                      <LogOut size={13} />
-                      {isSigningOut ? '退出中…' : '退出登录'}
-                    </button>
+                    {onOpenAuth && (
+                      <button
+                        type="button"
+                        onClick={onOpenAuth}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-50"
+                      >
+                        管理账号
+                      </button>
+                    )}
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
@@ -585,187 +302,26 @@ export function CloudSyncCard({
                 </div>
               ) : isCloudConfigured ? (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 px-3 py-3">
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">
-                        {isAwaitingEmailAction && pendingEmailAction
-                          ? getPendingEmailTitle(pendingEmailAction)
-                          : '先输入邮箱'}
-                      </p>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        {isAwaitingEmailAction && pendingEmailAction
-                          ? getPendingEmailDescription(
-                              pendingEmailAction,
-                              maskedPendingEmail || pendingEmailAction.email
-                            )
-                          : getAuthModeDescription(authMode)}
-                      </p>
+                  <p className="text-sm font-medium text-slate-800">登录后可同步档案与记录</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                    推荐使用邮箱链接或邮箱密码登录。登录注册已移到专门窗口里处理，不再打断档案编辑流程。
+                  </p>
+                  {onOpenAuth && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={onOpenAuth}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs text-white transition-colors hover:bg-cyan-700"
+                      >
+                        打开登录 / 注册窗口
+                      </button>
                     </div>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${
-                        isAwaitingEmailAction
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-cyan-100 text-cyan-700'
-                      }`}
-                    >
-                      {isAwaitingEmailAction ? '待确认' : getAuthModeLabel(authMode)}
-                    </span>
-                  </div>
-
-                  {isAwaitingEmailAction && pendingEmailAction ? (
-                    <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/80 px-3 py-3">
-                      <div className="flex items-start gap-2">
-                        <Mail size={14} className="mt-0.5 text-cyan-600" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-slate-600 leading-relaxed">
-                            {pendingEmailAction.hasSentEmail
-                              ? `没看到邮件？可检查垃圾邮件，或在 ${resendCountdown > 0 ? `${resendCountdown}s` : '现在'} 后重新发送。`
-                              : '确认邮箱可用后，可以重新发送一封验证邮件。'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={handleResendPendingAction}
-                          disabled={isAuthLoading || resendCountdown > 0}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-1.5 text-xs text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors"
-                        >
-                          <Mail size={13} />
-                          {isAuthLoading
-                            ? '处理中…'
-                            : getResendButtonLabel(pendingEmailAction, resendCountdown)}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRefreshAuthStatus}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
-                        >
-                          <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
-                          刷新状态
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleChangeEmail}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
-                        >
-                          换个邮箱
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="mt-3 flex flex-col gap-2.5">
-                        <label className="flex flex-col gap-1 text-[11px] text-slate-500">
-                          邮箱地址
-                          <input
-                            type="email"
-                            value={authEmail}
-                            onChange={(event) => {
-                              setAuthEmail(event.target.value);
-                              if (authState.kind !== 'idle') {
-                                setAuthState(IDLE_AUTH_STATE);
-                              }
-                            }}
-                            placeholder="name@example.com"
-                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300"
-                          />
-                        </label>
-                        {authMode !== 'magic-link' && (
-                          <label className="flex flex-col gap-1 text-[11px] text-slate-500">
-                            {authMode === 'register' ? '设置密码' : '密码'}
-                            <div className="relative">
-                              <Lock
-                                size={13}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                              />
-                              <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={authPassword}
-                                onChange={(event) => {
-                                  setAuthPassword(event.target.value);
-                                  if (authState.kind !== 'idle') {
-                                    setAuthState(IDLE_AUTH_STATE);
-                                  }
-                                }}
-                                placeholder={authMode === 'register' ? '至少 6 位密码' : '请输入密码'}
-                                className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 py-2 text-sm text-slate-700 outline-none focus:border-cyan-300"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword((prev) => !prev)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                              >
-                                {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
-                              </button>
-                            </div>
-                          </label>
-                        )}
-                        <button
-                          type="button"
-                          onClick={handleAuth}
-                          disabled={isAuthLoading || !canSubmitAuth}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:bg-slate-300 transition-colors"
-                        >
-                          <Mail size={13} />
-                          {isAuthLoading
-                            ? '处理中…'
-                            : authMode === 'login'
-                              ? '登录并同步'
-                              : authMode === 'register'
-                                ? '创建账号'
-                                : '发送登录链接'}
-                        </button>
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {(['magic-link', 'login', 'register'] as const).map((modeOption) => (
-                          <button
-                            key={modeOption}
-                            type="button"
-                            onClick={() => handleAuthModeChange(modeOption)}
-                            className={`rounded-lg px-2.5 py-1 text-[11px] transition-colors ${
-                              authMode === modeOption
-                                ? 'bg-cyan-600 text-white'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            {modeOption === 'magic-link'
-                              ? '推荐：邮箱链接'
-                              : modeOption === 'login'
-                                ? '使用密码登录'
-                                : '创建账号'}
-                          </button>
-                        ))}
-                      </div>
-
-                      <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
-                        {authMode === 'magic-link'
-                          ? '推荐：适合在手机和电脑之间快速继续问诊，不需要手机号，也不用记密码。'
-                          : authMode === 'register'
-                            ? '创建账号后会收到一封验证邮件；验证完成后，可长期使用同一邮箱同步。'
-                            : '如果这个邮箱还没验证成功，可先完成验证，或直接改用邮箱登录链接。'}
-                      </p>
-                    </>
                   )}
                 </div>
               ) : (
                 <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white/80 px-3 py-3 text-[11px] text-slate-600 leading-relaxed">
                   即使暂未启用云端同步，也可以继续以游客模式使用；资料会保存在当前浏览器。
                 </div>
-              )}
-
-              {authState.kind !== 'idle' && (
-                <p
-                  className={`mt-3 rounded-xl border px-3 py-2 text-[11px] leading-relaxed ${
-                    authState.kind === 'success'
-                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-                      : 'border-rose-100 bg-rose-50 text-rose-700'
-                  }`}
-                >
-                  {authState.message}
-                </p>
               )}
             </div>
 
@@ -808,6 +364,18 @@ export function CloudSyncCard({
                   ))}
                 </div>
               </div>
+            )}
+
+            {surfaceState.kind !== 'idle' && (
+              <p
+                className={`rounded-xl border px-3 py-2 text-[11px] leading-relaxed ${
+                  surfaceState.kind === 'success'
+                    ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                    : 'border-rose-100 bg-rose-50 text-rose-700'
+                }`}
+              >
+                {surfaceState.message}
+              </p>
             )}
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">

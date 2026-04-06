@@ -16,6 +16,8 @@ interface WelcomeScreenProps {
   onSendMessage: (text: string) => void
   onToggleMap: () => void
   onOpenWorkspace: () => void
+  onOpenAuth: () => void
+  sessionEmail?: string | null
   recentSessions: ConversationSession[]
   activeSessionId?: string | null
   onOpenConversation: (sessionId: string) => void
@@ -62,11 +64,14 @@ export function WelcomeScreen({
   onSendMessage,
   onToggleMap,
   onOpenWorkspace,
+  onOpenAuth,
+  sessionEmail,
   recentSessions,
   activeSessionId,
   onOpenConversation,
 }: WelcomeScreenProps) {
   const hasRecentSessions = recentSessions.length > 0
+  const isSignedIn = Boolean(sessionEmail)
 
   return (
     <div className="w-full py-5">
@@ -92,11 +97,11 @@ export function WelcomeScreen({
               立即开始
             </button>
             <button
-              onClick={onOpenWorkspace}
+              onClick={isSignedIn ? onOpenWorkspace : onOpenAuth}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100"
             >
               <LogIn size={16} />
-              打开记录与档案
+              {isSignedIn ? '打开记录与档案' : '登录 / 注册'}
             </button>
             <button
               onClick={onToggleMap}

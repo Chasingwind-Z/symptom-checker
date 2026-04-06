@@ -2,6 +2,7 @@ import { Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSidebar, type SidebarSection } from './components/AppSidebar';
 import { AgentOrchestrationPanel } from './components/AgentOrchestrationPanel';
+import { AuthDialog } from './components/AuthDialog';
 import { ChatBubble } from './components/ChatBubble';
 import { ChatInput } from './components/ChatInput';
 import { CloudSyncCard } from './components/CloudSyncCard';
@@ -158,8 +159,9 @@ export default function App() {
   const [, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map'>('home');
-  const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('records');
+  const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
   const [recordSearchQuery, setRecordSearchQuery] = useState('');
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const profileCompletion = useMemo(
     () =>
       Math.round(
@@ -254,6 +256,14 @@ export default function App() {
     };
     setCurrentPage('map');
   }, [currentPage, messages.length, workspaceSection]);
+
+  const handleOpenAuthDialog = useCallback(() => {
+    setIsAuthDialogOpen(true);
+  }, []);
+
+  const handleCloseAuthDialog = useCallback(() => {
+    setIsAuthDialogOpen(false);
+  }, []);
 
   const handleOpenFollowUp = useCallback(
     (recordId: string) => {
@@ -559,6 +569,7 @@ export default function App() {
         onSelectRecords={() => handleOpenWorkspaceSection('records')}
         onSelectMedication={() => handleOpenWorkspaceSection('medication')}
         onOpenMap={handleOpenMap}
+        onOpenAuth={handleOpenAuthDialog}
         sessionEmail={workspace.sessionEmail}
         statusLabel={workspace.statusLabel}
         profileCompletion={profileCompletion}
@@ -566,17 +577,19 @@ export default function App() {
       />
 
       <div className="flex min-h-screen flex-1 flex-col">
-        <Header
-          title={pageHeader.title}
-          subtitle={pageHeader.subtitle}
-          onReset={handleResetChat}
-          onOpenWorkspace={handleOpenWorkspace}
-          onToggleMap={handleOpenMap}
-          currentView={showWorkspace ? 'workspace' : effectivePage === 'home' ? 'home' : 'chat'}
-          canInstallApp={pwa.canInstall}
-          isAppInstalled={pwa.isInstalled}
-          onInstallApp={() => {
-            void pwa.promptInstall();
+          <Header
+            title={pageHeader.title}
+            subtitle={pageHeader.subtitle}
+            onReset={handleResetChat}
+            onOpenWorkspace={handleOpenWorkspace}
+            onToggleMap={handleOpenMap}
+            onOpenAuth={handleOpenAuthDialog}
+            sessionEmail={workspace.sessionEmail}
+            currentView={showWorkspace ? 'workspace' : effectivePage === 'home' ? 'home' : 'chat'}
+            canInstallApp={pwa.canInstall}
+            isAppInstalled={pwa.isInstalled}
+            onInstallApp={() => {
+              void pwa.promptInstall();
           }}
         />
 
@@ -701,6 +714,7 @@ export default function App() {
                       isRefreshing={workspace.isRefreshing}
                       onSaveProfile={workspace.updateProfile}
                       onApplyDemoPersona={workspace.loadDemoPersona}
+                      onOpenAuth={handleOpenAuthDialog}
                     />
                   </div>
                 )}
@@ -760,7 +774,9 @@ export default function App() {
               <WelcomeScreen
                 onSendMessage={handleSendMessage}
                 onOpenWorkspace={handleOpenWorkspace}
+                onOpenAuth={handleOpenAuthDialog}
                 onToggleMap={handleOpenMap}
+                sessionEmail={workspace.sessionEmail}
                 recentSessions={conversationSessions}
                 activeSessionId={activeSessionId}
                 onOpenConversation={handleOpenConversation}
@@ -863,6 +879,14 @@ export default function App() {
           <ChatInput onSend={handleSendMessage} isLoading={isLoading} withDesktopSidebar />
         )}
       </div>
+
+      <AuthDialog
+        isOpen={isAuthDialogOpen}
+        mode={workspace.mode}
+        sessionEmail={workspace.sessionEmail}
+        onClose={handleCloseAuthDialog}
+        onRefresh={workspace.refresh}
+      />
     </div>
   );
 }
