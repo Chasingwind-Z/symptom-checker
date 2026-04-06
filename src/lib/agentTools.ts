@@ -36,7 +36,7 @@ export const AGENT_TOOLS: ChatToolDefinition[] = [
       function: {
         name: 'search_symptom_knowledge',
         description:
-          '检索本地 RAG Lite 医学知识文档，返回危险信号、重点人群提示、建议科室和高相关证据片段。',
+          '检索本地医学知识文档（当前以关键词扩展 + chunk 混合召回为主），返回危险信号、重点人群提示、建议科室和高相关证据片段。',
         parameters: {
           type: 'object',
           properties: {

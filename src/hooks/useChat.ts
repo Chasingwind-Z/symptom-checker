@@ -44,6 +44,12 @@ const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
   String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
 );
 
+type StoredChatImageAttachment = Pick<
+  ChatImageAttachment,
+  'id' | 'kind' | 'name' | 'mimeType' | 'sizeBytes'
+> &
+  Partial<Pick<ChatImageAttachment, 'previewUrl' | 'dataUrl'>>;
+
 function extractDiagnosis(content: string): DiagnosisResult | null {
   const match = content.match(/```json\s*([\s\S]*?)```/);
   if (!match) return null;
@@ -89,6 +95,10 @@ function formatAttachmentSize(sizeBytes: number): string {
     : `${Math.max(1, Math.round(sizeBytes / 1024))} KB`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function normalizeDraft(input: string | SendMessageInput): {
   text: string;
   attachments: ChatImageAttachment[];
@@ -107,9 +117,8 @@ function normalizeDraft(input: string | SendMessageInput): {
 }
 
 function buildAttachmentFallbackText(attachments: ChatImageAttachment[]): string {
-  return attachments.length > 1
-    ? '我上传了几张和症状相关的图片，请告诉我还需要补充哪些信息，以及何时需要尽快线下就医。'
-    : '我上传了一张和症状相关的图片，请告诉我还需要补充哪些信息，以及何时需要尽快线下就医。';
+  const imageLabel = attachments.length > 1 ? '这几张图片' : '这张图片';
+  return `我上传了${imageLabel}。请先告诉我图里最明显的异常或可读文字，再告诉我还需要补充哪些信息，以及何时需要尽快线下就医。`;
 }
 
 function buildAttachmentContext(attachments: ChatImageAttachment[]): string {
@@ -117,13 +126,20 @@ function buildAttachmentContext(attachments: ChatImageAttachment[]): string {
 
   return [
     '【图片补充信息】',
-    `用户本轮附带了 ${attachments.length} 张医疗相关图片。当前版本可能无法直接识别图像像素，请仅把图片视为辅助背景，不要把它当作确诊依据。`,
+    `用户本轮附带了 ${attachments.length} 张医疗相关图片。${
+      VISION_INPUT_ENABLED
+        ? '当前模型可接收图片，请先概括你能直接看到的异常、药盒/报告上的可读文字，再明确哪些结论仍不能仅凭图片确认。'
+        : '当前环境未启用像素级视觉识别，请把图片当作辅助背景，并主动要求用户补充部位、持续时间、疼痛/瘙痒/发热等文字信息。'
+    }`,
     ...attachments.map(
       (attachment, index) =>
         `- 图片 ${index + 1}：${attachment.name}（${attachment.mimeType}，${formatAttachmentSize(
           attachment.sizeBytes
         )}）`
     ),
+    '- 若是皮疹/伤口：可描述颜色、范围、渗出、是否蔓延，但不要把图片直接当作确诊依据。',
+    '- 若是药盒/药板：可先识别通用名、剂量、剂型或常见禁忌，再提醒核对年龄、过敏史、慢病和现用药。',
+    '- 若是化验/检查单：只总结图片里能清晰读到的关键指标或结论，并说明哪些异常仍需线下复核。',
     '请明确说明：不能仅凭图片下诊断，应结合用户的文字描述、持续时间、疼痛/瘙痒/发热等信息给出谨慎分诊建议；若出现伤口恶化、明显蔓延、呼吸困难、高热等红旗信号，应建议线下就医。',
   ].join('\n');
 }
@@ -143,20 +159,23 @@ function buildUserChatContent(
   if (attachments.length === 0) return text;
 
   const attachmentContext = buildAttachmentContext(attachments);
-  if (!VISION_INPUT_ENABLED) {
-    return `${text}\n\n${attachmentContext}`;
+  const textWithAttachmentContext = [text, attachmentContext].filter(Boolean).join('\n\n');
+  const attachmentsWithImageData = attachments.filter((attachment) => Boolean(attachment.dataUrl));
+
+  if (!VISION_INPUT_ENABLED || attachmentsWithImageData.length === 0) {
+    return textWithAttachmentContext;
   }
 
   return [
     {
       type: 'text',
-      text: `${text}\n\n${attachmentContext}`,
+      text: textWithAttachmentContext,
     },
-    ...attachments.map((attachment) => ({
+    ...attachmentsWithImageData.map((attachment) => ({
       type: 'image_url' as const,
       image_url: {
         url: attachment.dataUrl,
-        detail: 'low' as const,
+        detail: 'auto' as const,
       },
     })),
   ];
@@ -207,6 +226,23 @@ function buildConversationTitle(messages: Message[]): string {
   return sourceText.length > 20 ? `${sourceText.slice(0, 20).trim()}…` : sourceText;
 }
 
+function normalizeStoredAttachment(raw: unknown, index: number): ChatImageAttachment | null {
+  if (!isRecord(raw)) return null;
+
+  const previewUrl = typeof raw.previewUrl === 'string' ? raw.previewUrl : '';
+  const dataUrl = typeof raw.dataUrl === 'string' ? raw.dataUrl : previewUrl;
+
+  return {
+    id: typeof raw.id === 'string' ? raw.id : `stored-attachment-${index}`,
+    kind: 'image',
+    name: typeof raw.name === 'string' && raw.name.trim() ? raw.name : `图片 ${index + 1}`,
+    mimeType: typeof raw.mimeType === 'string' && raw.mimeType.trim() ? raw.mimeType : 'image/jpeg',
+    sizeBytes: typeof raw.sizeBytes === 'number' ? raw.sizeBytes : 0,
+    previewUrl,
+    dataUrl,
+  };
+}
+
 function normalizeStoredMessage(raw: unknown, index: number): Message | null {
   if (!raw || typeof raw !== 'object') return null;
 
@@ -226,7 +262,13 @@ function normalizeStoredMessage(raw: unknown, index: number): Message | null {
     role: message.role,
     content: typeof message.content === 'string' ? message.content : '',
     timestamp: Number.isNaN(parsedTimestamp.getTime()) ? new Date() : parsedTimestamp,
-    attachments: Array.isArray(message.attachments) ? message.attachments : undefined,
+    attachments: Array.isArray(message.attachments)
+      ? message.attachments
+          .map((attachment, attachmentIndex) =>
+            normalizeStoredAttachment(attachment, attachmentIndex)
+          )
+          .filter((attachment): attachment is ChatImageAttachment => Boolean(attachment))
+      : undefined,
     suggestions: Array.isArray(message.suggestions)
       ? message.suggestions.filter((item): item is string => typeof item === 'string')
       : undefined,
@@ -291,9 +333,43 @@ function readConversationSessionsCache(): ConversationSession[] {
   }
 }
 
+function serializeConversationSessions(sessions: ConversationSession[]) {
+  return sessions.map((session) => ({
+    ...session,
+    messages: session.messages.map((message) => ({
+      ...message,
+      timestamp:
+        message.timestamp instanceof Date
+          ? message.timestamp.toISOString()
+          : new Date(message.timestamp).toISOString(),
+      // Intentionally strip raw image payloads from long-lived local cache to avoid
+      // exceeding browser storage limits. Full previews stay in the live in-memory session.
+      attachments: message.attachments?.map(
+        (attachment): StoredChatImageAttachment => ({
+          id: attachment.id,
+          kind: attachment.kind,
+          name: attachment.name,
+          mimeType: attachment.mimeType,
+          sizeBytes: attachment.sizeBytes,
+        })
+      ),
+    })),
+  }));
+}
+
 function writeConversationSessionsCache(sessions: ConversationSession[]) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(CHAT_SESSION_STORAGE_KEY, JSON.stringify(sessions));
+
+  try {
+    localStorage.setItem(
+      CHAT_SESSION_STORAGE_KEY,
+      JSON.stringify(serializeConversationSessions(sessions))
+    );
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn('[Chat] 会话缓存写入失败，已保留当前页面中的会话状态。', error);
+    }
+  }
 }
 
 export function useChat(memoryContext?: AgentMemoryContext | null) {

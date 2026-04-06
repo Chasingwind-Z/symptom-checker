@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { User, Cross, Clock, BarChart2, HelpCircle, ClipboardList, Image as ImageIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
+import type { ChatDensityPreference } from '../lib/experienceSettings';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { ToolCallIndicator } from './ToolCallIndicator';
@@ -11,6 +12,7 @@ interface ChatBubbleProps {
   isStreaming?: boolean;
   onQuickReply?: (text: string) => void;
   diagnosisResult?: boolean;
+  density?: ChatDensityPreference;
 }
 
 function formatTime(date: Date): string {
@@ -214,7 +216,13 @@ function useAnimatedStreamingText(content: string, isStreaming: boolean): string
   return isStreaming ? displayed : content;
 }
 
-export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult }: ChatBubbleProps) {
+export function ChatBubble({
+  message,
+  isStreaming,
+  onQuickReply,
+  diagnosisResult,
+  density = 'comfortable',
+}: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const displayContent = isUser ? message.content : stripJsonBlock(message.content);
   const animatedStreamingContent = useAnimatedStreamingText(displayContent, Boolean(!isUser && isStreaming));
@@ -229,11 +237,27 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
               isUser ? 'border-white/15 bg-white/10' : 'border-slate-200 bg-slate-50'
             }`}
           >
-            <img
-              src={attachment.previewUrl}
-              alt={attachment.name}
-              className="max-h-52 w-full object-cover"
-            />
+            {attachment.previewUrl ? (
+              <img
+                src={attachment.previewUrl}
+                alt={attachment.name}
+                className="max-h-52 w-full object-cover"
+              />
+            ) : (
+              <div
+                className={`flex min-h-28 items-center justify-center px-4 py-5 text-center ${
+                  isUser ? 'bg-white/5 text-blue-50/90' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <ImageIcon size={18} className="opacity-80" />
+                  <p className="text-xs font-medium">图片已在本次会话中用于辅助分析</p>
+                  <p className="text-[11px] leading-relaxed opacity-80">
+                    为避免浏览器缓存超限，刷新后只保留文件名，不再展示完整预览。
+                  </p>
+                </div>
+              </div>
+            )}
             <div
               className={`flex items-center gap-2 px-3 py-2 text-[11px] ${
                 isUser ? 'text-blue-50/90' : 'text-slate-500'
@@ -248,7 +272,7 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
                     : 'border border-slate-200 bg-white text-slate-500'
                 }`}
               >
-                仅作辅助参考
+                {attachment.previewUrl ? '仅作辅助参考' : '预览已省略'}
               </span>
             </div>
           </div>
@@ -283,20 +307,31 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
     onQuickReply?.(suggestion);
   };
 
+  const bubbleSpacingClass = density === 'compact' ? 'mb-3' : 'mb-4';
+  const bubblePaddingClass = density === 'compact' ? 'px-3 py-2.5' : 'px-4 py-3';
+  const bubbleTextClass = density === 'compact' ? 'text-[13px] leading-6' : 'text-sm leading-relaxed';
+  const innerGapClass = density === 'compact' ? 'gap-2' : 'gap-2.5';
+  const timestampMarginClass = density === 'compact' ? 'mt-0.5' : 'mt-1';
+  const suggestionMarginClass = density === 'compact' ? 'mt-2.5' : 'mt-3';
+  const suggestionButtonClass =
+    density === 'compact' ? 'px-3 py-1.5 text-[13px]' : 'px-3.5 py-2 text-sm';
+
   if (isSummary) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="mb-4"
+        className={bubbleSpacingClass}
       >
-        <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm shadow-sm border-l-4 border-l-emerald-400 px-4 py-3 max-w-[85%]">
-          <div className="flex items-start gap-2.5">
+        <div
+          className={`max-w-[85%] rounded-2xl rounded-tl-sm border border-slate-200 border-l-4 border-l-emerald-400 bg-white shadow-sm ${bubblePaddingClass}`}
+        >
+          <div className={`flex items-start ${innerGapClass}`}>
             <div className="flex-shrink-0 bg-emerald-50 rounded-full p-1.5 mt-0.5">
               <ClipboardList size={18} className="text-emerald-500" />
             </div>
-            <div className="text-slate-700 text-sm leading-relaxed">
+            <div className={`text-slate-700 ${bubbleTextClass}`}>
               {agentSummary}
               {toolCallSummary}
               <AssistantMarkdown content={displayContent} />
@@ -304,7 +339,9 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
             </div>
           </div>
         </div>
-        <span className="text-slate-400 text-xs mt-1 px-1 block">{formatTime(message.timestamp)}</span>
+        <span className={`block px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
+          {formatTime(message.timestamp)}
+        </span>
       </motion.div>
     );
   }
@@ -315,14 +352,16 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="mb-4"
+        className={bubbleSpacingClass}
       >
-        <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm shadow-sm border-l-4 border-l-blue-400 px-4 py-3 max-w-[85%]">
-          <div className="flex items-start gap-2.5 mb-3">
+        <div
+          className={`max-w-[85%] rounded-2xl rounded-tl-sm border border-slate-200 border-l-4 border-l-blue-400 bg-white shadow-sm ${bubblePaddingClass}`}
+        >
+          <div className={`mb-3 flex items-start ${innerGapClass}`}>
             <div className="flex-shrink-0 bg-blue-50 rounded-full p-1.5 mt-0.5">
               {getQuestionIcon(displayContent)}
             </div>
-            <div className="text-slate-700 text-sm leading-relaxed">
+            <div className={`text-slate-700 ${bubbleTextClass}`}>
               {agentSummary}
               {toolCallSummary}
               <AssistantMarkdown content={displayContent} />
@@ -331,7 +370,7 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
           </div>
 
           {hasSuggestions && onQuickReply && !diagnosisResult && (
-            <div className="flex flex-wrap gap-2 mt-3 pl-9">
+            <div className={`flex flex-wrap gap-2 pl-9 ${suggestionMarginClass}`}>
               {message.suggestions!.map((suggestion, i) => (
                 <motion.button
                   key={`${suggestion}-${i}`}
@@ -342,7 +381,7 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
                   transition={{ duration: 0.2, delay: i * 0.04 }}
                   whileHover={{ y: -1, scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
-                  className="cursor-pointer rounded-full border border-blue-200/90 bg-gradient-to-b from-white to-blue-50 px-3.5 py-2 text-sm font-medium text-blue-700 shadow-[0_1px_2px_rgba(37,99,235,0.08)] transition-[border-color,box-shadow,background-color] hover:border-blue-300 hover:from-blue-50 hover:to-blue-100 hover:shadow-[0_6px_18px_rgba(59,130,246,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2"
+                  className={`cursor-pointer rounded-full border border-blue-200/90 bg-gradient-to-b from-white to-blue-50 font-medium text-blue-700 shadow-[0_1px_2px_rgba(37,99,235,0.08)] transition-[border-color,box-shadow,background-color] hover:border-blue-300 hover:from-blue-50 hover:to-blue-100 hover:shadow-[0_6px_18px_rgba(59,130,246,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 ${suggestionButtonClass}`}
                 >
                   {suggestion}
                 </motion.button>
@@ -350,7 +389,9 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
             </div>
           )}
         </div>
-        <span className="text-slate-400 text-xs mt-1 px-1 block">{formatTime(message.timestamp)}</span>
+        <span className={`block px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
+          {formatTime(message.timestamp)}
+        </span>
       </motion.div>
     );
   }
@@ -362,13 +403,15 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex items-end gap-2 mb-4"
+        className={`flex items-end gap-2 ${bubbleSpacingClass}`}
       >
         <div className="flex-shrink-0 rounded-full p-1.5 bg-blue-100">
           <Cross size={16} className="text-blue-500" />
         </div>
         <div className="max-w-[80%] flex flex-col items-start">
-          <div className="rounded-2xl rounded-tl-sm border border-blue-100 bg-gradient-to-b from-white to-blue-50/60 px-4 py-3 text-sm leading-relaxed text-slate-700 shadow-[0_8px_24px_rgba(59,130,246,0.08)] break-words">
+          <div
+            className={`break-words rounded-2xl rounded-tl-sm border border-blue-100 bg-gradient-to-b from-white to-blue-50/60 text-slate-700 shadow-[0_8px_24px_rgba(59,130,246,0.08)] ${bubblePaddingClass} ${bubbleTextClass}`}
+          >
             {agentSummary}
             {toolCallSummary}
             {hasAssistantCopy ? <AssistantMarkdown content={animatedStreamingContent} /> : null}
@@ -396,7 +439,9 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
               </div>
             </div>
           </div>
-          <span className="text-slate-400 text-xs mt-1 px-1">{formatTime(message.timestamp)}</span>
+          <span className={`px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
+            {formatTime(message.timestamp)}
+          </span>
         </div>
       </motion.div>
     );
@@ -408,7 +453,7 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex items-end gap-2 mb-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      className={`flex items-end gap-2 ${bubbleSpacingClass} ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
       <div
         className={`flex-shrink-0 rounded-full p-1.5 ${
@@ -424,18 +469,18 @@ export function ChatBubble({ message, isStreaming, onQuickReply, diagnosisResult
 
       <div className={`max-w-[80%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
         <div
-          className={`px-4 py-3 text-sm leading-relaxed break-words ${
+          className={`break-words ${bubblePaddingClass} ${bubbleTextClass} ${
             isUser
               ? 'bg-blue-500 text-white rounded-2xl rounded-tr-sm whitespace-pre-wrap'
               : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm shadow-sm'
-           }`}
-           >
-             {!isUser && agentSummary}
-             {!isUser && toolCallSummary}
-             {isUser ? displayContent : <AssistantMarkdown content={displayContent} />}
-             {attachmentGallery}
-           </div>
-        <span className="text-slate-400 text-xs mt-1 px-1">
+            }`}
+        >
+          {!isUser && agentSummary}
+          {!isUser && toolCallSummary}
+          {isUser ? displayContent : <AssistantMarkdown content={displayContent} />}
+          {attachmentGallery}
+        </div>
+        <span className={`px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
           {formatTime(message.timestamp)}
         </span>
       </div>

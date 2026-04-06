@@ -104,7 +104,7 @@ export interface MedicalKnowledgeSearchResult {
 }
 
 const KNOWLEDGE_UPDATED_AT = '2026-04-05';
-const SOURCE_LABEL = 'RAG Lite 本地医学知识库';
+const SOURCE_LABEL = '本地医学知识库（关键词 / chunk 混合检索）';
 const SUPABASE_TABLE_NAME = 'medical_knowledge_documents';
 
 const RISK_PRIORITY: Record<RiskLevel, number> = {
@@ -195,11 +195,13 @@ const QUERY_EXPANSION_RULES: Array<{
   },
 ];
 
+// Note: unless vectorScore is actually populated, this is still closer to
+// keyword/query-expansion + chunk reranking than a full vector-embedding RAG stack.
 const RETRIEVAL_MODE_LABELS: Record<MedicalKnowledgeRetrievalMode, string> = {
-  keyword: '关键词检索',
-  'hybrid-local': '混合检索（本地 chunk + 查询扩展）',
-  'hybrid-cloud': '混合检索（云端缓存 + chunk rerank）',
-  'hybrid-cloud-vector-ready': '混合检索（云端 chunk / 向量预备）',
+  keyword: '关键词检索（非向量 RAG）',
+  'hybrid-local': '混合检索（本地 chunk + 查询扩展，非完整向量 RAG）',
+  'hybrid-cloud': '混合检索（云端 chunk + 查询扩展，非完整向量 RAG）',
+  'hybrid-cloud-vector-ready': '混合检索（云端 chunk；含向量字段 / 预备，并非纯向量 RAG）',
 };
 
 export const MEDICAL_KNOWLEDGE_SOURCE = {

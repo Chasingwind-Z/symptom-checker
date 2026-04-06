@@ -1,5 +1,15 @@
-import { useMemo } from 'react';
-import { ArrowRight, Clock3, Pill, ShieldCheck, Sparkles } from 'lucide-react';
+import { useMemo, type ReactNode } from 'react';
+import {
+  ArrowRight,
+  Clock3,
+  ImagePlus,
+  MapPin,
+  Pill,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+} from 'lucide-react';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import { buildMedicationHubContexts } from '../lib/medicationHub';
 import {
@@ -7,6 +17,7 @@ import {
   buildPersonalizationRankingContext,
   hasMedicationProfileContext,
 } from '../lib/personalization';
+import type { LocationData } from '../lib/geolocation';
 import { getRiskPresentation } from '../lib/riskPresentation';
 import type { ConversationSession, DiagnosisResult } from '../types';
 
@@ -18,6 +29,7 @@ interface MedicationRecommendationsPanelProps {
   activeSessionId?: string | null;
   conversationSessions: ConversationSession[];
   recentCases: CaseHistoryItem[];
+  currentLocation?: LocationData | null;
   onOpenConversation: (sessionId: string) => void;
   onStartNewConversation: () => void;
 }
@@ -42,6 +54,39 @@ function getActionClasses(tone: ActionTone) {
   return tone === 'primary'
     ? 'bg-blue-600 text-white hover:bg-blue-700'
     : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50';
+}
+
+function normalizeCity(value?: string | null) {
+  return value?.trim() && value !== '中国大陆' ? value.trim() : '';
+}
+
+function buildAmapSearchUrl(
+  keyword: string,
+  options: {
+    city?: string | null;
+    location?: LocationData | null;
+  } = {}
+) {
+  const normalizedCity = normalizeCity(options.city);
+  const resolvedKeyword = options.location ? keyword : [normalizedCity, keyword].filter(Boolean).join(' ');
+  const params = new URLSearchParams({
+    keyword: resolvedKeyword || keyword,
+    src: 'symptom-checker',
+    coordinate: 'gaode',
+    callnative: '1',
+  });
+
+  if (options.location) {
+    params.set('center', `${options.location.lon},${options.location.lat}`);
+  }
+
+  return `https://uri.amap.com/search?${params.toString()}`;
+}
+
+function buildMedicationInfoSearchUrl(keyword: string) {
+  return `https://cn.bing.com/search?q=${encodeURIComponent(
+    `${keyword} 说明书 成分 禁忌 注意事项`
+  )}`;
 }
 
 function ActionButton({
@@ -69,12 +114,72 @@ function ActionButton({
   );
 }
 
+function AccessTile({
+  title,
+  description,
+  icon,
+  toneClass,
+  badge,
+  href,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  icon: ReactNode;
+  toneClass: string;
+  badge?: string;
+  href?: string;
+  onClick?: () => void;
+}) {
+  const card = (
+    <div
+      className={`h-full rounded-2xl border px-4 py-4 transition-all duration-200 ${toneClass}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="rounded-2xl bg-white/90 p-2 shadow-sm">{icon}</div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-slate-800">{title}</p>
+              {badge && (
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                  {badge}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">{description}</p>
+          </div>
+        </div>
+
+        <span className="rounded-full bg-white/90 p-1.5 text-slate-400">
+          <ArrowRight size={14} />
+        </span>
+      </div>
+    </div>
+  );
+
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="group block h-full text-left">
+        {card}
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className="group block h-full w-full text-left">
+      {card}
+    </button>
+  );
+}
+
 export function MedicationRecommendationsPanel({
   profile,
   currentDiagnosis,
   activeSessionId,
   conversationSessions,
   recentCases,
+  currentLocation,
   onOpenConversation,
   onStartNewConversation,
 }: MedicationRecommendationsPanelProps) {
@@ -158,6 +263,121 @@ export function MedicationRecommendationsPanel({
 
     return notes.slice(0, 3);
   }, [orderedContexts]);
+  const normalizedCity = normalizeCity(profile?.city);
+  const preferredRecommendation =
+    featuredContext?.recommendations.find((recommendation) => recommendation.suitable) ??
+    featuredContext?.recommendations[0] ??
+    null;
+  const primaryDepartment =
+    featuredContext?.diagnosis.departments[0] ?? currentDiagnosis?.departments[0] ?? null;
+  const riskIsHigh =
+    featuredContext?.riskLevel === 'orange' || featuredContext?.riskLevel === 'red';
+  const locationHint = currentLocation ? '按当前位置' : normalizedCity ? `按${normalizedCity}` : '通用入口';
+  const nearbyPharmacyUrl = useMemo(
+    () =>
+      buildAmapSearchUrl(riskIsHigh ? '24小时药房' : '附近药房', {
+        city: normalizedCity,
+        location: currentLocation,
+      }),
+    [currentLocation, normalizedCity, riskIsHigh]
+  );
+  const medicationSearchSeed = preferredRecommendation?.title ?? '常见 OTC';
+  const medicationAvailabilityUrl = useMemo(
+    () =>
+      buildAmapSearchUrl(`${medicationSearchSeed} 药房`, {
+        city: normalizedCity,
+        location: currentLocation,
+      }),
+    [currentLocation, medicationSearchSeed, normalizedCity]
+  );
+  const medicationInfoUrl = useMemo(
+    () => buildMedicationInfoSearchUrl(preferredRecommendation?.title ?? featuredContext?.title ?? '常见 OTC'),
+    [featuredContext?.title, preferredRecommendation?.title]
+  );
+  const clinicUrl = useMemo(
+    () =>
+      buildAmapSearchUrl(`${primaryDepartment ?? '全科'} 门诊`, {
+        city: normalizedCity,
+        location: currentLocation,
+      }),
+    [currentLocation, normalizedCity, primaryDepartment]
+  );
+  const serviceEntrances = useMemo(
+    () => [
+      {
+        id: 'nearby-pharmacy',
+        title: riskIsHigh ? '附近药房 / 基础用品' : '附近药房',
+        description: riskIsHigh
+          ? '如需补体温计、口罩或基础耗材，可先看线下药房；高风险症状仍应优先线下就医。'
+          : '先看附近药房与营业点，方便线下核对常见 OTC 是否可得。',
+        icon: <MapPin size={16} className="text-emerald-600" />,
+        href: nearbyPharmacyUrl,
+        toneClass: 'border-emerald-100 bg-emerald-50/60 hover:border-emerald-200 hover:bg-emerald-50',
+        badge: locationHint,
+      },
+      riskIsHigh
+        ? {
+            id: 'clinic-entry',
+            title: primaryDepartment ? `${primaryDepartment} 门诊入口` : '附近门诊 / 医院',
+            description: primaryDepartment
+              ? `先看更贴近当前分诊的 ${primaryDepartment} 线下入口，不建议只靠购药处理。`
+              : '当前分级偏高，先保留线下医院 / 门诊入口，避免被购药动作分散注意力。',
+            icon: <Stethoscope size={16} className="text-violet-600" />,
+            href: clinicUrl,
+            toneClass:
+              'border-violet-100 bg-violet-50/60 hover:border-violet-200 hover:bg-violet-50',
+            badge: '优先线下评估',
+          }
+        : {
+            id: 'medication-search',
+            title: `搜 ${trimText(medicationSearchSeed, 18)}`,
+            description: preferredRecommendation
+              ? `把“${preferredRecommendation.title}”直接带到地图搜索，少走一次找药路径。`
+              : '按当前更匹配的 OTC / 家庭处理方向直接搜药房入口。',
+            icon: <Search size={16} className="text-sky-600" />,
+            href: medicationAvailabilityUrl,
+            toneClass: 'border-sky-100 bg-sky-50/60 hover:border-sky-200 hover:bg-sky-50',
+            badge: preferredRecommendation?.suitable ? '优先参考方向' : '先核对',
+          },
+      {
+        id: 'medication-info',
+        title: '查说明书 / 成分',
+        description: preferredRecommendation
+          ? `先核对 ${preferredRecommendation.title} 的通用名、剂量和禁忌，再决定是否购买。`
+          : '先核对通用名、成分和禁忌，再决定是否购买。',
+        icon: <ShieldCheck size={16} className="text-amber-600" />,
+        href: medicationInfoUrl,
+        toneClass: 'border-amber-100 bg-amber-50/70 hover:border-amber-200 hover:bg-amber-50',
+        badge: '先看信息',
+      },
+      {
+        id: 'image-review',
+        title: threadActionContext?.conversationId ? '回对话继续传药盒 / 报告' : '新建图像核对',
+        description:
+          '如果已买到药、手边有药盒 / 说明书或检查单，可继续传图做可见文字与异常说明。',
+        icon: <ImagePlus size={16} className="text-cyan-600" />,
+        onClick: threadActionContext?.conversationId
+          ? () => onOpenConversation(threadActionContext.conversationId!)
+          : onStartNewConversation,
+        toneClass: 'border-cyan-100 bg-cyan-50/60 hover:border-cyan-200 hover:bg-cyan-50',
+        badge: '图像复核',
+      },
+    ],
+    [
+      clinicUrl,
+      locationHint,
+      medicationAvailabilityUrl,
+      medicationInfoUrl,
+      medicationSearchSeed,
+      nearbyPharmacyUrl,
+      onOpenConversation,
+      onStartNewConversation,
+      preferredRecommendation,
+      primaryDepartment,
+      riskIsHigh,
+      threadActionContext,
+    ]
+  );
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
@@ -216,7 +436,48 @@ export function MedicationRecommendationsPanel({
       )}
 
       {featuredContext ? (
-        <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <>
+          <div className="mt-4 rounded-2xl border border-cyan-100 bg-cyan-50/60 px-4 py-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <MapPin size={16} className="text-cyan-600" />
+                  <p className="text-sm font-semibold text-slate-800">购药与复核入口</p>
+                  <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                    {locationHint}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  {riskIsHigh
+                    ? '当前分级偏高，以下入口更适合做线下准备和信息核对，不要因为能买到药而延迟就医。'
+                    : '把找药房、搜推荐方向、查说明书和回对话传药盒 / 报告的入口收在一起，少来回找。'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              {serviceEntrances.map((entry) => (
+                <AccessTile
+                  key={entry.id}
+                  title={entry.title}
+                  description={entry.description}
+                  icon={entry.icon}
+                  href={entry.href}
+                  onClick={entry.onClick}
+                  toneClass={entry.toneClass}
+                  badge={entry.badge}
+                />
+              ))}
+            </div>
+
+            <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+              {preferredRecommendation
+                ? `当前优先方向：${preferredRecommendation.title}。建议先核对通用名、剂量和禁忌，再决定是否购买。`
+                : '如果暂时没有明确 OTC 优势方向，建议先看线下门诊或回到原问诊补充信息。'}
+            </p>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
           <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-4">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">
@@ -403,7 +664,8 @@ export function MedicationRecommendationsPanel({
               </ul>
             </div>
           </div>
-        </div>
+          </div>
+        </>
       ) : (
         <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
           <p className="text-sm font-semibold text-slate-800">当前暂无可前置的用药参考</p>

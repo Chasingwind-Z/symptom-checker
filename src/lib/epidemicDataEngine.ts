@@ -72,6 +72,11 @@ interface CitySignalProfile {
   citySummary: string
 }
 
+export interface SupportedCityMatch {
+  city: string
+  distanceKm: number
+}
+
 const ACTIVE_CITY_STORAGE_KEY = 'symptom_active_city_v1'
 
 const CITY_CONFIGS: Record<string, CityDistrictConfig> = {
@@ -303,39 +308,81 @@ export function getActiveCity(): string {
   return _activeCity
 }
 
+function getCityConfig(cityName: string = getActiveCity()): CityDistrictConfig {
+  return CITY_CONFIGS[cityName] ?? CITY_CONFIGS['苏州']
+}
+
 export function getActiveCityConfig(): CityDistrictConfig {
-  return CITY_CONFIGS[_activeCity] ?? CITY_CONFIGS['苏州']
+  return getCityConfig(_activeCity)
 }
 
 export function getSupportedCities(): string[] {
   return Object.keys(CITY_CONFIGS)
 }
 
-export function detectCityFromCoords(lng: number, lat: number): string {
+function toRadians(value: number): number {
+  return (value * Math.PI) / 180
+}
+
+function getDistanceKm(
+  [lngA, latA]: [number, number],
+  [lngB, latB]: [number, number]
+): number {
+  const earthRadiusKm = 6371
+  const latDelta = toRadians(latB - latA)
+  const lngDelta = toRadians(lngB - lngA)
+  const base =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) * Math.sin(lngDelta / 2) ** 2
+
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(base), Math.sqrt(1 - base))
+}
+
+export function getNearestSupportedCityFromCoords(lng: number, lat: number): SupportedCityMatch {
   let bestCity = '苏州'
-  let bestDist = Infinity
+  let bestDistanceKm = Infinity
+
   for (const [name, cfg] of Object.entries(CITY_CONFIGS)) {
-    const dx = lng - cfg.center[0]
-    const dy = lat - cfg.center[1]
-    const dist = dx * dx + dy * dy
-    if (dist < bestDist) {
-      bestDist = dist
+    const distanceKm = getDistanceKm([lng, lat], cfg.center)
+    if (distanceKm < bestDistanceKm) {
+      bestDistanceKm = distanceKm
       bestCity = name
     }
   }
-  return bestCity
+
+  return { city: bestCity, distanceKm: bestDistanceKm }
 }
 
-function getDistrictCenters(): Record<string, [number, number]> {
-  return getActiveCityConfig().districts
+export function detectCityFromCoords(lng: number, lat: number): string {
+  return getNearestSupportedCityFromCoords(lng, lat).city
 }
 
-function getDistricts(): string[] {
-  return Object.keys(getDistrictCenters())
+export function getNearestDistrictFromCoords(cityName: string, lng: number, lat: number): string | null {
+  const districtCenters = getCityConfig(cityName).districts
+  let bestDistrict: string | null = null
+  let bestDistanceKm = Infinity
+
+  for (const [district, center] of Object.entries(districtCenters)) {
+    const distanceKm = getDistanceKm([lng, lat], center)
+    if (distanceKm < bestDistanceKm) {
+      bestDistanceKm = distanceKm
+      bestDistrict = district
+    }
+  }
+
+  return bestDistrict
 }
 
-function getCitySignalProfile(): CitySignalProfile {
-  return CITY_SIGNAL_PROFILES[getActiveCity()] ?? CITY_SIGNAL_PROFILES['苏州']
+function getDistrictCenters(cityName: string = getActiveCity()): Record<string, [number, number]> {
+  return getCityConfig(cityName).districts
+}
+
+function getDistricts(cityName: string = getActiveCity()): string[] {
+  return Object.keys(getDistrictCenters(cityName))
+}
+
+function getCitySignalProfile(cityName: string = getActiveCity()): CitySignalProfile {
+  return CITY_SIGNAL_PROFILES[cityName] ?? CITY_SIGNAL_PROFILES['苏州']
 }
 
 const TOP_SYMPTOMS_POOL = [
@@ -450,14 +497,16 @@ function createDistrictRiskData(params: {
   riskBreakdown: RiskBreakdown
   dataLabel?: string
   sourceNote?: string
+  cityName?: string
 }): DistrictRiskData {
   const riskScore = Math.round(sumRiskBreakdown(params.riskBreakdown) * 10) / 10
   const seasonalSignal = getSeasonalSignal()
-  const cityProfile = getCitySignalProfile()
+  const cityName = params.cityName ?? getActiveCity()
+  const cityProfile = getCitySignalProfile(cityName)
 
   return {
     district: params.district,
-    center: getDistrictCenters()[params.district] ?? [120.62, 31.30],
+    center: getDistrictCenters(cityName)[params.district] ?? [120.62, 31.30],
     totalReports: params.totalReports,
     feverDrugIndex: params.feverDrugIndex,
     coughDrugIndex: params.coughDrugIndex,
@@ -491,11 +540,15 @@ function classifyRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical
   return 'critical'
 }
 
-function generateDistrictData(district: string, daySeed: number): DistrictRiskData {
+function generateDistrictData(
+  district: string,
+  daySeed: number,
+  cityName: string = getActiveCity()
+): DistrictRiskData {
   const dSeed = getDistrictSeed(district)
   const base = daySeed + dSeed
   const seasonalSignal = getSeasonalSignal()
-  const cityProfile = getCitySignalProfile()
+  const cityProfile = getCitySignalProfile(cityName)
   const respiratoryBoost = seasonalSignal.respiratoryBoost * cityProfile.respiratoryBias
   const giBoost = seasonalSignal.giBoost * cityProfile.giBias
   const isTopDistrict = cityProfile.hotspotDistricts[0] === district
@@ -524,6 +577,7 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
         followUp: Math.round(11 + cityProfile.mobilityBoost * 4),
       },
       sourceNote: `${cityProfile.citySummary} 当前重点观察 ${district} 的片区变化。`,
+      cityName,
     })
   }
 
@@ -550,6 +604,7 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
         followUp: Math.round(10 + cityProfile.mobilityBoost * 3),
       },
       sourceNote: `${cityProfile.citySummary} ${district} 当前更适合结合官方入口与本地趋势一起看。`,
+      cityName,
     })
   }
 
@@ -616,6 +671,7 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
     topSymptoms,
     weeklyData,
     riskBreakdown,
+    cityName,
   })
 }
 
@@ -625,13 +681,13 @@ function getDaySeedOffset(offset: number): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()
 }
 
-export function getDistrictRiskData(): DistrictRiskData[] {
+export function getDistrictRiskData(cityName: string = getActiveCity()): DistrictRiskData[] {
   const daySeed = getDaySeed()
-  return getDistricts().map((district) => generateDistrictData(district, daySeed))
+  return getDistricts(cityName).map((district) => generateDistrictData(district, daySeed, cityName))
 }
 
-export function getCityOverview(): CityOverview {
-  const districts = mergeLocalReports(getDistrictRiskData())
+export function getCityOverview(cityName: string = getActiveCity()): CityOverview {
+  const districts = mergeLocalReports(getDistrictRiskData(cityName))
   const totalReports = districts.reduce((sum, district) => sum + district.totalReports, 0)
   const alertDistricts = districts.filter(
     district => district.riskLevel === 'high' || district.riskLevel === 'critical'
@@ -671,14 +727,14 @@ export function getCityOverview(): CityOverview {
   }
 }
 
-export function getDrugTrendData(district: string): {
+export function getDrugTrendData(district: string, cityName: string = getActiveCity()): {
   labels: string[]
   fever: number[]
   cough: number[]
   gi: number[]
 } {
   const dSeed = getDistrictSeed(district)
-  const cityProfile = getCitySignalProfile()
+  const cityProfile = getCitySignalProfile(cityName)
   const seasonalSignal = getSeasonalSignal()
   const labels: string[] = []
   const fever: number[] = []

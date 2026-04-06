@@ -5,6 +5,7 @@ import {
   LogIn,
   MapPin,
   Plus,
+  Settings2,
   Stethoscope,
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ interface HeaderProps {
   onOpenWorkspace?: () => void;
   onToggleMap?: () => void;
   onOpenAuth?: () => void;
+  onOpenSettings?: () => void;
   sessionEmail?: string | null;
   currentView?: 'home' | 'chat' | 'workspace';
   onInstallApp?: () => void;
@@ -29,6 +31,7 @@ export function Header({
   onOpenWorkspace,
   onToggleMap,
   onOpenAuth,
+  onOpenSettings,
   sessionEmail,
   currentView = 'home',
   onInstallApp,
@@ -85,6 +88,15 @@ export function Header({
             >
               <LogIn size={14} />
               <span className="hidden sm:inline">登录</span>
+            </button>
+          )}
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-50 lg:hidden"
+            >
+              <Settings2 size={14} />
+              <span className="hidden sm:inline">设置</span>
             </button>
           )}
           {onOpenWorkspace && currentView !== 'workspace' && (

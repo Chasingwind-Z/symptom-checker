@@ -46,6 +46,9 @@ const ROUTE_ORDER: AgentId[] = [
 ];
 
 const FOLLOW_UP_RESPONSES = ['明显好转', '略有好转', '没有变化', '更严重了'] as const;
+const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
+  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
+);
 
 function formatAttachmentSize(sizeBytes: number): string {
   const sizeInMb = sizeBytes / (1024 * 1024);
@@ -229,7 +232,11 @@ function buildContextNotes(context: AgentPromptContext): string[] {
 
   if ((context.attachments?.length ?? 0) > 0) {
     notes.push(
-      `【图片补充信息】\n用户本轮上传了 ${context.attachments!.length} 张图片（常见于皮疹、伤口、药盒或检查报告）。当前请把这些图片仅当辅助背景，不要把图像直接当作确诊依据；回复中需要明确“不能仅凭图片做诊断”，并优先让用户补充部位、持续时间、疼痛/瘙痒/发热等文字描述。\n${context.attachments!
+      `【图片补充信息】\n用户本轮上传了 ${context.attachments!.length} 张图片（常见于皮疹、伤口、药盒或检查报告）。${
+        VISION_INPUT_ENABLED
+          ? '当前模型可接收图片，请先说明你能直接看到的异常或可读文字，再明确哪些结论仍不能仅凭图片确认。'
+          : '当前环境未启用像素级视觉识别，请把图片仅当辅助背景，并优先让用户补充部位、持续时间、疼痛/瘙痒/发热等文字描述。'
+      } 回复中需要明确“不能仅凭图片做诊断”。\n${context.attachments!
         .map(
           (item, index) =>
             `- 图片 ${index + 1}：${item.name}（${item.mimeType}，${formatAttachmentSize(
@@ -293,7 +300,7 @@ function buildContextNotes(context: AgentPromptContext): string[] {
       : '';
 
     notes.push(
-      `【RAG Lite 检索结果】${populationHint}\n${snippets}\n这些内容来自本地结构化医学指引，可直接融入解释与建议。`
+      `【医学知识混合检索结果】${populationHint}\n${snippets}\n这些内容来自本地结构化医学指引；当前以关键词扩展 + chunk 混合召回为主，可直接融入解释与建议。`
     );
   }
 

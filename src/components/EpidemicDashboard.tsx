@@ -21,8 +21,10 @@ import {
   getActiveCity,
   setActiveCity,
   getSupportedCities,
-  detectCityFromCoords,
+  getNearestDistrictFromCoords,
+  getNearestSupportedCityFromCoords,
 } from '../lib/epidemicDataEngine'
+import { loadExperienceSettings, type LocationPreference } from '../lib/experienceSettings'
 import { OfficialSourceComparison } from './OfficialSourceComparison'
 import * as officialSourceHelpers from '../lib/officialSources'
 import type { DistrictRiskData } from '../lib/epidemicDataEngine'
@@ -69,25 +71,68 @@ const useDashboardOfficialSourcesSafe =
     : () => FALLBACK_DASHBOARD_SOURCES
 
 type CitySelectionSource = 'default' | 'detected' | 'manual'
-type LocationStatus = 'detecting' | 'detected' | 'blocked' | 'unsupported'
+type LocationStatus =
+  | 'detecting'
+  | 'detected'
+  | 'outside'
+  | 'blocked'
+  | 'unsupported'
+  | 'profile'
+  | 'disabled'
+
+const SUPPORTED_LOCATION_MATCH_KM = 120
+
+const formatDistanceLabel = (distanceKm: number | null) => {
+  if (distanceKm == null || Number.isNaN(distanceKm)) {
+    return ''
+  }
+
+  if (distanceKm < 1) {
+    return '1 公里内'
+  }
+
+  return `${distanceKm < 10 ? distanceKm.toFixed(1) : Math.round(distanceKm)} 公里`
+}
+
+const formatAccuracyLabel = (accuracyMeters: number | null) => {
+  if (accuracyMeters == null || Number.isNaN(accuracyMeters)) {
+    return ''
+  }
+
+  if (accuracyMeters < 1000) {
+    return `${Math.round(accuracyMeters)} 米`
+  }
+
+  return `${(accuracyMeters / 1000).toFixed(1)} 公里`
+}
 
 const getMapLoadingNote = (city: string) =>
-  `${city}各区观察图正在整理，先别急，下方的同城热点、7 日曲线和官方资料也能帮助你快速判断变化。`
+  `${city}分区趋势图正在加载，你仍可先查看重点片区、7 日曲线和官方来源。`
 
 const getMapFallbackNote = (city: string) =>
-  `${city}城区地图暂时没有显示出来，先为你呈现同城热点、重点片区和 7 日变化。`
+  `${city}地图暂未显示，已保留分区摘要、重点片区和 7 日变化，不影响继续核对趋势。`
 
 export function EpidemicDashboard({ onBack }: Props) {
   const mapKey = (import.meta.env.VITE_AMAP_JS_KEY as string | undefined)?.trim() ?? ''
+  const locationPreference = useMemo<LocationPreference>(
+    () => loadExperienceSettings().locationPreference,
+    []
+  )
   const [currentTime, setCurrentTime] = useState<string>('')
   const [currentCity, setCurrentCity] = useState(getActiveCity())
   const [detectedCity, setDetectedCity] = useState<string | null>(null)
+  const [detectedDistrict, setDetectedDistrict] = useState<string | null>(null)
+  const [detectedDistanceKm, setDetectedDistanceKm] = useState<number | null>(null)
+  const [detectedAccuracyMeters, setDetectedAccuracyMeters] = useState<number | null>(null)
   const [citySelectionSource, setCitySelectionSource] = useState<CitySelectionSource>('default')
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('detecting')
   const supportedCities = getSupportedCities()
   const cityConfig = getActiveCityConfig()
-  const cityOverview = useMemo(() => getCityOverview(), [currentCity])
-  const districtData = useMemo<DistrictRiskData[]>(() => mergeLocalReports(getDistrictRiskData()), [currentCity])
+  const cityOverview = useMemo(() => getCityOverview(currentCity), [currentCity])
+  const districtData = useMemo<DistrictRiskData[]>(
+    () => mergeLocalReports(getDistrictRiskData(currentCity)),
+    [currentCity]
+  )
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
   const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'fallback'>(
     mapKey ? 'loading' : 'fallback'
@@ -137,8 +182,37 @@ export function EpidemicDashboard({ onBack }: Props) {
     setMapNote(mapKey ? getMapLoadingNote(city) : getMapFallbackNote(city))
   }
 
+  function focusDetectedCity(source: CitySelectionSource = 'detected') {
+    if (!detectedCity) {
+      return
+    }
+
+    applyCityChange(detectedCity, source)
+
+    if (detectedDistrict) {
+      setSelectedDistrict(detectedDistrict)
+    }
+  }
+
+  function focusDetectedDistrictArea() {
+    if (!detectedDistrict) {
+      return
+    }
+
+    if (detectedCity && currentCity !== detectedCity) {
+      applyCityChange(detectedCity, 'detected')
+    }
+
+    setSelectedDistrict(detectedDistrict)
+  }
+
   // 根据用户定位自动选择城市
   useEffect(() => {
+    if (locationPreference !== 'device') {
+      setLocationStatus(locationPreference === 'profile' ? 'profile' : 'disabled')
+      return
+    }
+
     if (!navigator.geolocation) {
       setLocationStatus('unsupported')
       return
@@ -146,21 +220,39 @@ export function EpidemicDashboard({ onBack }: Props) {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const detected = detectCityFromCoords(pos.coords.longitude, pos.coords.latitude)
-        setDetectedCity(detected)
-        setLocationStatus('detected')
+        const nearestCityMatch = getNearestSupportedCityFromCoords(
+          pos.coords.longitude,
+          pos.coords.latitude
+        )
+        const detected = nearestCityMatch.city
+        const nearbyDistrict = getNearestDistrictFromCoords(
+          detected,
+          pos.coords.longitude,
+          pos.coords.latitude
+        )
+        const withinSupportedCity = nearestCityMatch.distanceKm <= SUPPORTED_LOCATION_MATCH_KM
 
-        if (citySelectionSourceRef.current !== 'manual') {
+        setDetectedCity(detected)
+        setDetectedDistrict(nearbyDistrict)
+        setDetectedDistanceKm(nearestCityMatch.distanceKm)
+        setDetectedAccuracyMeters(Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null)
+        setLocationStatus(withinSupportedCity ? 'detected' : 'outside')
+
+        if (withinSupportedCity && citySelectionSourceRef.current !== 'manual') {
           applyCityChange(detected, 'detected')
+
+          if (nearbyDistrict) {
+            setSelectedDistrict(nearbyDistrict)
+          }
         }
       },
       () => {
         setLocationStatus('blocked')
       },
-      { timeout: 5000 }
+      { timeout: 5000, maximumAge: 5 * 60 * 1000 }
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [locationPreference])
 
   function handleCityChange(city: string) {
     applyCityChange(city, 'manual')
@@ -294,7 +386,7 @@ export function EpidemicDashboard({ onBack }: Props) {
   const activeDistrict = activeDistrictName
     ? districtData.find(district => district.district === activeDistrictName) ?? null
     : null
-  const trendData = activeDistrictName ? getDrugTrendData(activeDistrictName) : null
+  const trendData = activeDistrictName ? getDrugTrendData(activeDistrictName, currentCity) : null
   const warningText = districtData.length > 0 ? getAIWarningText(districtData) : ''
   const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   const focusDistrict = sortedDistricts[0] ?? null
@@ -327,10 +419,10 @@ export function EpidemicDashboard({ onBack }: Props) {
       label: '官方 / 公共来源',
       title: dashboardSourceStatus.sourceLabel || '卫健委、疾控与 WHO 公开资料',
       badge: officialFreshnessLabel,
-      summary: `优先用于核对 ${currentCity} 的正式建议、就医入口和疾病背景，是最先该看的信息。`,
+      summary: `优先用于核对 ${currentCity} 的正式建议、就医入口和疾病背景，也是最先应查看的信息。`,
       note: officialTimeLabel
         ? `公开资料最近标注时间：${officialTimeLabel}`
-        : '公开资料以原始发布渠道的标注时间为准',
+        : '公开资料以原始发布渠道的标注时间为准，卡片会优先直达原始页面',
       wrapperClass: 'border-emerald-400/20 bg-emerald-500/5',
       labelClass: 'text-emerald-200',
       badgeClass: 'bg-emerald-500/15 text-emerald-200',
@@ -424,63 +516,141 @@ export function EpidemicDashboard({ onBack }: Props) {
         },
       ]
     : []
+  const detectedDistanceLabel = formatDistanceLabel(detectedDistanceKm)
+  const detectedAccuracyLabel = formatAccuracyLabel(detectedAccuracyMeters)
   const cityContext = (() => {
     if (citySelectionSource === 'manual') {
-      if (detectedCity && detectedCity !== currentCity) {
+      if (detectedCity && detectedCity !== currentCity && locationStatus === 'detected') {
         return {
-          badge: '手动查看中',
-          summary: `当前展示 ${currentCity}`,
-          detail: `定位识别到 ${detectedCity}，但你已切换为更关心的 ${currentCity}。`,
+          badge: '手动切换',
+          summary: `当前查看 ${currentCity}`,
+          detail: `已读取当前位置并匹配到 ${detectedCity}${detectedDistrict ? ` · 更近片区 ${detectedDistrict}` : ''}，但你已切换到更关心的 ${currentCity}。`,
         }
       }
 
       return {
-        badge: '手动查看中',
-        summary: `当前展示 ${currentCity}`,
+        badge: '手动切换',
+        summary: `当前查看 ${currentCity}`,
         detail: detectedCity
-          ? `定位识别同样落在 ${detectedCity}，你也可以随时切换到其他常看城市。`
+          ? `你仍可随时切回 ${detectedCity}${detectedDistrict ? ` 或直接查看更近的 ${detectedDistrict}` : ''}。`
           : '你可以随时切换到其他常看城市，方便查看家人或工作地附近的变化。',
       }
     }
 
     if (citySelectionSource === 'detected') {
       return {
-        badge: '当前位置',
-        summary: `已根据当前位置切换到 ${currentCity}`,
-        detail: '如果你还想看看家人或工作地所在城市，可以直接在下拉中切换。',
+        badge: '定位已匹配',
+        summary: `已按当前位置切换到 ${currentCity}`,
+        detail: detectedDistrict
+          ? `当前位置主要用于匹配支持城市和更近片区，当前已优先聚焦 ${detectedDistrict}。`
+          : '当前位置主要用于匹配支持城市；如需看其他城市，可直接在下拉中切换。',
       }
     }
 
     if (locationStatus === 'detecting') {
       return {
         badge: '正在识别',
-        summary: `当前先展示 ${currentCity}`,
-        detail: '如果识别到你所在的支持城市，会自动切换；不想用定位也可以直接手动选择。',
+        summary: `当前先查看 ${currentCity}`,
+        detail: '如果识别到你所在的支持城市，会自动切换并尝试聚焦更近片区；不想用定位也可以直接手动选择。',
+      }
+    }
+
+    if (locationStatus === 'outside') {
+      return {
+        badge: '位置未命中支持城市',
+        summary: `当前先查看 ${currentCity}`,
+        detail: detectedCity
+          ? `已读取当前位置，但最近的已接入城市是 ${detectedCity}${detectedDistanceLabel ? `（距市级参考中心约 ${detectedDistanceLabel}）` : ''}；需要时可手动切换查看。`
+          : '已读取当前位置，但目前未命中支持城市，你仍可手动切换到最关心的城市。',
       }
     }
 
     if (locationStatus === 'blocked') {
       return {
         badge: '未读取位置',
-        summary: `当前先展示 ${currentCity}`,
-        detail: '没有获取到当前位置，先按常看城市展示；你仍可手动切换。',
+        summary: `当前先查看 ${currentCity}`,
+        detail: '没有获取到当前位置，先按常看城市展示；你仍可手动切换到更关心的城市或片区。',
       }
     }
 
     if (locationStatus === 'unsupported') {
       return {
         badge: '定位不可用',
-        summary: `当前先展示 ${currentCity}`,
-        detail: '当前设备暂不支持定位，可直接手动选择城市观察范围。',
+        summary: `当前先查看 ${currentCity}`,
+        detail: '当前设备暂不支持定位，可直接手动选择城市并查看重点片区。',
+      }
+    }
+
+    if (locationStatus === 'profile') {
+      return {
+        badge: '档案城市',
+        summary: `当前按常看城市查看 ${currentCity}`,
+        detail: '你已在设置里切到档案城市模式；地图不会读取精准位置，只按当前常看城市展示分区趋势。',
+      }
+    }
+
+    if (locationStatus === 'disabled') {
+      return {
+        badge: '位置已关闭',
+        summary: `当前按手动城市查看 ${currentCity}`,
+        detail: '你已关闭位置偏好；地图不会自动读取当前位置，但仍可手动切换支持城市。',
       }
     }
 
     return {
       badge: '默认城市',
-      summary: `当前先展示 ${currentCity}`,
-      detail: '你可以直接手动切换到其他支持城市，查看更关心的同城趋势。',
+      summary: `当前先查看 ${currentCity}`,
+      detail: '你可以直接手动切换到其他支持城市，查看更关心的本地趋势。',
     }
   })()
+  const locationUsageMeta = (() => {
+    if (locationStatus === 'detected' && detectedCity) {
+      return [
+        `位置用途：匹配 ${detectedCity}${detectedDistrict ? ` · ${detectedDistrict} 附近` : ''}`,
+        detectedDistanceLabel ? `距市级参考中心约 ${detectedDistanceLabel}` : '',
+        detectedAccuracyLabel ? `定位精度约 ${detectedAccuracyLabel}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    }
+
+    if (locationStatus === 'outside' && detectedCity) {
+      return `已读取当前位置；最近的已接入城市为 ${detectedCity}${detectedDistanceLabel ? ` · 约 ${detectedDistanceLabel}` : ''}。`
+    }
+
+    if (locationStatus === 'blocked') {
+      return '未读取到当前位置；地图仍可按城市和片区继续使用。'
+    }
+
+    if (locationStatus === 'unsupported') {
+      return '当前设备未提供定位能力；地图仅按你选择的城市展示分区趋势。'
+    }
+
+    if (locationStatus === 'profile') {
+      return '你已切到档案城市模式；地图只按当前常看城市展示分区趋势，不读取精准位置。'
+    }
+
+    if (locationStatus === 'disabled') {
+      return '你已关闭位置偏好；地图只按手动选择的城市展示分区趋势，不读取精准位置。'
+    }
+
+    return '地图展示的是按区汇总的近 7 日相对变化；定位只用于推荐支持城市和更近片区，不显示精确地址。'
+  })()
+  const showDetectedCityAction =
+    locationStatus === 'detected' &&
+    Boolean(detectedCity) &&
+    (citySelectionSource === 'manual' || currentCity !== detectedCity)
+  const showRecommendedCityAction =
+    locationStatus === 'outside' && Boolean(detectedCity) && currentCity !== detectedCity
+  const showDetectedDistrictAction =
+    locationStatus === 'detected' &&
+    detectedCity === currentCity &&
+    Boolean(detectedDistrict) &&
+    activeDistrictName !== detectedDistrict
+  const mapUsageNote =
+    locationStatus === 'detected' && detectedDistrict && detectedCity === currentCity
+      ? `地图展示的是 ${currentCity} 各区近 7 日相对变化；当前位置只用于提示你更靠近 ${detectedDistrict}。`
+      : '地图展示的是按区汇总的近 7 日相对变化；定位只用于推荐支持城市和更近片区，不显示精确地址。'
   const sourceLayerBadges = [
     { label: '官方 / 公共来源', className: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' },
     { label: '趋势 / 参考', className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-200' },
@@ -534,26 +704,52 @@ export function EpidemicDashboard({ onBack }: Props) {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-              <span className="text-white font-bold text-xl">{currentCity} · 同城健康观察</span>
+              <span className="text-white font-bold text-xl">{currentCity} · 本地健康趋势参考</span>
             </div>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <span className="bg-white/10 text-white/70 text-[10px] px-2 py-0.5 rounded-full">
                 {cityContext.badge}
               </span>
               <span className="text-white/75 text-xs">{cityContext.summary}</span>
-              {detectedCity && (
-                <span className="text-white/35 text-[11px]">
-                  定位识别：{detectedCity}
-                  {citySelectionSource === 'manual' && detectedCity !== currentCity ? '（当前已手动切换）' : ''}
-                </span>
-              )}
             </div>
             <p className="mt-1 text-[11px] text-white/45 leading-relaxed">{cityContext.detail}</p>
+            <p className="mt-1 text-[11px] text-white/35 leading-relaxed">{locationUsageMeta}</p>
+            {(showDetectedCityAction || showRecommendedCityAction || showDetectedDistrictAction) && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                {showDetectedCityAction && (
+                  <button
+                    type="button"
+                    onClick={() => focusDetectedCity('detected')}
+                    className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100 transition-colors hover:bg-cyan-500/20"
+                  >
+                    切回定位城市{detectedCity ? ` · ${detectedCity}` : ''}
+                  </button>
+                )}
+                {showRecommendedCityAction && (
+                  <button
+                    type="button"
+                    onClick={() => focusDetectedCity('manual')}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-white/75 transition-colors hover:bg-white/10"
+                  >
+                    查看最近支持城市{detectedCity ? ` · ${detectedCity}` : ''}
+                  </button>
+                )}
+                {showDetectedDistrictAction && (
+                  <button
+                    type="button"
+                    onClick={focusDetectedDistrictArea}
+                    className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100 transition-colors hover:bg-emerald-500/20"
+                  >
+                    查看附近片区{detectedDistrict ? ` · ${detectedDistrict}` : ''}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <label className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 min-w-[190px]">
             <span className="block text-[10px] tracking-[0.24em] uppercase text-white/35">
-              城市观察范围
+              当前查看城市
             </span>
             <select
               value={currentCity}
@@ -564,7 +760,9 @@ export function EpidemicDashboard({ onBack }: Props) {
                 <option key={city} value={city} className="text-slate-900">{city}</option>
               ))}
             </select>
-            <span className="mt-2 block text-[10px] text-white/35">支持自动识别，也支持手动切换常看城市</span>
+            <span className="mt-2 block text-[10px] text-white/35">
+              可按当前位置推荐，也可切换到家人或工作地所在城市
+            </span>
           </label>
         </div>
 
@@ -651,7 +849,7 @@ export function EpidemicDashboard({ onBack }: Props) {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-amber-100 text-sm font-semibold">今日同城重点观察</span>
+                  <span className="text-amber-100 text-sm font-semibold">当前优先关注片区</span>
                   <span className="bg-amber-400/15 text-amber-200 text-[11px] px-2 py-0.5 rounded-full">
                     {focusDistrict.district}
                   </span>
@@ -662,7 +860,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                 <p className="text-white/75 text-xs mt-1 leading-relaxed">
                   近 7 日 {focusDistrict.district} 的 {focusDistrict.topSymptoms.slice(0, 2).join('、')} 相关反馈持续抬升，
                   当前主要由社区症状反馈 {focusDistrict.riskBreakdown.symptomReports} 分和近 7 日变化{' '}
-                  {focusDistrict.riskBreakdown.trendChange} 分带动。建议先核对官方 / 公共资料，再结合社区与药房信号判断。
+                  {focusDistrict.riskBreakdown.trendChange} 分带动。建议先核对官方 / 公共资料，再结合分区趋势与社区、药房信号判断。
                 </p>
               </div>
             </div>
@@ -688,22 +886,30 @@ export function EpidemicDashboard({ onBack }: Props) {
           <div className="col-span-3 flex flex-col gap-4 min-h-0">
             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col min-h-0 flex-1">
               <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 flex-shrink-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Map size={16} className="text-white/60" />
-                  <span className="text-white font-medium text-sm">{currentCity}各区近期关注热力图</span>
-                  <span className="text-white/30 text-[11px] hidden md:inline">趋势 / 参考 · 点击片区查看本地观察卡</span>
-                  {activeDistrict && (
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full border"
-                      style={{
-                        color: getRiskColor(activeDistrict.riskLevel),
-                        background: `${getRiskColor(activeDistrict.riskLevel)}18`,
-                        borderColor: `${getRiskColor(activeDistrict.riskLevel)}33`,
-                      }}
-                    >
-                      当前聚焦：{activeDistrict.district}
-                    </span>
-                  )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Map size={16} className="text-white/60" />
+                    <span className="text-white font-medium text-sm">{currentCity}各区近 7 日趋势热力图</span>
+                    <span className="text-white/30 text-[11px] hidden md:inline">趋势 / 参考 · 点击片区查看分区说明</span>
+                    {activeDistrict && (
+                      <span
+                        className="text-[10px] px-2 py-0.5 rounded-full border"
+                        style={{
+                          color: getRiskColor(activeDistrict.riskLevel),
+                          background: `${getRiskColor(activeDistrict.riskLevel)}18`,
+                          borderColor: `${getRiskColor(activeDistrict.riskLevel)}33`,
+                        }}
+                      >
+                        当前聚焦：{activeDistrict.district}
+                      </span>
+                    )}
+                    {locationStatus === 'detected' && detectedDistrict && detectedCity === currentCity && (
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                        定位附近：{detectedDistrict}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-[10px] leading-relaxed text-white/35">{mapUsageNote}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap justify-end">
                   <span className="bg-cyan-500/15 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full">
@@ -723,7 +929,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   <div className="absolute inset-0 flex items-center justify-center bg-slate-950/65 px-5 text-center">
                     <div className="max-w-sm rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-4">
                       <p className="text-sm font-semibold text-white">
-                        {mapStatus === 'loading' ? `正在整理${currentCity}各区观察图` : `先看${currentCity}同城趋势摘要`}
+                        {mapStatus === 'loading' ? `正在加载${currentCity}分区趋势图` : `先看${currentCity}分区趋势摘要`}
                       </p>
                       <p className="mt-2 text-[11px] leading-relaxed text-white/65">{mapNote}</p>
                       {focusDistrict && (
@@ -738,8 +944,8 @@ export function EpidemicDashboard({ onBack }: Props) {
                 {focusDistrict && (
                   <div className="absolute left-4 bottom-4 max-w-xs rounded-2xl border border-white/10 bg-slate-950/75 backdrop-blur px-3 py-2.5 shadow-2xl">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-white/85 text-xs font-medium">{currentCity}同城热点摘要</span>
-                      <span className="text-[10px] text-white/40">当前最值得先看</span>
+                      <span className="text-white/85 text-xs font-medium">{currentCity}重点片区摘要</span>
+                      <span className="text-[10px] text-white/40">优先核对</span>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-sm font-semibold text-white">{focusDistrict.district}</span>
@@ -766,7 +972,7 @@ export function EpidemicDashboard({ onBack }: Props) {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <AlertTriangle size={16} className="text-amber-300" />
-                  <span className="text-white font-medium text-sm">同城热点摘要</span>
+                  <span className="text-white font-medium text-sm">重点片区摘要</span>
                 </div>
                 <div className="space-y-2.5">
                   {hotspotSummary.map((district, index) => (
@@ -847,7 +1053,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <TrendingUp size={16} className="text-cyan-300" />
-                    <span className="text-white font-medium text-sm">同城趋势参考信号</span>
+                    <span className="text-white font-medium text-sm">近期趋势参考</span>
                   </div>
                   <span className="bg-cyan-500/15 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full">
                     趋势 / 参考
@@ -884,11 +1090,11 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4" style={{ maxHeight: '200px', overflowY: 'auto' }}>
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
-                  <BarChart2 size={16} className="text-white/60" />
-                  <span className="text-white font-medium text-sm">各区观察优先级</span>
+                    <BarChart2 size={16} className="text-white/60" />
+                    <span className="text-white font-medium text-sm">各区观察优先级</span>
+                  </div>
+                  <span className="text-white/30 text-[11px]">按本地参考分排序</span>
                 </div>
-                <span className="text-white/30 text-[11px]">按本地参考分排序</span>
-              </div>
               {sortedDistricts.map((d, i) => (
                 <div
                   key={d.district}
@@ -899,6 +1105,11 @@ export function EpidemicDashboard({ onBack }: Props) {
                 >
                   <span className="text-white/30 text-xs w-4">{i + 1}</span>
                   <span className="text-white/80 text-xs flex-1">{d.district}</span>
+                  {locationStatus === 'detected' && detectedCity === currentCity && detectedDistrict === d.district && (
+                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200">
+                      离你更近
+                    </span>
+                  )}
                   <span className={`text-xs px-1.5 py-0.5 rounded ${
                     d.riskLevel === 'critical'
                       ? 'bg-red-500/20 text-red-400'
@@ -928,7 +1139,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   <BarChart2 size={16} className="text-white/60" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-medium text-sm">{activeDistrict.district} · 本地观察卡</span>
+                      <span className="text-white font-medium text-sm">{activeDistrict.district} · 分区说明卡</span>
                       <span
                         className="text-[11px] px-2 py-0.5 rounded-full"
                         style={{
@@ -1104,8 +1315,8 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-blue-500/20 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Bot size={16} className="text-blue-400" />
-                <span className="text-white font-medium text-sm">AI 预警研判</span>
-                <span className="text-white/30 text-xs ml-auto">基于脱敏指标生成</span>
+                <span className="text-white font-medium text-sm">自动趋势说明</span>
+                <span className="text-white/30 text-xs ml-auto">基于脱敏指标自动生成</span>
               </div>
                   <p className="text-white/75 text-xs leading-relaxed whitespace-pre-line">
                     {warningText}
@@ -1151,8 +1362,8 @@ export function EpidemicDashboard({ onBack }: Props) {
               title={`${currentCity} 官方建议与就医入口`}
               subtitle={
                 hasLocalOfficialSource
-                  ? `优先展示 ${currentCity} 本地官方入口，再补国家级与国际参考，方便先核对就医路径和正式建议。`
-                  : `暂未接入 ${currentCity} 本地官方来源，当前先提供国家级公开资料作为稳妥参考。`
+                  ? `优先展示 ${currentCity} 本地官方入口，再补国家级与国际参考；卡片会尽量直接打开原始发布页或服务页。`
+                  : `暂未接入 ${currentCity} 本地官方来源，当前先提供国家级公开资料作为稳妥参考，并尽量直达原始页面。`
               }
             />
           </div>

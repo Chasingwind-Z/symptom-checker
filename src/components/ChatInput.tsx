@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -20,12 +21,34 @@ interface ChatInputProps {
   onSend: (input: string | SendMessageInput) => void;
   isLoading: boolean;
   withDesktopSidebar?: boolean;
+  desktopSidebarWidth?: number;
   onLayoutChange?: (layout: ChatInputLayoutMetrics) => void;
 }
 
-const MAX_IMAGE_SIZE_BYTES = 6 * 1024 * 1024;
+const VISION_INPUT_ENABLED = /^(1|true|yes)$/i.test(
+  String(import.meta.env.VITE_AI_SUPPORTS_VISION ?? 'false')
+);
+const MAX_IMAGE_ATTACHMENTS = 3;
+const MAX_IMAGE_SIZE_BYTES = 4 * 1024 * 1024;
 const MIN_TEXTAREA_HEIGHT = 56;
 const MAX_TEXTAREA_HEIGHT = 140;
+const IMAGE_PROMPT_SHORTCUTS = [
+  {
+    id: 'symptom-context',
+    label: '补部位 / 多久',
+    template: '部位：\n持续时间：\n是否疼 / 痒 / 发热：',
+  },
+  {
+    id: 'medication-box',
+    label: '核对药盒',
+    template: '请帮我先核对药盒上的通用名、剂量和禁忌；我目前还在用：',
+  },
+  {
+    id: 'report-highlights',
+    label: '解释报告',
+    template: '请先说明图片里最需要关注的异常或可读指标，并告诉我哪些情况需要尽快线下复查：',
+  },
+] as const;
 
 interface SpeechRecognitionAlternativeLike {
   transcript: string;
@@ -89,15 +112,46 @@ function getKeyboardOffset(): number {
   return Math.round(Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop));
 }
 
+function appendPromptTemplate(currentValue: string, template: string): string {
+  const normalizedTemplate = template.trim();
+  if (!normalizedTemplate) return currentValue;
+  if (!currentValue.trim()) return normalizedTemplate;
+  if (currentValue.includes(normalizedTemplate)) return currentValue;
+  return `${currentValue.trimEnd()}\n${normalizedTemplate}`;
+}
+
+function buildHelperText(attachmentCount: number): string {
+  if (attachmentCount === 0) {
+    return VISION_INPUT_ENABLED
+      ? '支持文字、语音和最多 3 张图片；药盒、检查单图片会优先尝试识别可见文字。'
+      : '支持文字、语音和最多 3 张图片；当前环境仍以文字判断为主。';
+  }
+
+  return VISION_INPUT_ENABLED
+    ? `已附加 ${attachmentCount} 张图片，可先看图中异常或可读文字；建议继续补充部位、持续时间和伴随症状。`
+    : `已附加 ${attachmentCount} 张图片；当前未启用视觉模型，建议继续补充部位、持续时间和伴随症状。`;
+}
+
+function buildPlaceholder(attachmentCount: number): string {
+  if (attachmentCount === 0) {
+    return '描述您的症状、持续时间，以及是否发热、疼痛或呼吸不适…';
+  }
+
+  return VISION_INPUT_ENABLED
+    ? '可补充：哪里不适、持续多久、图里最担心哪一处，或想核对哪盒药 / 哪项指标…'
+    : '请补充图片对应的部位、持续时间、是否疼/痒/发热，或你想核对的药名 / 指标…';
+}
+
 export function ChatInput({
   onSend,
   isLoading,
   withDesktopSidebar = false,
+  desktopSidebarWidth = 320,
   onLayoutChange,
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [selectedAttachment, setSelectedAttachment] = useState<ChatImageAttachment | null>(null);
+  const [selectedAttachments, setSelectedAttachments] = useState<ChatImageAttachment[]>([]);
   const [uploadError, setUploadError] = useState('');
   const [keyboardOffset, setKeyboardOffset] = useState(() => getKeyboardOffset());
   const [isInputFocused, setIsInputFocused] = useState(false);
@@ -106,17 +160,15 @@ export function ChatInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const canSend = Boolean(value.trim() || selectedAttachment) && !isLoading;
+  const attachmentCount = selectedAttachments.length;
+  const remainingAttachmentSlots = Math.max(0, MAX_IMAGE_ATTACHMENTS - attachmentCount);
+  const canSend = Boolean(value.trim() || attachmentCount > 0) && !isLoading;
   const helperText = isListening
     ? '语音输入中，点按麦克风即可结束。'
-    : selectedAttachment
-      ? '已附加 1 张图片，建议继续补充部位、持续时间和伴随症状。'
-      : '支持文字、语音和 1 张图片辅助描述。';
+    : buildHelperText(attachmentCount);
   const placeholder = isListening
     ? '正在将语音实时转成文字…'
-    : selectedAttachment
-      ? '补充图片里哪里不适、持续多久、是否疼/痒/发热…'
-      : '描述您的症状、持续时间，以及是否发热、疼痛或呼吸不适…';
+    : buildPlaceholder(attachmentCount);
 
   const notifyLayoutChange = useCallback(() => {
     if (!onLayoutChange || !containerRef.current) return;
@@ -175,7 +227,7 @@ export function ChatInput({
 
   useEffect(() => {
     notifyLayoutChange();
-  }, [notifyLayoutChange, isListening, isLoading, selectedAttachment, uploadError, value]);
+  }, [notifyLayoutChange, attachmentCount, isListening, isLoading, uploadError, value]);
 
   useEffect(() => {
     if (!onLayoutChange || !containerRef.current || typeof ResizeObserver === 'undefined') {
@@ -199,19 +251,19 @@ export function ChatInput({
 
   const handleSend = () => {
     const trimmed = value.trim();
-    if ((!trimmed && !selectedAttachment) || isLoading) return;
+    if ((!trimmed && attachmentCount === 0) || isLoading) return;
 
-    if (selectedAttachment) {
+    if (attachmentCount > 0) {
       onSend({
         text: trimmed,
-        attachments: [selectedAttachment],
+        attachments: selectedAttachments,
       });
     } else {
       onSend(trimmed);
     }
 
     setValue('');
-    setSelectedAttachment(null);
+    setSelectedAttachments([]);
     setUploadError('');
   };
 
@@ -268,43 +320,54 @@ export function ChatInput({
 
     if (!file) return;
 
+    if (attachmentCount >= MAX_IMAGE_ATTACHMENTS) {
+      setUploadError(`最多上传 ${MAX_IMAGE_ATTACHMENTS} 张图片，请先移除不需要的图片。`);
+      return;
+    }
+
     if (!file.type.startsWith('image/')) {
       setUploadError('请上传 JPG、PNG 或 WebP 图片。');
       return;
     }
 
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setUploadError('图片请控制在 6MB 以内，便于快速上传与后续视觉模型接入。');
+      setUploadError('单张图片请控制在 4MB 以内，优先上传清晰近景，便于更快完成图像辅助分析。');
       return;
     }
 
     try {
       const dataUrl = await readFileAsDataUrl(file);
-      setSelectedAttachment({
-        id: `image-${Date.now()}`,
-        kind: 'image',
-        name: file.name,
-        mimeType: file.type || 'image/jpeg',
-        sizeBytes: file.size,
-        previewUrl: dataUrl,
-        dataUrl,
-      });
+      setSelectedAttachments((previousAttachments) => [
+        ...previousAttachments,
+        {
+          id: `image-${Date.now()}`,
+          kind: 'image',
+          name: file.name,
+          mimeType: file.type || 'image/jpeg',
+          sizeBytes: file.size,
+          previewUrl: dataUrl,
+          dataUrl,
+        },
+      ]);
       setUploadError('');
     } catch {
       setUploadError('图片读取失败，请换一张再试。');
     }
   };
 
+  const containerStyle: CSSProperties & Record<'--desktop-sidebar-width', string> = {
+    bottom: `${keyboardOffset}px`,
+    paddingBottom: keyboardOffset > 0 ? '12px' : 'max(12px, env(safe-area-inset-bottom))',
+    '--desktop-sidebar-width': withDesktopSidebar ? `${desktopSidebarWidth}px` : '0px',
+  };
+
   return (
     <div
       ref={containerRef}
       className={`fixed left-0 right-0 z-40 bg-gradient-to-t from-white/95 via-white/88 to-transparent px-3 pt-3 ${
-        withDesktopSidebar ? 'lg:left-[320px]' : ''
+        withDesktopSidebar ? 'lg:left-[var(--desktop-sidebar-width)]' : ''
       } sm:px-4`}
-      style={{
-        bottom: `${keyboardOffset}px`,
-        paddingBottom: keyboardOffset > 0 ? '12px' : 'max(12px, env(safe-area-inset-bottom))',
-      }}
+      style={containerStyle}
     >
       <div className="mx-auto max-w-2xl">
         <input
@@ -314,7 +377,7 @@ export function ChatInput({
           capture="environment"
           onChange={handleImageSelect}
           className="hidden"
-          disabled={isLoading}
+          disabled={isLoading || attachmentCount >= MAX_IMAGE_ATTACHMENTS}
         />
 
         <div className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/95 shadow-[0_-16px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl">
@@ -341,43 +404,76 @@ export function ChatInput({
               </div>
             )}
 
-            {selectedAttachment && (
+            {attachmentCount > 0 && (
               <div className="mb-3 rounded-[22px] border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white px-3 py-3 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="relative shrink-0">
-                    <img
-                      src={selectedAttachment.previewUrl}
-                      alt={selectedAttachment.name}
-                      className="h-16 w-16 rounded-2xl border border-amber-100 bg-white object-cover"
-                    />
-                    <span className="absolute -bottom-1 -right-1 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 shadow-sm">
-                      图片
-                    </span>
-                  </div>
-
+                <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-800">已附加图片</p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        已附加 {attachmentCount} 张图片
+                      </p>
                       <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-amber-700">
-                        仅作辅助参考
+                        {VISION_INPUT_ENABLED ? '图片辅助分析已启用' : '仍以文字判断为主'}
                       </span>
+                      {remainingAttachmentSlots > 0 && (
+                        <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                          还可再加 {remainingAttachmentSlots} 张
+                        </span>
+                      )}
                     </div>
-                    <p className="mt-1 truncate text-xs text-slate-600">
-                      {selectedAttachment.name} · {formatFileSize(selectedAttachment.sizeBytes)}
-                    </p>
                     <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-                      建议再补充部位、持续时间、是否疼/痒/发热等文字信息；若伤口恶化、持续高热或呼吸困难，请及时线下就医。
+                      建议再补充部位、持续时间、是否疼 / 痒 / 发热；若是药盒或报告，可直接说明想核对的药名、剂量或指标。
                     </p>
                   </div>
+                </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAttachment(null)}
-                    className="rounded-full border border-white/80 bg-white/90 p-1.5 text-slate-400 transition-colors hover:text-slate-700"
-                    aria-label="移除图片"
-                  >
-                    <X size={16} />
-                  </button>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {selectedAttachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="relative overflow-hidden rounded-2xl border border-amber-100 bg-white"
+                    >
+                      <img
+                        src={attachment.previewUrl}
+                        alt={attachment.name}
+                        className="h-24 w-full bg-slate-100 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAttachments((previousAttachments) =>
+                            previousAttachments.filter(
+                              (previousAttachment) => previousAttachment.id !== attachment.id
+                            )
+                          );
+                          setUploadError('');
+                        }}
+                        className="absolute right-2 top-2 rounded-full border border-white/80 bg-white/90 p-1 text-slate-400 transition-colors hover:text-slate-700"
+                        aria-label={`移除图片 ${attachment.name}`}
+                      >
+                        <X size={14} />
+                      </button>
+                      <div className="px-2.5 py-2">
+                        <p className="truncate text-xs font-medium text-slate-700">{attachment.name}</p>
+                        <p className="mt-0.5 text-[10px] text-slate-500">
+                          {formatFileSize(attachment.sizeBytes)} · 仅作辅助参考
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {IMAGE_PROMPT_SHORTCUTS.map((shortcut) => (
+                    <button
+                      key={shortcut.id}
+                      type="button"
+                      onClick={() => setValue((previousValue) => appendPromptTemplate(previousValue, shortcut.template))}
+                      className="rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:text-blue-600"
+                    >
+                      {shortcut.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -393,16 +489,29 @@ export function ChatInput({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  className={`inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-                    selectedAttachment
+                  disabled={isLoading || attachmentCount >= MAX_IMAGE_ATTACHMENTS}
+                  className={`relative inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                    attachmentCount > 0
                       ? 'border-blue-200 bg-blue-50 text-blue-600'
                       : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-600'
-                  } disabled:cursor-not-allowed disabled:opacity-50`}
-                  title="上传皮疹、伤口、药盒或报告图片"
-                  aria-label="上传图片"
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                  title={
+                    attachmentCount >= MAX_IMAGE_ATTACHMENTS
+                      ? `已达 ${MAX_IMAGE_ATTACHMENTS} 张上限，请先移除不需要的图片`
+                      : `上传皮疹、伤口、药盒或报告图片（最多 ${MAX_IMAGE_ATTACHMENTS} 张）`
+                  }
+                  aria-label={
+                    attachmentCount >= MAX_IMAGE_ATTACHMENTS
+                      ? `已达到图片上限 ${MAX_IMAGE_ATTACHMENTS} 张`
+                      : `上传图片，当前已选 ${attachmentCount} 张`
+                  }
                 >
                   <ImagePlus size={18} />
+                  {attachmentCount > 0 && (
+                    <span className="absolute -right-1 -top-1 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                      {attachmentCount}
+                    </span>
+                  )}
                 </button>
 
                 <div className="min-w-0 flex-1">
@@ -479,7 +588,11 @@ export function ChatInput({
             <div className="mt-2 flex items-start gap-2 rounded-2xl bg-slate-50/90 px-3 py-2.5 text-[11px] text-slate-500">
               <ShieldAlert size={12} className="mt-0.5 flex-shrink-0 text-amber-500" />
               <p className="leading-relaxed">
-                可上传 1 张皮疹、伤口、化验单或药盒照片作为辅助信息。当前版本会保存图片供后续视觉能力接入，但仍主要依据文字描述做谨慎分诊，不会仅凭图片下诊断。
+                可上传最多 3 张皮疹、伤口、化验单或药盒照片作为辅助信息。
+                {VISION_INPUT_ENABLED
+                  ? ' 当前模型若支持视觉，会先参考图片里可见的异常或文字，再结合你的文字做谨慎分诊。'
+                  : ' 当前环境未启用真实视觉模型，系统会把图片当作辅助背景，引导你补充更关键的文字信息。'}
+                不会仅凭图片下诊断，完整图片预览主要保留在当前会话中。
               </p>
             </div>
           </div>

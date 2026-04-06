@@ -53,7 +53,7 @@ function getScopeMeta(record: OfficialSourceRecord) {
 export function OfficialSourceComparison({
   records,
   title = '权威健康参考',
-  subtitle = '以下资料来源于疾控中心、卫健委及 WHO 等公开渠道，供对照参考。',
+  subtitle = '以下资料来源于疾控中心、卫健委及 WHO 等公开渠道，卡片会尽量直达原始发布页或服务页。',
   theme = 'light',
 }: OfficialSourceComparisonProps) {
   const isDark = theme === 'dark';
@@ -88,6 +88,7 @@ export function OfficialSourceComparison({
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <p className={`text-[11px] ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
                       {record.sourceLabel}
+                      {record.sourceType ? ` · ${record.sourceType}` : ''}
                       {dateLabel ? ` · ${dateLabel}` : ''}
                     </p>
                     <span
@@ -111,7 +112,7 @@ export function OfficialSourceComparison({
               </p>
               {record.url && (
                 <div className={`mt-2 text-[11px] ${isDark ? 'text-cyan-200' : 'text-emerald-700'}`}>
-                  {record.linkLabel ?? '查看详情'} →
+                  {record.linkLabel ?? '打开原始页面'} →
                 </div>
               )}
             </>
@@ -123,6 +124,7 @@ export function OfficialSourceComparison({
               href={record.url}
               target="_blank"
               rel="noreferrer"
+              title={`${record.title} · ${record.linkLabel ?? '打开原始页面'}`}
               className={`block rounded-xl border px-3 py-3 transition-colors ${
                 isDark
                   ? 'border-white/10 bg-slate-950/40 hover:border-cyan-400/35 hover:bg-slate-900/60'

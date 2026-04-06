@@ -7,7 +7,12 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppSidebar, type SidebarSection } from './components/AppSidebar';
+import {
+  AppSidebar,
+  DESKTOP_SIDEBAR_COLLAPSED_WIDTH,
+  DESKTOP_SIDEBAR_EXPANDED_WIDTH,
+  type SidebarSection,
+} from './components/AppSidebar';
 import { AgentOrchestrationPanel } from './components/AgentOrchestrationPanel';
 import { AuthDialog } from './components/AuthDialog';
 import { ChatBubble } from './components/ChatBubble';
@@ -15,6 +20,7 @@ import { ChatInput, type ChatInputLayoutMetrics } from './components/ChatInput';
 import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { Header } from './components/Header';
+import { HealthSettingsPanel } from './components/HealthSettingsPanel';
 import {
   RecordsCenterPanel,
   type RecordsCenterSummaryItem,
@@ -30,6 +36,15 @@ import { getRecommendedHospitals } from './lib/mockHospitals';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
 import { buildProfileCompletionGuide } from './lib/healthWorkspaceInsights';
 import {
+  DEFAULT_EXPERIENCE_SETTINGS,
+  loadExperienceSettings,
+  saveExperienceSettings,
+  type ChatDensityPreference,
+  type DesktopSidebarMode,
+  type LocationPreference,
+  type OfficialSourcePreference,
+} from './lib/experienceSettings';
+import {
   applyPersonalizedOrdering,
   buildCombinedMedicalNotes,
   buildPersonalizationRankingContext,
@@ -42,6 +57,7 @@ const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
   history: '历史会话',
   records: '记录中心',
   medication: '用药建议',
+  settings: '偏好设置',
 };
 
 const LazyEpidemicDashboard = lazy(() =>
@@ -313,6 +329,7 @@ export default function App() {
     activeAgentRoute,
     activeSessionId,
     conversationSessions,
+    locationData,
     pendingFollowUpRecords,
     completedFollowUpRecords,
     activeFollowUpRecord,
@@ -334,6 +351,7 @@ export default function App() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map'>('home');
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
+  const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [recordSearchQuery, setRecordSearchQuery] = useState('');
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
@@ -345,22 +363,52 @@ export default function App() {
     () => buildProfileCompletionGuide(workspace.profile).progress,
     [workspace.profile]
   );
+  const isSidebarCollapsed = experienceSettings.desktopSidebarMode === 'collapsed';
+  const desktopSidebarWidth = isSidebarCollapsed
+    ? DESKTOP_SIDEBAR_COLLAPSED_WIDTH
+    : DESKTOP_SIDEBAR_EXPANDED_WIDTH;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
 
   useEffect(() => {
+    saveExperienceSettings(experienceSettings);
+  }, [experienceSettings]);
+
+  useEffect(() => {
     if (!diagnosisResult) {
       return;
     }
-    getUserLocation()
-      .then(([lng, lat]) => searchNearbyHospitals(lng, lat, diagnosisResult.level))
-      .then(setHospitals)
-      .catch(() => {
+
+    let cancelled = false;
+
+    const loadHospitalsForResult = async () => {
+      try {
+        if (experienceSettings.locationPreference === 'device') {
+          const [lng, lat] = await getUserLocation();
+          const nextHospitals = await searchNearbyHospitals(lng, lat, diagnosisResult.level);
+
+          if (!cancelled) {
+            setHospitals(nextHospitals);
+          }
+          return;
+        }
+      } catch {
+        // Fall back to symptom-based hospital suggestions below when precise lookup is unavailable.
+      }
+
+      if (!cancelled) {
         setHospitals(getRecommendedHospitals(diagnosisResult.level, diagnosisResult.departments));
-      });
-  }, [diagnosisResult]);
+      }
+    };
+
+    void loadHospitalsForResult();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [diagnosisResult, experienceSettings.locationPreference]);
 
   const defaultWorkspaceSection: SidebarSection = 'profile';
 
@@ -396,6 +444,10 @@ export default function App() {
     setCurrentPage('workspace');
   }, [defaultWorkspaceSection]);
 
+  const handleOpenSettings = useCallback(() => {
+    handleOpenWorkspaceSection('settings');
+  }, [handleOpenWorkspaceSection]);
+
   const handleChatInputLayoutChange = useCallback((nextLayout: ChatInputLayoutMetrics) => {
     setChatInputLayout((previousLayout) =>
       previousLayout.height === nextLayout.height &&
@@ -404,6 +456,43 @@ export default function App() {
         ? previousLayout
         : nextLayout
     );
+  }, []);
+
+  const handleDesktopSidebarModeChange = useCallback((value: DesktopSidebarMode) => {
+    setExperienceSettings((current) =>
+      current.desktopSidebarMode === value ? current : { ...current, desktopSidebarMode: value }
+    );
+  }, []);
+
+  const handleLocationPreferenceChange = useCallback((value: LocationPreference) => {
+    setExperienceSettings((current) =>
+      current.locationPreference === value ? current : { ...current, locationPreference: value }
+    );
+  }, []);
+
+  const handleOfficialSourcePreferenceChange = useCallback((value: OfficialSourcePreference) => {
+    setExperienceSettings((current) =>
+      current.officialSourcePreference === value
+        ? current
+        : { ...current, officialSourcePreference: value }
+    );
+  }, []);
+
+  const handleChatDensityChange = useCallback((value: ChatDensityPreference) => {
+    setExperienceSettings((current) =>
+      current.chatDensity === value ? current : { ...current, chatDensity: value }
+    );
+  }, []);
+
+  const handleToggleSidebarCollapse = useCallback(() => {
+    setExperienceSettings((current) => ({
+      ...current,
+      desktopSidebarMode: current.desktopSidebarMode === 'collapsed' ? 'expanded' : 'collapsed',
+    }));
+  }, []);
+
+  const handleResetExperienceSettings = useCallback(() => {
+    setExperienceSettings({ ...DEFAULT_EXPERIENCE_SETTINGS });
   }, []);
 
   const handleRecordSearchChange = useCallback((value: string) => {
@@ -699,18 +788,39 @@ export default function App() {
     (personalizedConversationSearch.changed ||
       personalizedRecordsCenterFollowUps.changed ||
       personalizedRecordsCenterSummaries.changed);
+  const normalizedProfileCity = workspace.profile.city?.trim();
+  const localCity =
+    experienceSettings.locationPreference === 'none'
+      ? null
+      : normalizedProfileCity && normalizedProfileCity !== '中国大陆'
+        ? normalizedProfileCity
+        : null;
+  const hospitalSectionTitle =
+    experienceSettings.locationPreference === 'device' ? '附近推荐医院' : '对症医院建议';
+  const hospitalSectionMeta =
+    experienceSettings.locationPreference === 'device'
+      ? '实时定位优先 · 支持导航 · 电话 · 地图查看'
+      : experienceSettings.locationPreference === 'profile'
+        ? localCity
+          ? `未启用实时定位 · 可结合 ${localCity} 本地安排判断`
+          : '未启用实时定位 · 按分诊等级与科室方向整理'
+        : '未使用本地位置 · 按分诊等级与科室方向整理';
 
   const effectivePage = currentPage === 'home' && messages.length > 0 ? 'chat' : currentPage;
   const showWorkspace = effectivePage === 'workspace';
   const showWelcome = !showWorkspace && messages.length === 0;
   const showConversationShelf = !showWorkspace && !showWelcome && conversationSessions.length > 0;
   const contentWidthClass = showWorkspace
-    ? workspaceSection === 'profile'
+    ? workspaceSection === 'profile' || workspaceSection === 'settings'
       ? 'max-w-6xl'
       : 'max-w-5xl'
     : showWelcome
       ? 'max-w-5xl'
-      : 'max-w-4xl';
+      : experienceSettings.chatDensity === 'compact'
+        ? 'max-w-5xl'
+        : 'max-w-4xl';
+  const chatThreadClass =
+    experienceSettings.chatDensity === 'compact' ? 'mt-1 space-y-2 py-3' : 'mt-2 space-y-3 py-4';
   const chatScrollPaddingBottom = showWorkspace
     ? '40px'
     : `${Math.max(148, chatInputLayout.height + chatInputLayout.keyboardOffset + 20)}px`;
@@ -767,6 +877,12 @@ export default function App() {
             title: '用药建议',
             subtitle:
               '把最近问诊里的 OTC / 家庭处理方向前置展示出来，并保留风险提醒与回到原线程的入口。',
+          };
+        case 'settings':
+          return {
+            title: '问诊设置',
+            subtitle:
+              '调整桌面侧栏、定位使用方式、权威资料展示顺序和聊天排版；更改只保存在当前浏览器。',
           };
         default:
           return {
@@ -896,11 +1012,15 @@ export default function App() {
         onSelectHistory={() => handleOpenWorkspaceSection('history')}
         onSelectRecords={() => handleOpenWorkspaceSection('records')}
         onSelectMedication={() => handleOpenWorkspaceSection('medication')}
+        onSelectSettings={handleOpenSettings}
         onOpenMap={handleOpenMap}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebarCollapse}
         onOpenAuth={handleOpenAuthDialog}
         sessionEmail={workspace.sessionEmail}
-        currentCity={workspace.profile.city}
+        currentCity={localCity}
         statusLabel={workspace.statusLabel}
+        statusHelperText={workspace.helperText}
         profileCompletion={profileCompletion}
         pendingFollowUpCount={pendingFollowUpRecords.length}
       />
@@ -913,6 +1033,7 @@ export default function App() {
           onOpenWorkspace={handleOpenWorkspace}
           onToggleMap={handleOpenMap}
           onOpenAuth={handleOpenAuthDialog}
+          onOpenSettings={handleOpenSettings}
           sessionEmail={workspace.sessionEmail}
           currentView={showWorkspace ? 'workspace' : effectivePage === 'home' ? 'home' : 'chat'}
           canInstallApp={pwa.canInstall}
@@ -1085,6 +1206,21 @@ export default function App() {
                   </div>
                 )}
 
+                {workspaceSection === 'settings' && (
+                  <HealthSettingsPanel
+                    settings={experienceSettings}
+                    currentCity={localCity}
+                    conversationCount={conversationSessions.length}
+                    pendingFollowUpCount={pendingFollowUpRecords.length}
+                    sessionEmail={workspace.sessionEmail}
+                    onDesktopSidebarModeChange={handleDesktopSidebarModeChange}
+                    onLocationPreferenceChange={handleLocationPreferenceChange}
+                    onOfficialSourcePreferenceChange={handleOfficialSourcePreferenceChange}
+                    onChatDensityChange={handleChatDensityChange}
+                    onReset={handleResetExperienceSettings}
+                  />
+                )}
+
                 {workspaceSection === 'history' && (
                   <ConversationHistoryPanel
                     sessions={filteredConversationSessions}
@@ -1122,6 +1258,7 @@ export default function App() {
                       activeSessionId={activeSessionId}
                       conversationSessions={conversationSessions}
                       recentCases={workspace.recentCases}
+                      currentLocation={locationData}
                       onOpenConversation={handleOpenConversation}
                       onStartNewConversation={handleResetChat}
                     />
@@ -1163,7 +1300,7 @@ export default function App() {
             )}
 
             {!showWorkspace && messages.length > 0 && (
-              <div className="mt-2 space-y-3 py-4">
+              <div className={chatThreadClass}>
                 {showConversationShelf && (
                   <div className="lg:hidden">
                     <ConversationHistoryPanel
@@ -1192,6 +1329,7 @@ export default function App() {
                     message={msg}
                     onQuickReply={handleSendMessage}
                     diagnosisResult={!!diagnosisResult}
+                    density={experienceSettings.chatDensity}
                   />
                 ))}
 
@@ -1207,6 +1345,7 @@ export default function App() {
                     isStreaming
                     onQuickReply={handleSendMessage}
                     diagnosisResult={!!diagnosisResult}
+                    density={experienceSettings.chatDensity}
                   />
                 )}
 
@@ -1260,7 +1399,12 @@ export default function App() {
                       messages={messages}
                       profile={workspace.profile}
                       recentCases={workspace.recentCases}
+                      officialSourceCity={localCity}
+                      officialSourcePreference={experienceSettings.officialSourcePreference}
+                      hospitalSectionTitle={hospitalSectionTitle}
+                      hospitalSectionMeta={hospitalSectionMeta}
                       onReport={() => setReportCount(getReportCount())}
+                      onOpenMedicationHub={() => handleOpenWorkspaceSection('medication')}
                       onToggleMap={handleOpenMap}
                     />
                   </Suspense>
@@ -1277,6 +1421,7 @@ export default function App() {
             onSend={handleSendMessage}
             isLoading={isLoading}
             withDesktopSidebar
+            desktopSidebarWidth={desktopSidebarWidth}
             onLayoutChange={handleChatInputLayoutChange}
           />
         )}

@@ -24,6 +24,7 @@ import {
   getPersonalizedInsights,
   hasMedicationProfileContext as hasMedicationProfileContextData,
 } from '../lib/personalization';
+import type { OfficialSourcePreference } from '../lib/experienceSettings';
 import type { MedicationAdvice } from '../lib/personalization';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import type {
@@ -250,7 +251,12 @@ interface ResultCardProps {
   messages: Message[];
   profile?: ProfileDraft;
   recentCases?: CaseHistoryItem[];
+  officialSourceCity?: string | null;
+  officialSourcePreference?: OfficialSourcePreference;
+  hospitalSectionTitle?: string;
+  hospitalSectionMeta?: string;
   onReport?: () => void;
+  onOpenMedicationHub?: () => void;
   onToggleMap?: () => void;
 }
 
@@ -315,7 +321,12 @@ export function ResultCard({
   messages,
   profile,
   recentCases = [],
+  officialSourceCity,
+  officialSourcePreference = 'balanced',
+  hospitalSectionTitle = '附近推荐医院',
+  hospitalSectionMeta = '支持导航 · 电话 · 地图查看',
   onReport,
+  onOpenMedicationHub,
   onToggleMap,
 }: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
@@ -380,6 +391,8 @@ export function ResultCard({
       typeof symptomPayload?.focusPopulation === 'string' ? symptomPayload.focusPopulation : '';
     const retrievalLabel =
       typeof symptomPayload?.retrievalLabel === 'string' ? symptomPayload.retrievalLabel : '';
+    const retrievalMode =
+      typeof symptomPayload?.retrievalMode === 'string' ? symptomPayload.retrievalMode : '';
     const retrievalTerms = toStringArray(symptomPayload?.queryExpansions).slice(0, 5);
     const symptomDetails = [
       `当前为「${RISK_LABELS[result.level]}」分级，主要基于你的症状描述、持续情况与危险信号判断。`,
@@ -408,6 +421,18 @@ export function ResultCard({
       symptomDetails.push(`检索方式：${retrievalLabel}`);
     }
 
+    if (
+      retrievalMode === 'keyword' ||
+      retrievalMode === 'hybrid-local' ||
+      retrievalMode === 'hybrid-cloud'
+    ) {
+      symptomDetails.push('当前知识检索仍以关键词扩展 + chunk 混合召回为主，并非完整向量 RAG。');
+    } else if (retrievalMode === 'hybrid-cloud-vector-ready') {
+      symptomDetails.push(
+        '即使已有向量字段，当前仍会优先保留人工可读的 chunk 证据，不会跳过可解释依据。'
+      );
+    }
+
     if (retrievalTerms.length > 0) {
       symptomDetails.push(`扩展召回词：${retrievalTerms.join('、')}`);
     }
@@ -425,7 +450,7 @@ export function ResultCard({
       summary:
         symptomTool?.summary ??
         (result.departments.length > 0 ? `建议科室：${result.departments.join('、')}` : '本次问诊即时生成'),
-      details: symptomDetails.slice(0, 4),
+      details: symptomDetails.slice(0, 5),
     });
 
     const guidanceSnippets = (rankedChunks.length > 0 ? rankedChunks : knowledgeDocuments)
@@ -584,12 +609,17 @@ export function ResultCard({
       webSearchNote: webNote,
       webQuery: typeof webPayload?.query === 'string' ? webPayload.query : '',
       officialSourceContext: {
-        city: profile?.city,
+        city: officialSourceCity ?? profile?.city,
         level: result.level,
         departments: result.departments,
         reason: `${result.reason} ${symptomNames.join(' ')}`.trim(),
         focusSymptoms: symptomNames,
-        maxItems: 3,
+        maxItems:
+          officialSourcePreference === 'official-first'
+            ? 4
+            : officialSourcePreference === 'brief'
+              ? 2
+              : 3,
       },
       evidenceUpdatedAt: latestMessageWithTools
         ? latestMessageWithTools.timestamp.toLocaleTimeString('zh-CN', {
@@ -598,7 +628,7 @@ export function ResultCard({
           })
         : null,
     };
-  }, [messages, profile?.city, result]);
+  }, [messages, officialSourceCity, officialSourcePreference, profile?.city, result]);
   const { records: officialSources } =
     useOfficialSourceComparisonSafe(officialSourceContext);
   const personalizedInsights = useMemo(
@@ -615,6 +645,45 @@ export function ResultCard({
     [profile]
   );
   const hasMedicationSummary = medicationSummarySections.length > 0;
+  const latestImageAttachmentCount = useMemo(
+    () =>
+      [...messages]
+        .reverse()
+        .find((message) => message.role === 'user' && (message.attachments?.length ?? 0) > 0)
+        ?.attachments?.length ?? 0,
+    [messages]
+  );
+  const medicationHubCtaTitle =
+    result.level === 'green' || result.level === 'yellow'
+      ? '想继续找 OTC / 附近药房？'
+      : '如需补基础用品或复核现用药，可打开用药中心';
+  const officialCityLabel = officialSourceCity?.trim() || profile?.city?.trim() || '';
+  const hasOfficialSources = officialSources.length > 0;
+  const showWebSourceHighlights =
+    officialSourcePreference !== 'brief' && (webSources.length > 0 || Boolean(webSearchNote));
+  const officialSourceSection = hasOfficialSources ? (
+    <div className="mb-5">
+      <OfficialSourceComparison
+        records={officialSources}
+        title={
+          officialSourcePreference === 'official-first'
+            ? '优先核对的权威来源'
+            : officialSourcePreference === 'brief'
+              ? '权威健康参考（精简）'
+              : '权威健康参考'
+        }
+        subtitle={
+          officialSourcePreference === 'official-first'
+            ? officialCityLabel
+              ? `已优先把 ${officialCityLabel} 本地官方入口与国家级公开资料排在前面，方便先核对正式建议。`
+              : '已优先展示与当前分诊最相关的官方 / 公共来源，方便先核对正式建议。'
+            : officialSourcePreference === 'brief'
+              ? '仅保留最值得先看的权威公开资料，帮助快速完成最后核对。'
+              : '以下资料来源于疾控中心、卫健委及 WHO 等公开渠道，供对照参考。'
+        }
+      />
+    </div>
+  ) : null;
 
   function toggleCheck(i: 0 | 1 | 2) {
     setChecked((prev) => {
@@ -690,6 +759,8 @@ export function ResultCard({
         {/* Reason */}
         <p className="text-slate-600 text-sm mb-4 leading-relaxed">{result.reason}</p>
 
+        {officialSourcePreference === 'official-first' && officialSourceSection}
+
         {/* Evidence cards */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 mb-5">
           <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
@@ -727,7 +798,7 @@ export function ResultCard({
             ))}
           </div>
 
-          {(webSources.length > 0 || webSearchNote) && (
+          {showWebSourceHighlights && (
             <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div>
@@ -817,11 +888,7 @@ export function ResultCard({
           )}
         </div>
 
-        <div className="mb-5">
-            <OfficialSourceComparison
-              records={officialSources}
-            />
-        </div>
+        {officialSourcePreference !== 'official-first' && officialSourceSection}
 
         {/* Action */}
         <div className={`flex items-start gap-2 mb-5 rounded-xl px-4 py-3 ${config.bg}`}>
@@ -926,6 +993,32 @@ export function ResultCard({
                 <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
                   仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
                 </p>
+                {onOpenMedicationHub && (
+                  <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/80 px-3 py-3">
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-800">{medicationHubCtaTitle}</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                          打开用药建议中心后，可继续看附近药房、搜推荐方向、查说明书，或回对话继续核对药盒 / 报告。
+                        </p>
+                        {latestImageAttachmentCount > 0 && (
+                          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                            本次已上传 {latestImageAttachmentCount} 张图片；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={onOpenMedicationHub}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+                      >
+                        打开入口
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -951,9 +1044,9 @@ export function ResultCard({
             <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
               <h3 className="text-slate-700 font-semibold text-sm flex items-center gap-1.5">
                 <span className={`w-1 h-4 rounded-full ${config.bar} inline-block`} />
-                附近推荐医院
+                {hospitalSectionTitle}
               </h3>
-              <span className="text-[11px] text-slate-400">支持导航 · 电话 · 地图查看</span>
+              <span className="text-[11px] text-slate-400">{hospitalSectionMeta}</span>
             </div>
             <div className="flex flex-col gap-3">
               {hospitals.map((hospital) => (
