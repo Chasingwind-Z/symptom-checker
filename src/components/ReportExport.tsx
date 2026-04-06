@@ -1,6 +1,4 @@
 import { useRef, useState } from 'react'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 import { FileDown, Loader2 } from 'lucide-react'
 import type { DiagnosisResult, Message } from '../types'
 
@@ -40,11 +38,17 @@ const LEVEL_ICON: Record<string, string> = {
 export function ReportExport({ result, messages }: Props) {
   const reportRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const generatePDF = async () => {
     if (!reportRef.current) return
     setLoading(true)
+    setErrorMessage(null)
     try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas'),
+      ])
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         useCORS: true,
@@ -68,6 +72,12 @@ export function ReportExport({ result, messages }: Props) {
       }
       const now = new Date()
       pdf.save(`问诊报告_${now.getFullYear()}${now.getMonth() + 1}${now.getDate()}.pdf`)
+    } catch {
+      setErrorMessage(
+        typeof navigator !== 'undefined' && navigator.onLine === false
+          ? '当前网络不可用，导出组件尚未完成加载，请恢复连接后再试。'
+          : '导出报告失败，请稍后重试。'
+      )
     } finally {
       setLoading(false)
     }
@@ -215,14 +225,17 @@ export function ReportExport({ result, messages }: Props) {
       </div>
 
       {/* 导出按钮 */}
-      <button
-        onClick={generatePDF}
-        disabled={loading}
-        className="bg-white border border-slate-200 hover:border-blue-300 hover:shadow-sm text-slate-600 rounded-xl px-4 py-2 text-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
-      >
-        {loading ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
-        {loading ? '生成中...' : '导出就诊报告'}
-      </button>
+      <div className="flex flex-col items-center gap-2">
+        <button
+          onClick={generatePDF}
+          disabled={loading}
+          className="bg-white border border-slate-200 hover:border-blue-300 hover:shadow-sm text-slate-600 rounded-xl px-4 py-2 text-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+        >
+          {loading ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+          {loading ? '生成中...' : '导出就诊报告'}
+        </button>
+        {errorMessage && <p className="max-w-xs text-center text-xs text-amber-600">{errorMessage}</p>}
+      </div>
     </>
   )
 }

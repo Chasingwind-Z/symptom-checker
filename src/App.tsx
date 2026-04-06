@@ -1,29 +1,34 @@
-import { Search, Sparkles } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  RefreshCw,
+  Search,
+  Sparkles,
+  WifiOff,
+} from 'lucide-react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSidebar, type SidebarSection } from './components/AppSidebar';
 import { AgentOrchestrationPanel } from './components/AgentOrchestrationPanel';
 import { AuthDialog } from './components/AuthDialog';
 import { ChatBubble } from './components/ChatBubble';
 import { ChatInput, type ChatInputLayoutMetrics } from './components/ChatInput';
-import { CloudSyncCard } from './components/CloudSyncCard';
 import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
-import { EpidemicDashboard } from './components/EpidemicDashboard';
 import { Header } from './components/Header';
-import { MedicationRecommendationsPanel } from './components/MedicationRecommendationsPanel';
 import {
   RecordsCenterPanel,
   type RecordsCenterSummaryItem,
 } from './components/RecordsCenterPanel';
-import { ResultCard } from './components/ResultCard';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { useChat } from './hooks/useChat';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
+import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import type { CaseHistoryItem } from './lib/healthData';
 import { getRecommendedHospitals } from './lib/mockHospitals';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
+import { buildProfileCompletionGuide } from './lib/healthWorkspaceInsights';
 import {
   applyPersonalizedOrdering,
   buildCombinedMedicalNotes,
@@ -38,6 +43,170 @@ const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
   records: '记录中心',
   medication: '用药建议',
 };
+
+const LazyEpidemicDashboard = lazy(() =>
+  import('./components/EpidemicDashboard').then((module) => ({
+    default: module.EpidemicDashboard,
+  }))
+);
+
+const LazyMedicationRecommendationsPanel = lazy(() =>
+  import('./components/MedicationRecommendationsPanel').then((module) => ({
+    default: module.MedicationRecommendationsPanel,
+  }))
+);
+
+const LazyCloudSyncCard = lazy(() =>
+  import('./components/CloudSyncCard').then((module) => ({
+    default: module.CloudSyncCard,
+  }))
+);
+
+const LazyResultCard = lazy(() =>
+  import('./components/ResultCard').then((module) => ({
+    default: module.ResultCard,
+  }))
+);
+
+type ShellBannerTone = 'warning' | 'success' | 'info';
+
+interface ShellBannerAction {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  isLoading?: boolean;
+}
+
+interface ShellStatusBannerProps {
+  tone: ShellBannerTone;
+  title: string;
+  description: string;
+  primaryAction?: ShellBannerAction;
+  secondaryAction?: ShellBannerAction;
+}
+
+const SHELL_BANNER_STYLES: Record<
+  ShellBannerTone,
+  {
+    container: string;
+    icon: string;
+    title: string;
+    description: string;
+    primaryButton: string;
+    secondaryButton: string;
+  }
+> = {
+  warning: {
+    container: 'border-amber-200 bg-amber-50/95',
+    icon: 'bg-amber-100 text-amber-700',
+    title: 'text-amber-950',
+    description: 'text-amber-900/80',
+    primaryButton: 'bg-amber-700 text-white hover:bg-amber-800',
+    secondaryButton: 'border border-amber-200 bg-white text-amber-900 hover:bg-amber-100',
+  },
+  success: {
+    container: 'border-emerald-200 bg-emerald-50/95',
+    icon: 'bg-emerald-100 text-emerald-700',
+    title: 'text-emerald-950',
+    description: 'text-emerald-900/80',
+    primaryButton: 'bg-emerald-700 text-white hover:bg-emerald-800',
+    secondaryButton: 'border border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-100',
+  },
+  info: {
+    container: 'border-sky-200 bg-sky-50/95',
+    icon: 'bg-sky-100 text-sky-700',
+    title: 'text-sky-950',
+    description: 'text-sky-900/80',
+    primaryButton: 'bg-sky-700 text-white hover:bg-sky-800',
+    secondaryButton: 'border border-sky-200 bg-white text-sky-900 hover:bg-sky-100',
+  },
+};
+
+function ShellStatusBanner({
+  tone,
+  title,
+  description,
+  primaryAction,
+  secondaryAction,
+}: ShellStatusBannerProps) {
+  const Icon = tone === 'warning' ? WifiOff : tone === 'success' ? CheckCircle2 : AlertTriangle;
+  const styles = SHELL_BANNER_STYLES[tone];
+
+  const renderAction = (
+    action: ShellBannerAction,
+    variant: 'primary' | 'secondary'
+  ) => (
+    <button
+      type="button"
+      onClick={action.onClick}
+      disabled={action.disabled || action.isLoading}
+      className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+        variant === 'primary' ? styles.primaryButton : styles.secondaryButton
+      }`}
+    >
+      {action.isLoading && <RefreshCw size={14} className="animate-spin" />}
+      {action.label}
+    </button>
+  );
+
+  return (
+    <section
+      className={`rounded-2xl border px-4 py-3 shadow-sm ${styles.container}`}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className={`rounded-2xl p-2 ${styles.icon}`}>
+            <Icon size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className={`text-sm font-semibold ${styles.title}`}>{title}</p>
+            <p className={`mt-1 text-sm leading-relaxed ${styles.description}`}>{description}</p>
+          </div>
+        </div>
+
+        {(secondaryAction || primaryAction) && (
+          <div className="flex flex-wrap gap-2">
+            {secondaryAction && renderAction(secondaryAction, 'secondary')}
+            {primaryAction && renderAction(primaryAction, 'primary')}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function LazySurfaceFallback({
+  title,
+  description,
+  fullHeight = false,
+}: {
+  title: string;
+  description: string;
+  fullHeight?: boolean;
+}) {
+  const content = (
+    <div className="mx-auto w-full max-w-3xl rounded-3xl border border-slate-200 bg-white/95 px-6 py-7 shadow-sm">
+      <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+        <RefreshCw size={14} className="animate-spin" />
+        正在准备内容
+      </div>
+      <h2 className="mt-3 text-lg font-semibold text-slate-900">{title}</h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>
+    </div>
+  );
+
+  if (fullHeight) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 px-4 py-6 md:px-6">
+        {content}
+      </div>
+    );
+  }
+
+  return content;
+}
 
 function getReportCount(): number {
   try {
@@ -122,6 +291,7 @@ function getCaseSourceLabel(source: CaseHistoryItem['source']): string {
 
 export default function App() {
   const workspace = useHealthWorkspace();
+  const network = useNetworkStatus();
   const pwa = usePwaInstall();
   const chatMemoryContext = useMemo(
     () => ({
@@ -160,7 +330,7 @@ export default function App() {
     page: 'home',
     section: 'profile',
   });
-  const [, setReportCount] = useState<number>(getReportCount);
+  const [reportCount, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map'>('home');
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
@@ -172,22 +342,7 @@ export default function App() {
     isFocused: false,
   });
   const profileCompletion = useMemo(
-    () =>
-      Math.round(
-        ([
-          workspace.profile.displayName,
-          workspace.profile.city,
-          workspace.profile.birthYear,
-          workspace.profile.gender,
-          workspace.profile.medicalNotes,
-          workspace.profile.chronicConditions,
-          workspace.profile.allergies,
-          workspace.profile.currentMedications,
-          workspace.profile.careFocus,
-        ].filter(Boolean).length /
-          9) *
-          100
-      ) || 0,
+    () => buildProfileCompletionGuide(workspace.profile).progress,
     [workspace.profile]
   );
 
@@ -657,15 +812,70 @@ export default function App() {
     workspaceSection,
   ]);
 
+  const shellBanner = !network.isOnline
+    ? {
+        tone: 'warning' as const,
+        title: '当前处于离线状态',
+        description:
+          '已打开的问诊记录、档案草稿和最近缓存仍可查看；联网问诊、云端同步、地图与检索会在网络恢复后继续可用。',
+      }
+    : network.showReconnectNotice
+      ? {
+          tone: 'success' as const,
+          title: '网络已恢复',
+          description: '现在可以继续提交新问题、刷新同步状态，或重新打开地图与云端资料。',
+          primaryAction: {
+            label: workspace.isRefreshing ? '刷新中…' : '刷新同步状态',
+            onClick: () => {
+              void workspace.refresh();
+            },
+            isLoading: workspace.isRefreshing,
+          },
+          secondaryAction: {
+            label: '关闭',
+            onClick: network.dismissReconnectNotice,
+          },
+        }
+      : workspace.mode === 'error'
+        ? {
+            tone: 'info' as const,
+            title: workspace.statusLabel,
+            description: `${workspace.helperText} 问诊和本机缓存仍可继续使用。`,
+            primaryAction: network.isOnline
+              ? {
+                  label: workspace.isRefreshing ? '重连中…' : '重新连接',
+                  onClick: () => {
+                    void workspace.refresh();
+                  },
+                  isLoading: workspace.isRefreshing,
+                }
+              : undefined,
+          }
+        : null;
+
+  useEffect(() => {
+    document.title = `${currentPage === 'map' ? '健康地图' : pageHeader.title} · 健康助手`;
+  }, [currentPage, pageHeader.title]);
+
   if (effectivePage === 'map') {
     return (
-      <EpidemicDashboard
-        onBack={() => {
-          const previousShellState = previousShellStateRef.current;
-          setWorkspaceSection(previousShellState.section);
-          setCurrentPage(previousShellState.page);
-        }}
-      />
+      <Suspense
+        fallback={
+          <LazySurfaceFallback
+            title="正在打开健康地图"
+            description="正在按需加载趋势图、官方资料对照和城市面板，准备好后会继续展示。"
+            fullHeight
+          />
+        }
+      >
+        <LazyEpidemicDashboard
+          onBack={() => {
+            const previousShellState = previousShellStateRef.current;
+            setWorkspaceSection(previousShellState.section);
+            setCurrentPage(previousShellState.page);
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -696,21 +906,29 @@ export default function App() {
       />
 
       <div className="flex min-h-screen flex-1 flex-col">
-          <Header
-            title={pageHeader.title}
-            subtitle={pageHeader.subtitle}
-            onReset={handleResetChat}
-            onOpenWorkspace={handleOpenWorkspace}
-            onToggleMap={handleOpenMap}
-            onOpenAuth={handleOpenAuthDialog}
-            sessionEmail={workspace.sessionEmail}
-            currentView={showWorkspace ? 'workspace' : effectivePage === 'home' ? 'home' : 'chat'}
-            canInstallApp={pwa.canInstall}
-            isAppInstalled={pwa.isInstalled}
-            onInstallApp={() => {
-              void pwa.promptInstall();
+        <Header
+          title={pageHeader.title}
+          subtitle={pageHeader.subtitle}
+          onReset={handleResetChat}
+          onOpenWorkspace={handleOpenWorkspace}
+          onToggleMap={handleOpenMap}
+          onOpenAuth={handleOpenAuthDialog}
+          sessionEmail={workspace.sessionEmail}
+          currentView={showWorkspace ? 'workspace' : effectivePage === 'home' ? 'home' : 'chat'}
+          canInstallApp={pwa.canInstall}
+          isAppInstalled={pwa.isInstalled}
+          onInstallApp={() => {
+            void pwa.promptInstall();
           }}
         />
+
+        {shellBanner && (
+          <div className="px-4 pt-3 lg:px-6">
+            <div className={`${contentWidthClass} mx-auto w-full`}>
+              <ShellStatusBanner {...shellBanner} />
+            </div>
+          </div>
+        )}
 
         <div
           className="flex-1 overflow-y-auto px-4 md:px-6"
@@ -837,19 +1055,33 @@ export default function App() {
 
                 {workspaceSection === 'profile' && (
                   <div className="space-y-4">
-                    <CloudSyncCard
-                      mode={workspace.mode}
-                      statusLabel={workspace.statusLabel}
-                      helperText={workspace.helperText}
-                      recentCases={workspace.recentCases}
-                      profile={workspace.profile}
-                      sessionEmail={workspace.sessionEmail}
-                      onRefresh={workspace.refresh}
-                      isRefreshing={workspace.isRefreshing}
-                      onSaveProfile={workspace.updateProfile}
-                      onApplyDemoPersona={workspace.loadDemoPersona}
-                      onOpenAuth={handleOpenAuthDialog}
-                    />
+                    <Suspense
+                      fallback={
+                        <LazySurfaceFallback
+                          title="正在打开健康档案"
+                          description="正在按需加载同步状态、档案摘要和个性化资料卡片。"
+                        />
+                      }
+                    >
+                      <LazyCloudSyncCard
+                        mode={workspace.mode}
+                        statusLabel={workspace.statusLabel}
+                        helperText={workspace.helperText}
+                        recentCases={workspace.recentCases}
+                        profile={workspace.profile}
+                        householdProfiles={workspace.householdProfiles}
+                        reportCount={reportCount}
+                        sessionEmail={workspace.sessionEmail}
+                        onRefresh={workspace.refresh}
+                        isRefreshing={workspace.isRefreshing}
+                        onSaveProfile={workspace.updateProfile}
+                        onApplyDemoPersona={workspace.loadDemoPersona}
+                        onSaveHouseholdProfile={workspace.saveHouseholdProfile}
+                        onRemoveHouseholdProfile={workspace.deleteHouseholdProfile}
+                        onOpenWorkspaceSection={handleOpenWorkspaceSection}
+                        onOpenAuth={handleOpenAuthDialog}
+                      />
+                    </Suspense>
                   </div>
                 )}
 
@@ -876,15 +1108,24 @@ export default function App() {
                 )}
 
                 {workspaceSection === 'medication' && (
-                  <MedicationRecommendationsPanel
-                    profile={workspace.profile}
-                    currentDiagnosis={diagnosisResult}
-                    activeSessionId={activeSessionId}
-                    conversationSessions={conversationSessions}
-                    recentCases={workspace.recentCases}
-                    onOpenConversation={handleOpenConversation}
-                    onStartNewConversation={handleResetChat}
-                  />
+                  <Suspense
+                    fallback={
+                      <LazySurfaceFallback
+                        title="正在准备用药建议"
+                        description="正在按需加载个性化支持方向和风险提醒，马上就好。"
+                      />
+                    }
+                  >
+                    <LazyMedicationRecommendationsPanel
+                      profile={workspace.profile}
+                      currentDiagnosis={diagnosisResult}
+                      activeSessionId={activeSessionId}
+                      conversationSessions={conversationSessions}
+                      recentCases={workspace.recentCases}
+                      onOpenConversation={handleOpenConversation}
+                      onStartNewConversation={handleResetChat}
+                    />
+                  </Suspense>
                 )}
 
                 {workspaceSection === 'records' && (
@@ -1005,15 +1246,24 @@ export default function App() {
                 )}
 
                 {diagnosisResult && !isLoading && (
-                  <ResultCard
-                    result={diagnosisResult}
-                    hospitals={hospitals}
-                    messages={messages}
-                    profile={workspace.profile}
-                    recentCases={workspace.recentCases}
-                    onReport={() => setReportCount(getReportCount())}
-                    onToggleMap={handleOpenMap}
-                  />
+                  <Suspense
+                    fallback={
+                      <LazySurfaceFallback
+                        title="正在整理分诊结果"
+                        description="正在按需加载风险解读、医院推荐和后续建议卡片。"
+                      />
+                    }
+                  >
+                    <LazyResultCard
+                      result={diagnosisResult}
+                      hospitals={hospitals}
+                      messages={messages}
+                      profile={workspace.profile}
+                      recentCases={workspace.recentCases}
+                      onReport={() => setReportCount(getReportCount())}
+                      onToggleMap={handleOpenMap}
+                    />
+                  </Suspense>
                 )}
               </div>
             )}

@@ -8,6 +8,12 @@ import {
   type HealthWorkspaceSnapshot,
   type ProfileDraft,
 } from '../lib/healthData';
+import {
+  readHouseholdProfiles,
+  removeHouseholdProfile,
+  upsertHouseholdProfile,
+  type HouseholdProfileRecord,
+} from '../lib/healthWorkspaceInsights';
 import { subscribeToSupabaseAuth } from '../lib/supabase';
 
 const INITIAL_WORKSPACE: HealthWorkspaceSnapshot = {
@@ -21,6 +27,9 @@ const INITIAL_WORKSPACE: HealthWorkspaceSnapshot = {
 
 export function useHealthWorkspace() {
   const [workspace, setWorkspace] = useState<HealthWorkspaceSnapshot>(INITIAL_WORKSPACE);
+  const [householdProfiles, setHouseholdProfiles] = useState<HouseholdProfileRecord[]>(() =>
+    readHouseholdProfiles()
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshRequestRef = useRef(0);
 
@@ -33,9 +42,11 @@ export function useHealthWorkspace() {
       const snapshot = await loadHealthWorkspace();
       if (refreshRequestRef.current === requestId) {
         setWorkspace(snapshot);
+        setHouseholdProfiles(readHouseholdProfiles());
       }
     } catch {
       if (refreshRequestRef.current === requestId) {
+        setHouseholdProfiles(readHouseholdProfiles());
         setWorkspace((prev) => ({
           ...prev,
           mode: 'error',
@@ -94,11 +105,34 @@ export function useHealthWorkspace() {
     [refresh]
   );
 
+  const saveHouseholdProfile = useCallback(
+    (input: {
+      id?: string;
+      label: string;
+      relationship: string;
+      profile: ProfileDraft;
+    }) => {
+      const nextProfiles = upsertHouseholdProfile(input);
+      setHouseholdProfiles(nextProfiles);
+      return nextProfiles;
+    },
+    []
+  );
+
+  const deleteHouseholdProfile = useCallback((id: string) => {
+    const nextProfiles = removeHouseholdProfile(id);
+    setHouseholdProfiles(nextProfiles);
+    return nextProfiles;
+  }, []);
+
   return {
     ...workspace,
+    householdProfiles,
     isRefreshing,
     refresh,
     updateProfile,
     loadDemoPersona,
+    saveHouseholdProfile,
+    deleteHouseholdProfile,
   };
 }

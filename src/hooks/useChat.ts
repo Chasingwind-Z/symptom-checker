@@ -128,6 +128,14 @@ function buildAttachmentContext(attachments: ChatImageAttachment[]): string {
   ].join('\n');
 }
 
+function getChatConnectionFallbackMessage(): string {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return '当前网络不可用，已先保留这次输入。恢复连接后可重新发送，之前的问诊记录仍可继续查看。';
+  }
+
+  return '抱歉，连接出现问题，请稍后重试。当前问诊记录已保留。';
+}
+
 function buildUserChatContent(
   text: string,
   attachments: ChatImageAttachment[]
@@ -621,6 +629,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
         }
 
         fullContent = '';
+        const fallbackErrorMessage = getChatConnectionFallbackMessage();
 
         try {
           await chatStream(history, {
@@ -630,12 +639,12 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
             },
           });
 
-          finalizeAssistantMessage(fullContent || '抱歉，连接出现问题，请稍后重试。');
+          finalizeAssistantMessage(fullContent || fallbackErrorMessage);
         } catch {
           const errorMessage: Message = {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: '抱歉，连接出现问题，请稍后重试。',
+            content: fallbackErrorMessage,
             timestamp: new Date(),
             toolCalls: Array.from(toolCallMap.values()),
             agentRoute: orchestration.route,
