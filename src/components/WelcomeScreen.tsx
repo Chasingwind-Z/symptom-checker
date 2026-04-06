@@ -1,14 +1,17 @@
-﻿import {
-  Baby,
-  Brain,
-  HeartPulse,
-  MessageCircle,
-  ShieldPlus,
-  Thermometer,
-  UserRound,
-} from 'lucide-react'
+import { Baby, HeartPulse, MessageCircle, ShieldPlus, UserRound } from 'lucide-react'
+import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
 import type { ConversationSession } from '../types'
 import { ConversationHistoryPanel } from './ConversationHistoryPanel'
+
+type WelcomeProfileContext = Pick<
+  ProfileDraft,
+  'city' | 'careFocus' | 'chronicConditions' | 'allergies' | 'currentMedications'
+>
+
+interface ScenarioChip {
+  label: string
+  sendText: string
+}
 
 interface WelcomeScreenProps {
   onSendMessage: (text: string) => void
@@ -18,16 +21,113 @@ interface WelcomeScreenProps {
   canOpenAuth?: boolean
   onOpenAuth?: () => void
   authActionLabel?: string
+  profile?: WelcomeProfileContext | null
+  recentCases?: CaseHistoryItem[]
   recentSessions: ConversationSession[]
   activeSessionId?: string | null
   onOpenConversation: (sessionId: string) => void
 }
 
-const COMMON_SCENARIOS = [
-  { label: '发烧了不知道严不严重', sendText: '我发烧了，不知道严不严重', icon: Thermometer },
-  { label: '头痛持续三天要去医院吗', sendText: '我头痛已经持续三天了', icon: Brain },
-  { label: '孩子咳嗽该去哪里看', sendText: '我的孩子一直在咳嗽', icon: Baby },
-] as const
+const COMMON_SCENARIOS: ScenarioChip[] = [
+  { label: '发烧了不知道严不严重', sendText: '我发烧了，不知道严不严重' },
+  { label: '头痛持续三天要去医院吗', sendText: '我头痛已经持续三天了' },
+  { label: '孩子咳嗽该去哪里看', sendText: '我的孩子一直在咳嗽' },
+]
+
+const DEFAULT_PROFILE_CITY = '中国大陆'
+const MIN_SCENARIO_CHIP_COUNT = 3
+const MAX_PERSONALIZED_CHIP_COUNT = 4
+
+function normalizeText(value?: string | null) {
+  return value?.replace(/\s+/g, ' ').trim() ?? ''
+}
+
+function truncateText(text: string, maxLength: number) {
+  return text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text
+}
+
+function summarizeContextValue(value?: string | null, maxItems = 2, maxLength = 22) {
+  const normalized = normalizeText(value)
+  if (!normalized) return ''
+
+  const parts = normalized
+    .split(/[、，,；;/]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+  const summary = parts.length > 1 ? parts.slice(0, maxItems).join('、') : normalized
+  return truncateText(summary, maxLength)
+}
+
+function getRecentSessionReference(session: ConversationSession) {
+  const firstUserMessage = session.messages.find((message) => message.role === 'user')
+  return normalizeText(firstUserMessage?.content ?? session.title)
+}
+
+function buildPersonalizedScenarios(params: {
+  profile?: WelcomeProfileContext | null
+  recentCases?: CaseHistoryItem[]
+  recentSessions: ConversationSession[]
+}) {
+  const personalized: ScenarioChip[] = []
+  const recentCase = params.recentCases?.find((item) => normalizeText(item.chiefComplaint))
+
+  if (recentCase) {
+    const complaint = normalizeText(recentCase.chiefComplaint)
+    personalized.push({
+      label: `继续关注：${truncateText(complaint, 14)}`,
+      sendText: `我想继续跟进最近一次“${complaint}”相关的情况，请先帮我梳理和上次相比需要重点观察哪些变化，以及何时需要复诊或线下就医。`,
+    })
+  } else {
+    const recentSession = params.recentSessions.find((session) => getRecentSessionReference(session))
+    const reference = recentSession ? getRecentSessionReference(recentSession) : ''
+
+    if (reference) {
+      personalized.push({
+        label: `继续上次话题：${truncateText(reference, 12)}`,
+        sendText: `我想继续上次关于“${truncateText(reference, 28)}”的咨询，请先帮我回顾这次需要补充的重点症状和下一步判断。`,
+      })
+    }
+  }
+
+  const careFocus = normalizeText(params.profile?.careFocus)
+  if (careFocus) {
+    personalized.push({
+      label: `关注：${truncateText(careFocus, 12)}`,
+      sendText: `我想做一次症状自查。我这次更关注“${careFocus}”，请围绕这个重点问我关键问题，并保守判断下一步。`,
+    })
+  }
+
+  const chronicConditions = summarizeContextValue(params.profile?.chronicConditions)
+  const allergies = summarizeContextValue(params.profile?.allergies)
+  const currentMedications = summarizeContextValue(params.profile?.currentMedications)
+  const medicalContext = [
+    chronicConditions ? `慢病/既往史：${chronicConditions}` : '',
+    allergies ? `过敏史：${allergies}` : '',
+    currentMedications ? `当前用药：${currentMedications}` : '',
+  ].filter(Boolean)
+  const medicalLabels = [
+    chronicConditions ? '慢病' : '',
+    allergies ? '过敏' : '',
+    currentMedications ? '用药' : '',
+  ].filter(Boolean)
+
+  if (medicalContext.length > 0) {
+    personalized.push({
+      label: `先说明${medicalLabels.join('、')}`,
+      sendText: `我想做一次症状自查。开始前先补充这些背景：${medicalContext.join('；')}。请在问诊和建议里结合这些情况，给我更保守的下一步判断。`,
+    })
+  }
+
+  const city = normalizeText(params.profile?.city)
+  if (city && city !== DEFAULT_PROFILE_CITY) {
+    personalized.push({
+      label: `我在${truncateText(city, 8)}，先判断要不要线下看`,
+      sendText: `我在${city}，想先做一次保守的症状自查，也请帮助我判断是否需要尽快线下就诊。`,
+    })
+  }
+
+  return personalized
+}
 
 const GUARDIAN_MODES = [
   {
@@ -63,10 +163,25 @@ const GUARDIAN_MODES = [
 export function WelcomeScreen({
   onSendMessage,
   onToggleMap,
+  profile,
+  recentCases = [],
   recentSessions,
   activeSessionId,
   onOpenConversation,
 }: WelcomeScreenProps) {
+  const personalizedScenarios = buildPersonalizedScenarios({
+    profile,
+    recentCases,
+    recentSessions,
+  })
+  const scenarioChips =
+    personalizedScenarios.length === 0
+      ? COMMON_SCENARIOS
+      : personalizedScenarios.length < MIN_SCENARIO_CHIP_COUNT
+        ? [...personalizedScenarios, ...COMMON_SCENARIOS].slice(0, MIN_SCENARIO_CHIP_COUNT)
+        : personalizedScenarios.slice(0, MAX_PERSONALIZED_CHIP_COUNT)
+  const hasPersonalizedScenarios = personalizedScenarios.length > 0
+
   return (
     <div className="w-full py-5">
       <div className="space-y-3">
@@ -97,16 +212,23 @@ export function WelcomeScreen({
         </div>
 
         <div className="grid grid-cols-1 gap-3">
-          <div className="flex flex-wrap gap-2">
-            {COMMON_SCENARIOS.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => onSendMessage(item.sendText)}
-                className="rounded-full border px-4 py-2 text-xs text-slate-700 transition-colors hover:border-blue-300 hover:bg-slate-50"
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="space-y-2">
+            {hasPersonalizedScenarios && (
+              <p className="text-xs text-slate-500">
+                已优先参考你保存的档案和近期记录；不符合的话，也可以直接描述这次不适。
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {scenarioChips.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => onSendMessage(item.sendText)}
+                  className="rounded-full border px-4 py-2 text-xs text-slate-700 transition-colors hover:border-blue-300 hover:bg-slate-50"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4">

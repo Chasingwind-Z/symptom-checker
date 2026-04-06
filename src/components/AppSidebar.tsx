@@ -11,6 +11,7 @@ import {
   Search,
   Stethoscope,
 } from 'lucide-react';
+import { maskEmail } from '../lib/supabase';
 import type { ConversationSession } from '../types';
 import { ConversationHistoryPanel } from './ConversationHistoryPanel';
 
@@ -40,6 +41,7 @@ interface AppSidebarProps {
   onOpenAuth?: () => void;
   authActionLabel?: string;
   sessionEmail?: string | null;
+  currentCity?: string | null;
 }
 
 interface SidebarNavButtonProps {
@@ -48,6 +50,20 @@ interface SidebarNavButtonProps {
   isActive: boolean;
   onClick: () => void;
   icon: ComponentType<{ size?: number; className?: string }>;
+}
+
+interface SidebarPersonalizationItem {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  toneClass: string;
+  badge?: string;
+  onClick: () => void;
+}
+
+function trimSidebarText(value: string, maxLength = 18) {
+  return value.length > maxLength ? `${value.slice(0, maxLength).trim()}…` : value;
 }
 
 function SidebarNavButton({
@@ -76,7 +92,9 @@ function SidebarNavButton({
 export function AppSidebar({
   activeSection,
   searchQuery,
+  onSearchQueryChange,
   sessions,
+  totalSessionCount,
   activeSessionId,
   onOpenSession,
   onStartNewSession,
@@ -89,9 +107,112 @@ export function AppSidebar({
   onOpenMap,
   accountLabel,
   statusLabel,
+  profileCompletion,
+  pendingFollowUpCount,
   onOpenAuth,
   authActionLabel,
+  sessionEmail,
+  currentCity,
 }: AppSidebarProps) {
+  const normalizedSearchQuery = searchQuery.trim();
+  const featuredSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0] ?? null;
+  const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : '';
+  const resolvedAccountLabel = accountLabel ?? (maskedSessionEmail || '游客使用中');
+  const normalizedCity = currentCity?.trim();
+  const localCity = normalizedCity && normalizedCity !== '中国大陆' ? normalizedCity : null;
+
+  const personalizedItems: SidebarPersonalizationItem[] = [
+    {
+      id: 'profile',
+      label: '档案',
+      title: `档案已完成 ${profileCompletion}%`,
+      description:
+        profileCompletion >= 100
+          ? maskedSessionEmail
+            ? `已连接 ${maskedSessionEmail}，后续更新会自动同步。`
+            : '档案已基本完善，当前资料保存在本机浏览器。'
+          : maskedSessionEmail
+            ? `已连接 ${maskedSessionEmail}，再补一点资料会更省追问。`
+            : '补齐基础资料后，问诊会更少重复追问。',
+      toneClass: profileCompletion >= 100 ? 'bg-emerald-500' : 'bg-cyan-500',
+      badge: maskedSessionEmail ? '云端同步' : '本机保存',
+      onClick: onSelectProfile,
+    },
+  ];
+
+  if (normalizedSearchQuery) {
+    personalizedItems.push(
+      sessions.length > 0
+        ? {
+            id: 'search-results',
+            label: '继续关注',
+            title: `找到 ${sessions.length} 段相关会话`,
+            description: '可直接打开结果，继续之前的问诊线程。',
+            toneClass: 'bg-cyan-500',
+            badge: '搜索中',
+            onClick: () => onOpenSession(sessions[0].id),
+          }
+        : totalSessionCount > 0
+          ? {
+              id: 'search-empty',
+              label: '继续关注',
+              title: '当前搜索没有匹配会话',
+              description: '点这里清空筛选，回到最近线程列表。',
+              toneClass: 'bg-slate-400',
+              onClick: () => onSearchQueryChange(''),
+            }
+          : {
+              id: 'search-first-session',
+              label: '继续关注',
+              title: '先开始一次新的问诊',
+              description: '问诊线程会自动保存在左侧，方便下次继续。',
+              toneClass: 'bg-slate-400',
+              onClick: onStartNewSession,
+            }
+    );
+  } else if (featuredSession) {
+    personalizedItems.push({
+      id: 'continue',
+      label: '继续关注',
+      title: `继续「${trimSidebarText(featuredSession.title)}」`,
+      description:
+        pendingFollowUpCount > 0
+          ? `${pendingFollowUpCount} 项待跟进，建议优先补充最近回复。`
+          : featuredSession.id === activeSessionId
+            ? '当前线程已打开，可直接接着问。'
+            : `最近线程已保存，可继续查看 ${totalSessionCount} 段历史会话。`,
+      toneClass: pendingFollowUpCount > 0 ? 'bg-amber-500' : 'bg-slate-400',
+      badge:
+        pendingFollowUpCount > 0
+          ? `${pendingFollowUpCount} 待办`
+          : featuredSession.id === activeSessionId
+            ? '当前'
+            : undefined,
+      onClick: () => onOpenSession(featuredSession.id),
+    });
+  } else {
+    personalizedItems.push({
+      id: 'continue-empty',
+      label: '继续关注',
+      title: '还没有历史会话',
+      description: '完成一次问诊后，最近线程会固定展示在这里。',
+      toneClass: 'bg-slate-400',
+      onClick: onStartNewSession,
+    });
+  }
+
+  if (localCity) {
+    personalizedItems.push({
+      id: 'local-reminder',
+      label: '本地提醒',
+      title: `当前城市：${localCity}`,
+      description: '健康地图会优先展示附近资源与建议。',
+      toneClass: 'bg-emerald-500',
+      badge: '附近资源',
+      onClick: onOpenMap,
+    });
+  }
+
   return (
     <aside className="sticky top-0 hidden h-screen w-[320px] shrink-0 flex-col border-r border-slate-200 bg-white/92 px-4 py-4 backdrop-blur-xl lg:flex">
       <div className="flex items-center gap-2.5 px-2">
@@ -162,19 +283,51 @@ export function AppSidebar({
         />
       </nav>
 
+      <section className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-2.5 py-2.5">
+        <p className="px-2 text-[11px] font-medium tracking-[0.08em] text-slate-500">为你推荐</p>
+        <div className="mt-1.5 space-y-0.5">
+          {personalizedItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={item.onClick}
+              className="flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition-colors hover:bg-white/90"
+            >
+              <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${item.toneClass}`} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-medium tracking-[0.06em] text-slate-400">
+                    {item.label}
+                  </span>
+                  {item.badge && (
+                    <span className="shrink-0 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[12px] font-medium text-slate-700">{item.title}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+                  {item.description}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <div className="mt-3 min-h-0 flex-1 overflow-hidden">
         <ConversationHistoryPanel
           sessions={sessions}
           activeSessionId={activeSessionId}
           onOpenSession={onOpenSession}
-          title={searchQuery.trim() ? '匹配会话' : '最近会话'}
+          title={normalizedSearchQuery ? '匹配会话' : '最近会话'}
           description={
-            searchQuery.trim()
+            normalizedSearchQuery
               ? `按“${searchQuery}”筛选后的会话结果`
               : '最近更新的线程会固定展示在左侧，方便随时继续。'
           }
           emptyMessage={
-            searchQuery.trim()
+            normalizedSearchQuery
               ? '没有找到匹配的会话，试试症状、科室或建议关键词。'
               : '还没有历史会话。完成一次问诊后，线程会自动出现在这里。'
           }
@@ -188,7 +341,7 @@ export function AppSidebar({
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <p className="truncate text-[13px] font-medium text-slate-900">{statusLabel}</p>
-            <p className="text-[11px] text-slate-500">{accountLabel ?? ''}</p>
+            <p className="truncate text-[11px] text-slate-500">{resolvedAccountLabel}</p>
           </div>
           {onOpenAuth && authActionLabel && (
             <button

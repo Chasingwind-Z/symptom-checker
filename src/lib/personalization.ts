@@ -1,4 +1,4 @@
-import type { DiagnosisResult } from '../types';
+import type { ConversationSession, DiagnosisResult } from '../types';
 import type { CaseHistoryItem, ProfileDraft } from './healthData';
 
 export interface DemoPersonaSummary {
@@ -28,6 +28,19 @@ export interface MedicationAdvice {
   reason: string;
   caution: string;
   suitable: boolean;
+}
+
+export interface PersonalizationRankingContext {
+  cityTerms: string[];
+  careFocusTerms: string[];
+  chronicTerms: string[];
+  recentTerms: string[];
+  hasSignals: boolean;
+}
+
+export interface PersonalizedOrderingResult<T> {
+  items: T[];
+  changed: boolean;
 }
 
 const DEMO_PERSONAS: DemoPersona[] = [
@@ -162,6 +175,183 @@ function getTopDepartment(recentCases: CaseHistoryItem[]): string | null {
   });
 
   return Array.from(counter.entries()).sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
+}
+
+const RANKING_TERM_BLACKLIST = new Set([
+  '当前',
+  '最近',
+  '今天',
+  '继续',
+  '建议',
+  '帮助',
+  '记录',
+  '摘要',
+  '问诊',
+  '系统',
+  '优先',
+  '处理',
+  '观察',
+  '补充',
+  '情况',
+  '重点',
+]);
+
+function normalizeRankingText(text: string): string {
+  return text.replace(/[^a-z0-9\u4e00-\u9fff]/gi, '').toLowerCase();
+}
+
+function addRankingTerm(target: string[], value: string) {
+  const normalized = normalizeRankingText(value);
+  if (!normalized) return;
+  if (/^[a-z0-9]+$/i.test(normalized) ? normalized.length < 3 : normalized.length < 2) return;
+  if (RANKING_TERM_BLACKLIST.has(normalized)) return;
+  if (!target.includes(normalized)) {
+    target.push(normalized);
+  }
+}
+
+function extractRankingTerms(text: string, limit = 8): string[] {
+  const terms: string[] = [];
+  const cleaned = text
+    .replace(/[（）()【】[\]{}]/g, ' ')
+    .replace(/[，。！？；：、/|]+/g, ' ')
+    .replace(
+      /(当前关注|更关注|关注重点|希望获得|想更快|更快|是否需要|需不需要|要不要|是否适合|想判断|帮助判断|判断|关注|提醒|建议|优先|适合|当前|最近|今天|希望|获得|继续|补充|系统)/g,
+      ' '
+    )
+    .replace(/[和与及并且或的]/g, ' ')
+    .replace(/([一二两三四五六七八九十\d]+)(天|周|个月|月|年|小时|分钟)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return terms;
+
+  for (const segment of cleaned.split(' ')) {
+    const normalized = normalizeRankingText(segment);
+    if (!normalized) continue;
+
+    addRankingTerm(terms, normalized);
+
+    if (/^[\u4e00-\u9fff]+$/u.test(normalized) && normalized.length > 4) {
+      addRankingTerm(terms, normalized.slice(0, 4));
+      addRankingTerm(terms, normalized.slice(-4));
+    }
+
+    if (terms.length >= limit) break;
+  }
+
+  return terms.slice(0, limit);
+}
+
+function buildCityRankingTerms(city?: string | null): string[] {
+  const normalizedCity = city?.trim() ?? '';
+  if (!normalizedCity || normalizedCity === '中国大陆') return [];
+
+  const terms: string[] = [];
+  addRankingTerm(terms, normalizedCity);
+  addRankingTerm(terms, normalizedCity.replace(/(特别行政区|自治区|自治州|省|市|区|县|镇|乡)/g, ''));
+  return terms.slice(0, 3);
+}
+
+function mergeRankingTerms(target: string[], terms: string[], limit: number) {
+  for (const term of terms) {
+    addRankingTerm(target, term);
+    if (target.length >= limit) break;
+  }
+}
+
+function countRankingMatches(text: string, terms: string[], maxMatches = terms.length): number {
+  let matches = 0;
+
+  for (const term of terms) {
+    if (!term || !text.includes(term)) continue;
+
+    matches += 1;
+    if (matches >= maxMatches) break;
+  }
+
+  return matches;
+}
+
+export function buildPersonalizationRankingContext(params: {
+  profile?: Partial<ProfileDraft> | null;
+  recentCases?: CaseHistoryItem[];
+  recentSessions?: ConversationSession[];
+}): PersonalizationRankingContext {
+  const cityTerms = buildCityRankingTerms(params.profile?.city);
+  const careFocusTerms = extractRankingTerms(params.profile?.careFocus ?? '', 8);
+  const chronicTerms = extractRankingTerms(params.profile?.chronicConditions ?? '', 8);
+  const recentTerms: string[] = [];
+
+  (params.recentCases ?? []).slice(0, 3).forEach((item) => {
+    mergeRankingTerms(
+      recentTerms,
+      extractRankingTerms(`${item.chiefComplaint} ${item.departments.join(' ')}`, 6),
+      12
+    );
+  });
+
+  (params.recentSessions ?? []).slice(0, 3).forEach((session) => {
+    mergeRankingTerms(
+      recentTerms,
+      extractRankingTerms(
+        `${session.title} ${session.diagnosisResult?.departments.join(' ') ?? ''} ${
+          session.diagnosisResult?.reason ?? ''
+        }`,
+        6
+      ),
+      12
+    );
+  });
+
+  return {
+    cityTerms,
+    careFocusTerms,
+    chronicTerms,
+    recentTerms,
+    hasSignals: Boolean(
+      cityTerms.length || careFocusTerms.length || chronicTerms.length || recentTerms.length
+    ),
+  };
+}
+
+export function applyPersonalizedOrdering<T>(
+  items: readonly T[],
+  getSearchableTexts: (item: T) => Array<string | null | undefined>,
+  context: PersonalizationRankingContext
+): PersonalizedOrderingResult<T> {
+  if (items.length < 2 || !context.hasSignals) {
+    return { items: [...items], changed: false };
+  }
+
+  const ranked = items
+    .map((item, index) => {
+      const searchableText = normalizeRankingText(
+        getSearchableTexts(item)
+          .filter((value): value is string => Boolean(value && value.trim()))
+          .join(' ')
+      );
+
+      if (!searchableText) {
+        return { item, index, score: 0 };
+      }
+
+      const score =
+        (countRankingMatches(searchableText, context.cityTerms, 1) > 0 ? 2 : 0) +
+        (countRankingMatches(searchableText, context.careFocusTerms, 1) > 0 ? 2 : 0) +
+        (countRankingMatches(searchableText, context.chronicTerms, 1) > 0 ? 2 : 0) +
+        Math.min(2, countRankingMatches(searchableText, context.recentTerms, 2));
+
+      return { item, index, score };
+    })
+    .sort((left, right) => right.score - left.score || left.index - right.index);
+
+  return {
+    items: ranked.map((entry) => entry.item),
+    changed:
+      ranked.some((entry) => entry.score > 0) &&
+      ranked.some((entry, sortedIndex) => entry.index !== sortedIndex),
+  };
 }
 
 export function getDemoPersonaSummaries(): DemoPersonaSummary[] {

@@ -2,7 +2,11 @@ import { useMemo } from 'react';
 import { ArrowRight, Clock3, Pill, ShieldCheck, Sparkles } from 'lucide-react';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import { buildMedicationHubContexts } from '../lib/medicationHub';
-import { hasMedicationProfileContext } from '../lib/personalization';
+import {
+  applyPersonalizedOrdering,
+  buildPersonalizationRankingContext,
+  hasMedicationProfileContext,
+} from '../lib/personalization';
 import { getRiskPresentation } from '../lib/riskPresentation';
 import type { ConversationSession, DiagnosisResult } from '../types';
 
@@ -85,28 +89,60 @@ export function MedicationRecommendationsPanel({
       }),
     [activeSessionId, conversationSessions, currentDiagnosis, profile, recentCases]
   );
+  const rankingContext = useMemo(
+    () =>
+      buildPersonalizationRankingContext({
+        profile,
+        recentCases,
+        recentSessions: conversationSessions,
+      }),
+    [conversationSessions, profile, recentCases]
+  );
+  const personalizedContextOrder = useMemo(
+    () =>
+      applyPersonalizedOrdering(
+        contexts,
+        (context) => [
+          context.title,
+          context.summary,
+          context.sourceLabel,
+          context.diagnosis.reason,
+          context.diagnosis.action,
+          context.diagnosis.departments.join(' '),
+        ],
+        rankingContext
+      ),
+    [contexts, rankingContext]
+  );
+  const orderedContexts = personalizedContextOrder.items;
   const profileApplied = hasMedicationProfileContext(profile);
-  const featuredContext = contexts.find((context) => context.recommendations.length > 0) ?? contexts[0] ?? null;
+  const recommendationRankingHintVisible = personalizedContextOrder.changed;
+  const featuredContext =
+    orderedContexts.find((context) => context.recommendations.length > 0) ?? orderedContexts[0] ?? null;
   const threadActionContext =
     (featuredContext?.conversationId ? featuredContext : null) ??
-    contexts.find((context) => Boolean(context.conversationId)) ??
+    orderedContexts.find((context) => Boolean(context.conversationId)) ??
     null;
-  const cautionCount = contexts.reduce(
+  const cautionCount = orderedContexts.reduce(
     (count, context) =>
       count + context.recommendations.filter((recommendation) => !recommendation.suitable).length,
     0
   );
-  const contextWithGuidanceCount = contexts.filter((context) => context.recommendations.length > 0).length;
+  const contextWithGuidanceCount = orderedContexts.filter(
+    (context) => context.recommendations.length > 0
+  ).length;
   const contextShelf = useMemo(() => {
-    if (!featuredContext) return contexts.slice(0, 3);
+    if (!featuredContext) return orderedContexts.slice(0, 3);
 
-    const additionalContexts = contexts.filter((context) => context.id !== featuredContext.id).slice(0, 2);
-    return additionalContexts.length > 0 ? additionalContexts : contexts.slice(0, 1);
-  }, [contexts, featuredContext]);
+    const additionalContexts = orderedContexts
+      .filter((context) => context.id !== featuredContext.id)
+      .slice(0, 2);
+    return additionalContexts.length > 0 ? additionalContexts : orderedContexts.slice(0, 1);
+  }, [featuredContext, orderedContexts]);
   const safetyHighlights = useMemo(() => {
     const notes: string[] = [];
 
-    contexts.forEach((context) => {
+    orderedContexts.forEach((context) => {
       const prioritizedRecommendations = [
         ...context.recommendations.filter((recommendation) => !recommendation.suitable),
         ...context.recommendations.filter((recommendation) => recommendation.suitable),
@@ -121,7 +157,7 @@ export function MedicationRecommendationsPanel({
     });
 
     return notes.slice(0, 3);
-  }, [contexts]);
+  }, [orderedContexts]);
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
@@ -171,6 +207,13 @@ export function MedicationRecommendationsPanel({
           <p className="mt-1 text-[11px] text-slate-500">优先暴露需要先核对成分或尽快线下评估的点。</p>
         </div>
       </div>
+
+      {recommendationRankingHintVisible && (
+        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
+          <Sparkles size={12} />
+          已结合档案与最近记录排序
+        </div>
+      )}
 
       {featuredContext ? (
         <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">

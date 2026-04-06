@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { Search, Sparkles } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppSidebar, type SidebarSection } from './components/AppSidebar';
 import { AgentOrchestrationPanel } from './components/AgentOrchestrationPanel';
@@ -24,7 +24,11 @@ import { usePwaInstall } from './hooks/usePwaInstall';
 import type { CaseHistoryItem } from './lib/healthData';
 import { getRecommendedHospitals } from './lib/mockHospitals';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
-import { buildCombinedMedicalNotes } from './lib/personalization';
+import {
+  applyPersonalizedOrdering,
+  buildCombinedMedicalNotes,
+  buildPersonalizationRankingContext,
+} from './lib/personalization';
 import type { ConversationSession, Hospital, SendMessageInput } from './types';
 
 const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
@@ -388,7 +392,17 @@ export default function App() {
     [recordSearchQuery]
   );
 
-  const filteredConversationSessions = useMemo(() => {
+  const personalizationRankingContext = useMemo(
+    () =>
+      buildPersonalizationRankingContext({
+        profile: workspace.profile,
+        recentCases: workspace.recentCases,
+        recentSessions: conversationSessions,
+      }),
+    [conversationSessions, workspace.profile, workspace.recentCases]
+  );
+
+  const matchedConversationSessions = useMemo(() => {
     if (!normalizedSearchQuery) return conversationSessions;
 
     return conversationSessions.filter((session) =>
@@ -402,7 +416,27 @@ export default function App() {
     );
   }, [conversationSessions, normalizedSearchQuery]);
 
-  const filteredRecordsCenterFollowUps = useMemo(() => {
+  const personalizedConversationSearch = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return { items: matchedConversationSessions, changed: false };
+    }
+
+    return applyPersonalizedOrdering(
+      matchedConversationSessions,
+      (session) => [
+        session.title,
+        getConversationReferenceText(session),
+        session.diagnosisResult?.reason,
+        session.diagnosisResult?.action,
+        session.diagnosisResult?.departments.join(' '),
+      ],
+      personalizationRankingContext
+    );
+  }, [matchedConversationSessions, normalizedSearchQuery, personalizationRankingContext]);
+
+  const filteredConversationSessions = personalizedConversationSearch.items;
+
+  const matchedRecordsCenterFollowUps = useMemo(() => {
     if (!normalizedSearchQuery) return recordsCenterFollowUps;
 
     return recordsCenterFollowUps.filter((item) =>
@@ -418,7 +452,29 @@ export default function App() {
     );
   }, [normalizedSearchQuery, recordsCenterFollowUps]);
 
-  const filteredRecordsCenterSummaries = useMemo(() => {
+  const personalizedRecordsCenterFollowUps = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return { items: matchedRecordsCenterFollowUps, changed: false };
+    }
+
+    return applyPersonalizedOrdering(
+      matchedRecordsCenterFollowUps,
+      (item) => [
+        item.title,
+        item.summary,
+        item.statusLabel,
+        item.metaLabel,
+        item.sourceLabel,
+        item.tags?.join(' '),
+        item.riskLevel ?? '',
+      ],
+      personalizationRankingContext
+    );
+  }, [matchedRecordsCenterFollowUps, normalizedSearchQuery, personalizationRankingContext]);
+
+  const filteredRecordsCenterFollowUps = personalizedRecordsCenterFollowUps.items;
+
+  const matchedRecordsCenterSummaries = useMemo(() => {
     if (!normalizedSearchQuery) return recordsCenterSummaries;
 
     return recordsCenterSummaries.filter((item) =>
@@ -433,6 +489,27 @@ export default function App() {
     );
   }, [normalizedSearchQuery, recordsCenterSummaries]);
 
+  const personalizedRecordsCenterSummaries = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return { items: matchedRecordsCenterSummaries, changed: false };
+    }
+
+    return applyPersonalizedOrdering(
+      matchedRecordsCenterSummaries,
+      (item) => [
+        item.title,
+        item.summary,
+        item.metaLabel,
+        item.sourceLabel,
+        item.departments?.join(' '),
+        item.riskLevel ?? '',
+      ],
+      personalizationRankingContext
+    );
+  }, [matchedRecordsCenterSummaries, normalizedSearchQuery, personalizationRankingContext]);
+
+  const filteredRecordsCenterSummaries = personalizedRecordsCenterSummaries.items;
+
   const filteredCaseCount = useMemo(() => {
     if (!normalizedSearchQuery) return workspace.recentCases.length;
 
@@ -446,6 +523,12 @@ export default function App() {
       ].some((value) => matchesSearchQuery(String(value ?? ''), normalizedSearchQuery))
     ).length;
   }, [normalizedSearchQuery, workspace.recentCases]);
+
+  const searchPersonalizationHintVisible =
+    Boolean(normalizedSearchQuery) &&
+    (personalizedConversationSearch.changed ||
+      personalizedRecordsCenterFollowUps.changed ||
+      personalizedRecordsCenterSummaries.changed);
 
   const effectivePage = currentPage === 'home' && messages.length > 0 ? 'chat' : currentPage;
   const showWorkspace = effectivePage === 'workspace';
@@ -475,7 +558,9 @@ export default function App() {
           return {
             title: '搜索记录',
             subtitle: recordSearchQuery.trim()
-              ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索。`
+              ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索${
+                  searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                }`
               : '按症状、标题、科室或建议快速查找历史会话与记录。',
           };
         case 'profile':
@@ -487,7 +572,9 @@ export default function App() {
           return {
             title: '历史会话',
             subtitle: recordSearchQuery.trim()
-              ? `已按“${recordSearchQuery}”筛选历史线程。`
+              ? `已按“${recordSearchQuery}”筛选历史线程${
+                  searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                }`
               : '所有问诊会按线程保存，方便随时回到原上下文继续咨询。',
           };
         case 'medication':
@@ -536,6 +623,7 @@ export default function App() {
     filteredRecordsCenterFollowUps.length,
     pendingFollowUpRecords.length,
     recordSearchQuery,
+    searchPersonalizationHintVisible,
     workspaceSection,
   ]);
 
@@ -571,6 +659,7 @@ export default function App() {
         onOpenMap={handleOpenMap}
         onOpenAuth={handleOpenAuthDialog}
         sessionEmail={workspace.sessionEmail}
+        currentCity={workspace.profile.city}
         statusLabel={workspace.statusLabel}
         profileCompletion={profileCompletion}
         pendingFollowUpCount={pendingFollowUpRecords.length}
@@ -648,6 +737,13 @@ export default function App() {
                         />
                       </div>
 
+                      {searchPersonalizationHintVisible && (
+                        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
+                          <Sparkles size={12} />
+                          已结合档案与最近记录排序
+                        </div>
+                      )}
+
                       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
                         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                           <p className="text-[11px] text-slate-500">匹配会话</p>
@@ -679,14 +775,22 @@ export default function App() {
                           onOpenSession={handleOpenConversation}
                           onStartNewSession={handleResetChat}
                           title="匹配会话"
-                          description={`当前关键词“${recordSearchQuery}”命中的历史线程`}
+                          description={
+                            searchPersonalizationHintVisible
+                              ? `当前关键词“${recordSearchQuery}”命中的历史线程，已结合档案与最近记录微调排序`
+                              : `当前关键词“${recordSearchQuery}”命中的历史线程`
+                          }
                           emptyMessage="没有匹配到相关会话，请换一个症状或建议关键词。"
                         />
 
                         <RecordsCenterPanel
                           statusLabel="搜索结果"
                           title="匹配的记录与随访"
-                          helperText="同步展示待跟进项目和最近完成的摘要，方便直接回看或继续咨询。"
+                          helperText={
+                            searchPersonalizationHintVisible
+                              ? '同步展示待跟进项目和最近完成的摘要，并结合档案与最近记录微调排序。'
+                              : '同步展示待跟进项目和最近完成的摘要，方便直接回看或继续咨询。'
+                          }
                           followUps={filteredRecordsCenterFollowUps}
                           recentSummaries={filteredRecordsCenterSummaries}
                           emptyFollowUpsMessage="没有匹配到待跟进项目。"
@@ -728,7 +832,9 @@ export default function App() {
                     title={recordSearchQuery.trim() ? '筛选后的历史会话' : '历史会话'}
                     description={
                       recordSearchQuery.trim()
-                        ? `已按“${recordSearchQuery}”筛选历史线程。`
+                        ? searchPersonalizationHintVisible
+                          ? `已按“${recordSearchQuery}”筛选历史线程，并结合档案与最近记录微调排序。`
+                          : `已按“${recordSearchQuery}”筛选历史线程。`
                         : '所有会话会按最近更新时间排序，点击即可回到原线程继续问诊。'
                     }
                     emptyMessage={
@@ -777,6 +883,8 @@ export default function App() {
                 onOpenAuth={handleOpenAuthDialog}
                 onToggleMap={handleOpenMap}
                 sessionEmail={workspace.sessionEmail}
+                profile={workspace.profile}
+                recentCases={workspace.recentCases}
                 recentSessions={conversationSessions}
                 activeSessionId={activeSessionId}
                 onOpenConversation={handleOpenConversation}
