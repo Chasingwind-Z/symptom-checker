@@ -133,30 +133,33 @@ export function MedicationRecommendationsPanel({
           </div>
           <h2 className="mt-3 text-xl font-semibold text-slate-900">用药建议中心</h2>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
-            把最近问诊里的 OTC / 家庭处理方向前置展示出来，并保留谨慎提醒与回到原线程的入口。
+            把更值得先核对的 OTC / 家庭处理方向集中在一处，先看可参考项，再看需要谨慎的地方。
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {threadActionContext?.conversationId && (
-            <ActionButton
-              label={threadActionContext.sourceType === 'current' ? '打开当前线程' : '打开原问诊'}
-              onClick={() => onOpenConversation(threadActionContext.conversationId!)}
-              tone="primary"
-            />
-          )}
-          <ActionButton label="新建咨询" onClick={onStartNewConversation} />
+        <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-wrap gap-2">
+            {threadActionContext?.conversationId && (
+              <ActionButton
+                label={threadActionContext.sourceType === 'current' ? '打开当前线程' : '打开原问诊'}
+                onClick={() => onOpenConversation(threadActionContext.conversationId!)}
+                tone="primary"
+              />
+            )}
+            <ActionButton label="新建咨询" onClick={onStartNewConversation} />
+          </div>
+          <p className="text-[11px] text-slate-500">仅供 OTC / 家庭处理参考，不替代处方或线下评估。</p>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
           <div className="flex items-center gap-2 text-[11px] text-slate-500">
             <Sparkles size={12} />
-            已提炼场景
+            可参考场景
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{contextWithGuidanceCount} 个</p>
-          <p className="mt-1 text-[11px] text-slate-500">来自当前问诊、最近线程和历史摘要。</p>
+          <p className="mt-1 text-[11px] text-slate-500">来自当前问诊、最近线程和已保存摘要。</p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
@@ -166,21 +169,6 @@ export function MedicationRecommendationsPanel({
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{cautionCount} 条</p>
           <p className="mt-1 text-[11px] text-slate-500">优先暴露需要先核对成分或尽快线下评估的点。</p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <Pill size={12} />
-            档案筛选
-          </div>
-          <p className="mt-2 text-sm font-semibold text-slate-800">
-            {profileApplied ? '已开启' : '待完善'}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            {profileApplied
-              ? '已结合年龄、慢病、过敏史和现用药做过一轮筛选。'
-              : '补齐过敏史、慢病和现用药后，这里的筛选会更保守。'}
-          </p>
         </div>
       </div>
 
@@ -375,9 +363,9 @@ export function MedicationRecommendationsPanel({
         </div>
       ) : (
         <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5">
-          <p className="text-sm font-semibold text-slate-800">还没有可前置展示的用药参考</p>
+          <p className="text-sm font-semibold text-slate-800">当前暂无可前置的用药参考</p>
           <p className="mt-2 text-sm leading-relaxed text-slate-500">
-            完成一次问诊后，这里会把可短期参考的 OTC / 家庭处理方向、谨慎提醒和回到原线程的入口集中展示。
+            完成一次问诊后，这里会显示 OTC / 家庭处理方向与使用前提醒。
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <ActionButton label="新建咨询" onClick={onStartNewConversation} tone="primary" />

@@ -24,6 +24,7 @@ import {
   getPersonalizedInsights,
   hasMedicationProfileContext as hasMedicationProfileContextData,
 } from '../lib/personalization';
+import type { MedicationAdvice } from '../lib/personalization';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import type {
   DiagnosisResult,
@@ -138,6 +139,16 @@ interface WebSourceItem {
   host: string;
 }
 
+interface MedicationSummarySection {
+  key: 'matched' | 'caution';
+  title: string;
+  hint: string;
+  containerClass: string;
+  badgeClass: string;
+  items: MedicationAdvice[];
+  firstIndex: number;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -148,6 +159,40 @@ function toStringArray(value: unknown): string[] {
 
 function trimText(text: string, maxLength = 110): string {
   return text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text;
+}
+
+function buildMedicationSummarySections(advice: MedicationAdvice[]): MedicationSummarySection[] {
+  const matchedItems = advice.filter((item) => item.suitable);
+  const cautionItems = advice.filter((item) => !item.suitable);
+  const matchedSummary = matchedItems.slice(0, cautionItems.length > 0 ? 1 : 2);
+  const cautionSummary = cautionItems.slice(0, matchedItems.length > 0 ? 1 : 2);
+
+  return [
+    matchedSummary.length > 0
+      ? {
+          key: 'matched',
+          title: '相对匹配',
+          hint: '可先核对的支持方向',
+          containerClass: 'border-emerald-100 bg-emerald-50/80',
+          badgeClass: 'bg-emerald-100 text-emerald-700',
+          items: matchedSummary,
+          firstIndex: advice.findIndex((item) => item.id === matchedSummary[0]?.id),
+        }
+      : null,
+    cautionSummary.length > 0
+      ? {
+          key: 'caution',
+          title: '谨慎项',
+          hint: '当前不适合作为优先选择',
+          containerClass: 'border-amber-100 bg-amber-50/80',
+          badgeClass: 'bg-amber-100 text-amber-700',
+          items: cautionSummary,
+          firstIndex: advice.findIndex((item) => item.id === cautionSummary[0]?.id),
+        }
+      : null,
+  ]
+    .filter((section): section is MedicationSummarySection => Boolean(section))
+    .sort((left, right) => left.firstIndex - right.firstIndex);
 }
 
 function formatTimeLabel(value: unknown): string | null {
@@ -560,10 +605,15 @@ export function ResultCard({
     [profile, recentCases, result]
   );
   const medicationAdvice = useMemo(() => getMedicationGuidance(result, profile), [result, profile]);
+  const medicationSummarySections = useMemo(
+    () => buildMedicationSummarySections(medicationAdvice),
+    [medicationAdvice]
+  );
   const hasMedicationProfileContext = useMemo(
     () => hasMedicationProfileContextData(profile),
     [profile]
   );
+  const hasMedicationSummary = medicationSummarySections.length > 0;
 
   function toggleCheck(i: 0 | 1 | 2) {
     setChecked((prev) => {
@@ -778,7 +828,7 @@ export function ResultCard({
           <span className="text-slate-700 font-medium text-sm">{result.action}</span>
         </div>
 
-        {(personalizedInsights.length > 0 || medicationAdvice.length > 0) && (
+        {(personalizedInsights.length > 0 || hasMedicationSummary) && (
           <div className="mb-5 grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
             {personalizedInsights.length > 0 && (
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 px-4 py-3">
@@ -818,48 +868,63 @@ export function ResultCard({
               </div>
             )}
 
-            {medicationAdvice.length > 0 && (
+            {hasMedicationSummary && (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <Pill size={15} className="text-violet-700" />
-                  <p className="text-sm font-semibold text-slate-800">药品与家庭处理参考</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Pill size={15} className="text-violet-700 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">用药支持摘要</p>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        仅保留更值得优先核对的 1–2 个方向，帮助快速区分相对匹配项与谨慎项。
+                      </p>
+                    </div>
+                  </div>
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-500">
+                    仅作支持参考
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  优先给出更安全的 OTC / 家庭处理方向；若风险较高，会明确提醒尽快线下就医。
-                </p>
                 {hasMedicationProfileContext && (
-                  <div className="mt-2 inline-flex items-center rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-[10px] text-violet-700">
-                    已结合年龄、慢病、过敏史和现用药做过一轮筛选
+                  <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-[11px] text-violet-700 leading-relaxed">
+                    已结合年龄、慢病、过敏史和现用药做过筛选，以下仅保留更贴近当前档案的方向。
                   </div>
                 )}
                 <div className="mt-3 space-y-2.5">
-                  {medicationAdvice.map((item) => (
+                  {medicationSummarySections.map((section) => (
                     <div
-                      key={item.id}
-                      className={`rounded-xl border px-3 py-3 ${
-                        item.suitable
-                          ? 'border-slate-200 bg-white'
-                          : 'border-amber-100 bg-amber-50/80'
-                      }`}
+                      key={section.key}
+                      className={`rounded-xl border px-3 py-3 ${section.containerClass}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] ${
-                            item.suitable
-                              ? 'bg-emerald-50 text-emerald-700'
-                              : 'bg-amber-100 text-amber-700'
-                          }`}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${section.badgeClass}`}
                         >
-                          {item.suitable ? '可短期参考' : '需谨慎'}
+                          {section.title}
                         </span>
+                        <p className="text-[11px] text-slate-500">{section.hint}</p>
                       </div>
-                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{item.useCase}</p>
-                      <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">原因：{item.reason}</p>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">提醒：{item.caution}</p>
+                      <div className="mt-2 space-y-2">
+                        {section.items.map((item, index) => (
+                          <div
+                            key={item.id}
+                            className={index > 0 ? 'border-t border-white/70 pt-2' : undefined}
+                          >
+                            <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                              {trimText(item.useCase, 46)}
+                            </p>
+                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                              提醒：{trimText(item.caution, 58)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
+                <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+                  仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
+                </p>
               </div>
             )}
           </div>

@@ -232,6 +232,11 @@ const ACETAMINOPHEN_KEYWORDS = ['对乙酰氨基酚', '扑热息痛'];
 const IBUPROFEN_KEYWORDS = ['布洛芬', '萘普生', '洛索洛芬', '双氯芬酸'];
 const ANTIHISTAMINE_KEYWORDS = ['氯雷他定', '西替利嗪', '非索非那定', '左西替利嗪', '依巴斯汀'];
 const COLD_COMBINATION_KEYWORDS = ['复方感冒', '感冒灵', '白加黑', '感康', '泰诺', '快克'];
+const ANTIHYPERTENSIVE_KEYWORDS = ['沙坦', '地平', '普利', '美托洛尔', '比索洛尔', '倍他乐克', '降压药'];
+const MOTION_SICKNESS_KEYWORDS = ['晕车', '晕船', '乘车', '乘船', '旅途', '路上', '车上'];
+const CONSTIPATION_KEYWORDS = ['便秘', '排便困难', '大便干结', '几天没大便'];
+const NAUSEA_KEYWORDS = ['恶心', '反胃', '想吐', '呕吐', '晕车', '晕船'];
+const STOMACH_DISCOMFORT_KEYWORDS = ['胃胀', '腹胀', '胀气', '胃不舒服', '消化不良', '胃痛'];
 
 export function getMedicationGuidance(
   diagnosis: DiagnosisResult,
@@ -286,6 +291,7 @@ export function getMedicationGuidance(
   const usesIbuprofen = includesAny(lowerCurrentMedications, IBUPROFEN_KEYWORDS);
   const usesAntihistamine = includesAny(lowerCurrentMedications, ANTIHISTAMINE_KEYWORDS);
   const usesColdCombination = includesAny(lowerCurrentMedications, COLD_COMBINATION_KEYWORDS);
+  const usesAntihypertensive = includesAny(lowerCurrentMedications, ANTIHYPERTENSIVE_KEYWORDS);
   const isOlderAdult = age !== null && age >= 65;
   const isYoungChild = age !== null && age < 6;
   const isInfant = age !== null && age < 1;
@@ -330,12 +336,20 @@ export function getMedicationGuidance(
     '喷嚏',
     '喉咙',
   ]);
+  const hasCongestion = includesAny(lowerText, ['鼻塞', '鼻堵', '鼻不通气', '鼻腔堵']);
   const hasDryCough = includesAny(lowerText, ['干咳', '刺激性咳嗽', '咽痒']);
   const hasProductiveCough = includesAny(lowerText, ['咳痰', '痰多', '黄痰', '白痰', '黏痰']);
   const hasAllergyLikeSymptoms = includesAny(lowerText, ['过敏', '鼻痒', '眼痒', '喷嚏', '流清涕', '流鼻涕', '鼻塞']);
   const hasGiSymptoms = includesAny(lowerText, ['腹泻', '恶心', '呕吐', '腹痛', '胃肠', '肠胃']);
   const hasRefluxLikeSymptoms = includesAny(lowerText, ['反酸', '烧心', '胃灼热', '胃酸', '消化不良']);
+  const hasConstipation = includesAny(lowerText, CONSTIPATION_KEYWORDS);
+  const hasNauseaOrMotion = includesAny(lowerText, NAUSEA_KEYWORDS);
+  const hasMotionSickness = includesAny(lowerText, MOTION_SICKNESS_KEYWORDS);
+  const hasStomachDiscomfort = includesAny(lowerText, STOMACH_DISCOMFORT_KEYWORDS);
   const hasRashOrItch = includesAny(lowerText, ['瘙痒', '皮疹', '荨麻疹', '虫咬', '蚊虫叮咬']);
+  const hasPseudoephedrineRisk = hasCardioRisk || hasGlaucomaOrUrinaryRisk || usesAntihypertensive;
+  const hasTravelMedicationRisk = hasGlaucomaOrUrinaryRisk || isOlderAdult || isYoungChild;
+  const hasSevereGiRedFlag = includesAny(lowerText, ['血便', '黑便', '剧烈腹痛', '完全喝不下水', '明显脱水']);
   const hasAcetaminophenContraindication =
     hasLiverRisk || hasAcetaminophenAllergy || usesAcetaminophen || usesColdCombination;
   const hasIbuprofenContraindication =
@@ -358,6 +372,18 @@ export function getMedicationGuidance(
       reason: '这类情况下，退烧药、复方感冒药或止咳药更容易和原有疾病/长期用药叠加，家庭处理应以短期、单一成分为主。',
       caution:
         '优先选择单一成分，不要同时叠加多种感冒药；若今天症状加重、出现气促、持续高热或明显脱水，应尽快线下评估。',
+      suitable: false,
+    });
+  }
+
+  if (hasCongestion && hasPseudoephedrineRisk) {
+    addMedicationAdvice(prioritySuggestions, {
+      id: 'decongestant-caution',
+      title: '口服减充血复方先别急着选',
+      useCase: '鼻塞明显时，很多复方感冒药会叠加伪麻黄碱样减充血成分。',
+      reason: '档案提示血压/心血管、青光眼/排尿或长期降压药背景，这类成分更适合先核对。',
+      caution:
+        '先以生理盐水冲洗、补水和局部护理为主；若胸闷心悸、头痛加重或鼻塞持续不缓解，应进一步评估。',
       suitable: false,
     });
   }
@@ -446,6 +472,17 @@ export function getMedicationGuidance(
     });
   }
 
+  if (hasDiabetes && (hasDryCough || hasProductiveCough)) {
+    addMedicationAdvice(trailingSuggestions, {
+      id: 'diabetes-cough-syrup-caution',
+      title: '止咳糖浆先核对含糖量',
+      useCase: '合并糖尿病或血糖管理需求时，糖浆类止咳药更适合先核对配方。',
+      reason: '部分糖浆类产品会带来额外糖负担，也容易和其他复方感冒药一起重复用药。',
+      caution: '优先问药师是否有无糖或单一成分版本；若咳嗽伴高热、气促或持续加重，应尽快线下评估。',
+      suitable: false,
+    });
+  }
+
   if (hasAllergyLikeSymptoms) {
     addMedicationAdvice(suggestions, {
       id: 'second-gen-antihistamine',
@@ -478,6 +515,17 @@ export function getMedicationGuidance(
         : '如伴持续呕吐、明显腹痛、血便或无法进水，应尽快到消化内科或急诊。',
       suitable: true,
     });
+
+    addMedicationAdvice(suggestions, {
+      id: 'montmorillonite',
+      title: '蒙脱石散（腹泻方向）',
+      useCase: '更适合无高热、无血便的短期腹泻对症支持。',
+      reason: '若主要困扰是水样便或次数增多，补液之外可短期考虑吸附方向，但仍要先看是否存在感染或脱水信号。',
+      caution: hasSevereGiRedFlag
+        ? '若伴血便、黑便、剧烈腹痛、明显脱水或持续高热，不建议只靠止泻类 OTC。'
+        : '不要长期连续自行使用；若 24-48 小时仍明显腹泻或尿量变少，应尽快就医。',
+      suitable: !hasSevereGiRedFlag,
+    });
   }
 
   if (hasRefluxLikeSymptoms) {
@@ -490,6 +538,59 @@ export function getMedicationGuidance(
         ? '肾功能不好时，不建议默认使用含镁/铝的抗酸剂；若黑便、呕血或胸痛需尽快就医。'
         : '若反复夜间症状、黑便、吞咽困难或胸痛，不能只靠 OTC。',
       suitable: !hasKidneyRisk,
+    });
+  }
+
+  if (hasStomachDiscomfort) {
+    addMedicationAdvice(suggestions, {
+      id: 'simethicone',
+      title: '西甲硅油（胀气方向）',
+      useCase: '更适合饭后腹胀、胀气、打嗝明显的短期缓解。',
+      reason: '若主要不适来自胀气而不是剧烈腹痛，先做更保守的局部对症处理通常更合适。',
+      caution: includesAny(lowerText, ['黑便', '停止排气', '持续呕吐'])
+        ? '若腹胀伴黑便、停止排气排便、持续呕吐或剧烈腹痛，不建议只按胀气处理。'
+        : '若腹胀反复、腹痛加重或影响进食，建议进一步到消化内科评估。',
+      suitable: !includesAny(lowerText, ['黑便', '停止排气', '持续呕吐']),
+    });
+  }
+
+  if (hasConstipation) {
+    addMedicationAdvice(suggestions, {
+      id: 'constipation-osmotic-laxative',
+      title: '聚乙二醇 / 乳果糖（便秘方向）',
+      useCase: '更适合短期排便干结、排便费力、几天未解大便的情况。',
+      reason: '这类方向通常比刺激性泻药更保守，更适合作为先尝试的家庭处理方案。',
+      caution: includesAny(lowerText, ['便血', '黑便', '剧烈腹痛', '持续呕吐'])
+        ? '若伴便血、黑便、剧烈腹痛或持续呕吐，不建议只按便秘自行处理。'
+        : isOlderAdult
+        ? '高龄者要同时关注饮水、活动量和是否突然加重；若便秘反复或明显腹胀，建议线下评估。'
+        : '先配合补水、膳食纤维和活动；若连续数天仍无缓解，应进一步评估。',
+      suitable: !includesAny(lowerText, ['便血', '黑便', '剧烈腹痛', '持续呕吐']),
+    });
+  }
+
+  if (hasNauseaOrMotion) {
+    addMedicationAdvice(suggestions, {
+      id: 'nausea-self-care',
+      title: '少量多次补液 / 清淡饮食',
+      useCase: '适合轻度恶心、反胃、食欲差时先做家庭处理。',
+      reason: '很多轻度胃肠不适更重要的是少量多次补液和清淡饮食，而不是立刻叠加多种药物。',
+      caution:
+        '若持续呕吐、完全喝不下水、伴剧烈腹痛或精神明显变差，应尽快到消化内科或急诊评估。',
+      suitable: !includesAny(lowerText, ['持续呕吐', '剧烈腹痛', '明显脱水']),
+    });
+  }
+
+  if (hasMotionSickness) {
+    addMedicationAdvice(suggestions, {
+      id: 'motion-sickness-direction',
+      title: '抗晕药方向（旅途前使用）',
+      useCase: '更适合晕车、晕船这类与旅途明确相关的恶心不适。',
+      reason: '若恶心与乘车乘船关系明确，可优先考虑短期抗晕方向，而不是按持续胃病处理。',
+      caution: hasTravelMedicationRisk
+        ? '儿童、高龄或青光眼/排尿困难人群不建议默认自行使用这类药；服后也可能犯困。'
+        : '服后可能犯困，避免驾车；若不是旅途相关恶心，先别默认按晕车处理。',
+      suitable: !hasTravelMedicationRisk,
     });
   }
 
