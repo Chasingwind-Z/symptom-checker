@@ -68,10 +68,22 @@ const useDashboardOfficialSourcesSafe =
     ? officialSourceHelpers.useDashboardOfficialSources
     : () => FALLBACK_DASHBOARD_SOURCES
 
+type CitySelectionSource = 'default' | 'detected' | 'manual'
+type LocationStatus = 'detecting' | 'detected' | 'blocked' | 'unsupported'
+
+const getMapLoadingNote = (city: string) =>
+  `${city}各区观察图正在整理，先别急，下方的同城热点、7 日曲线和官方资料也能帮助你快速判断变化。`
+
+const getMapFallbackNote = (city: string) =>
+  `${city}城区地图暂时没有显示出来，先为你呈现同城热点、重点片区和 7 日变化。`
+
 export function EpidemicDashboard({ onBack }: Props) {
   const mapKey = (import.meta.env.VITE_AMAP_JS_KEY as string | undefined)?.trim() ?? ''
   const [currentTime, setCurrentTime] = useState<string>('')
   const [currentCity, setCurrentCity] = useState(getActiveCity())
+  const [detectedCity, setDetectedCity] = useState<string | null>(null)
+  const [citySelectionSource, setCitySelectionSource] = useState<CitySelectionSource>('default')
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>('detecting')
   const supportedCities = getSupportedCities()
   const cityConfig = getActiveCityConfig()
   const cityOverview = useMemo(() => getCityOverview(), [currentCity])
@@ -81,13 +93,14 @@ export function EpidemicDashboard({ onBack }: Props) {
     mapKey ? 'loading' : 'fallback'
   )
   const [mapNote, setMapNote] = useState(
-    mapKey ? '正在载入热力图…' : '地图组件未加载，已切换为趋势参考视图。'
+    mapKey ? getMapLoadingNote(currentCity) : getMapFallbackNote(currentCity)
   )
   const mapContainerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const circlesRef = useRef<any[]>([])
+  const citySelectionSourceRef = useRef<CitySelectionSource>('default')
 
   // 时钟
   useEffect(() => {
@@ -103,32 +116,54 @@ export function EpidemicDashboard({ onBack }: Props) {
     return () => clearInterval(timer)
   }, [])
 
+  function applyCityChange(city: string, source: CitySelectionSource) {
+    const isSameCity = city === currentCity
+
+    citySelectionSourceRef.current = source
+    setCitySelectionSource(source)
+    setActiveCity(city)
+    setCurrentCity(city)
+
+    if (isSameCity) {
+      return
+    }
+
+    setSelectedDistrict(null)
+    circlesRef.current.forEach(c => c.setMap?.(null))
+    circlesRef.current = []
+    mapRef.current?.destroy?.()
+    mapRef.current = null
+    setMapStatus(mapKey ? 'loading' : 'fallback')
+    setMapNote(mapKey ? getMapLoadingNote(city) : getMapFallbackNote(city))
+  }
+
   // 根据用户定位自动选择城市
   useEffect(() => {
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) {
+      setLocationStatus('unsupported')
+      return
+    }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const detected = detectCityFromCoords(pos.coords.longitude, pos.coords.latitude)
-        if (detected !== currentCity) {
-          setActiveCity(detected)
-          setCurrentCity(detected)
+        setDetectedCity(detected)
+        setLocationStatus('detected')
+
+        if (citySelectionSourceRef.current !== 'manual') {
+          applyCityChange(detected, 'detected')
         }
       },
-      () => { /* 定位失败时保持默认城市 */ },
+      () => {
+        setLocationStatus('blocked')
+      },
       { timeout: 5000 }
     )
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   function handleCityChange(city: string) {
-    setActiveCity(city)
-    setCurrentCity(city)
-    // 销毁旧地图重新绘制
-    circlesRef.current.forEach(c => c.setMap?.(null))
-    circlesRef.current = []
-    mapRef.current?.destroy?.()
-    mapRef.current = null
-    setMapStatus(mapKey ? 'loading' : 'fallback')
+    applyCityChange(city, 'manual')
   }
 
   // 绘制地图覆盖物
@@ -204,7 +239,7 @@ export function EpidemicDashboard({ onBack }: Props) {
         setMapStatus('ready')
       } catch {
         setMapStatus('fallback')
-        setMapNote('地图暂时无法渲染，已自动切换为趋势参考视图。')
+        setMapNote(getMapFallbackNote(currentCity))
       }
     }
 
@@ -225,7 +260,7 @@ export function EpidemicDashboard({ onBack }: Props) {
         existing.addEventListener('load', initMap)
         existing.addEventListener('error', () => {
           setMapStatus('fallback')
-          setMapNote('地图资源加载失败，已切换为趋势参考视图。')
+          setMapNote(getMapFallbackNote(currentCity))
         })
       } else {
         const script = document.createElement('script')
@@ -234,7 +269,7 @@ export function EpidemicDashboard({ onBack }: Props) {
         script.onload = initMap
         script.onerror = () => {
           setMapStatus('fallback')
-          setMapNote('地图资源加载失败，已切换为趋势参考视图。')
+          setMapNote(getMapFallbackNote(currentCity))
         }
         document.head.appendChild(script)
       }
@@ -266,6 +301,12 @@ export function EpidemicDashboard({ onBack }: Props) {
   const { records: dashboardSources, syncStatus: dashboardSourceStatus } = useDashboardOfficialSourcesSafe(
     activeDistrict?.topSymptoms ?? focusDistrict?.topSymptoms ?? []
   )
+  const hasLocalOfficialSource = dashboardSources.some((record) =>
+    record.scope === 'local' ||
+    /市卫生健康委员会|市疾病预防控制中心|卫健委：本地|疾控：/u.test(
+      `${record.sourceLabel} ${record.title}`
+    )
+  )
   const signalDistrict = activeDistrict ?? focusDistrict
   const officialReferenceTime =
     dashboardSourceStatus.latestRecordTime || dashboardSourceStatus.lastSyncTime
@@ -283,36 +324,36 @@ export function EpidemicDashboard({ onBack }: Props) {
   const sourceTierCards = [
     {
       id: 'official',
-      label: '权威对照层',
-      title: '官方公开资料',
+      label: '官方 / 公共来源',
+      title: dashboardSourceStatus.sourceLabel || '卫健委、疾控与 WHO 公开资料',
       badge: officialFreshnessLabel,
-      summary: '来自疾控中心、卫健委及 WHO 等公开渠道，优先用于核对正式建议、就医路径和疾病背景。',
+      summary: `优先用于核对 ${currentCity} 的正式建议、就医入口和疾病背景，是最先该看的信息。`,
       note: officialTimeLabel
-        ? `最近资料时间：${officialTimeLabel}`
-        : '以公开原文标注时间为准',
+        ? `公开资料最近标注时间：${officialTimeLabel}`
+        : '公开资料以原始发布渠道的标注时间为准',
       wrapperClass: 'border-emerald-400/20 bg-emerald-500/5',
       labelClass: 'text-emerald-200',
       badgeClass: 'bg-emerald-500/15 text-emerald-200',
     },
     {
       id: 'trend',
-      label: '趋势参考层',
-      title: '地图热力与 7 日曲线',
-      badge: '估算口径',
-      summary: '综合社区分诊、购药波动、季节和天气因子估算近期方向，适合比较区域变化与服务压力。',
-      note: '用于看相对变化，不代表官方通报病例数。',
+      label: '趋势 / 参考',
+      title: `${currentCity}各区热力与 7 日变化`,
+      badge: '观察口径',
+      summary: '综合社区分诊、购药咨询和季节因子，用来看同城不同片区是升温、持平还是回落。',
+      note: '用于比较相对变化，不等同于官方通报病例数。',
       wrapperClass: 'border-cyan-500/20 bg-cyan-500/5',
       labelClass: 'text-cyan-200',
       badgeClass: 'bg-cyan-500/15 text-cyan-200',
     },
     {
-      id: 'anonymous',
-      label: '早期感知层',
-      title: '社区问诊与回访',
+      id: 'community',
+      label: '社区信号',
+      title: '匿名自查、回访与药房咨询',
       badge: '近 48 小时',
-      summary: '汇总脱敏自查上报与回访状态，帮助识别局部抬升和恢复缓慢区域，便于做早期观察。',
+      summary: '更接近居民体感，便于识别局部服务压力、恢复偏慢或夜间咨询升温的片区。',
       note: signalDistrict
-        ? `当前重点观察 ${signalDistrict.district} 的社区分诊与回访变化。`
+        ? `当前会结合 ${signalDistrict.district} 的社区反馈与药房咨询节奏做补充判断。`
         : '需结合个人症状和线下诊疗共同判断。',
       wrapperClass: 'border-amber-400/20 bg-amber-500/5',
       labelClass: 'text-amber-200',
@@ -320,35 +361,35 @@ export function EpidemicDashboard({ onBack }: Props) {
     },
   ]
   const readingGuide = [
-    '先看官方公开资料，确认正式防护建议、就医入口和疾病背景。',
-    '再看地图热力与 7 日曲线，判断区域关注度是上行、持平还是回落。',
-    '最后结合匿名问诊信号与个人症状；如持续高热、胸痛或呼吸困难，请直接线下就医。',
+    `先看官方 / 公共来源，确认 ${currentCity} 最新公开建议、就医入口和疾病背景。`,
+    `再看 ${currentCity} 各区热力与 7 日曲线，判断是局部抬升、持续关注还是逐步回落。`,
+    '最后结合社区信号和个人症状；如持续高热、胸痛或呼吸困难，请直接线下就医。',
   ]
   const breakdownItems = activeDistrict
     ? [
         {
-          label: '症状上报',
+          label: '社区症状反馈',
           value: activeDistrict.riskBreakdown.symptomReports,
           color: '#38BDF8',
-          description: '来自社区分诊与自查上报的早期观察信号',
+          description: '来自本地匿名自查与社区分诊，帮助判断片区体感是否升温',
         },
         {
-          label: '趋势变化',
+          label: '近 7 日变化',
           value: activeDistrict.riskBreakdown.trendChange,
           color: '#A78BFA',
-          description: '观察近 7 日变化方向，判断是否持续抬升',
+          description: '观察近一周走势，判断当前是抬升、持平还是回落',
         },
         {
-          label: '环境因素',
+          label: '季节与环境',
           value: activeDistrict.riskBreakdown.environment,
           color: '#34D399',
-          description: '天气、季节与通勤等背景因子，仅作校准参考',
+          description: '天气、季节与通勤等背景因子，仅用于校准本地参考分',
         },
         {
-          label: '最近回访',
+          label: '复测与回访',
           value: activeDistrict.riskBreakdown.followUp,
           color: '#F59E0B',
-          description: '结合复测与回访恢复情况，评估是否需要继续关注',
+          description: '结合恢复速度与回访结果，判断是否仍需继续留意',
         },
       ]
     : []
@@ -356,16 +397,16 @@ export function EpidemicDashboard({ onBack }: Props) {
   const trendSignalItems = signalDistrict
     ? [
         {
-          label: '综合关注度',
+          label: '同城综合关注度',
           value: 100 + signalDistrict.trendPercent * 2 + Math.round(signalDistrict.riskScore / 3),
           delta:
             signalDistrict.trend === 'down'
               ? `-${Math.max(3, Math.round(signalDistrict.trendPercent * 0.45))}%`
               : `+${Math.max(4, Math.round(signalDistrict.trendPercent * 0.8))}%`,
-          note: `聚焦症状：${signalDistrict.topSymptoms.slice(0, 2).join(' / ')}`,
+          note: `当前片区高频不适：${signalDistrict.topSymptoms.slice(0, 2).join(' / ')}`,
         },
         {
-          label: '社区反馈密度',
+          label: '社区反馈热度',
           value: 40 + Math.round(signalDistrict.totalReports * 0.35),
           delta:
             signalDistrict.trend === 'down'
@@ -373,13 +414,114 @@ export function EpidemicDashboard({ onBack }: Props) {
               : signalDistrict.trend === 'stable'
               ? '持续关注'
               : '关注升温',
-          note: `${signalDistrict.district} 区域的匿名自查与社区反馈较集中`,
+          note: `${signalDistrict.district} 的匿名自查与社区反馈相对集中，更贴近居民体感`,
         },
         {
           label: '药房咨询波动',
           value: 20 + Math.round((signalDistrict.feverDrugIndex + signalDistrict.coughDrugIndex) / 4),
           delta: `${Math.round((signalDistrict.feverDrugIndex + signalDistrict.coughDrugIndex) / 2)} 指数`,
-          note: '夜间退烧与止咳咨询变化，用于判断服务需求',
+          note: '夜间退烧与止咳咨询变化，用来补充判断附近服务需求',
+        },
+      ]
+    : []
+  const cityContext = (() => {
+    if (citySelectionSource === 'manual') {
+      if (detectedCity && detectedCity !== currentCity) {
+        return {
+          badge: '手动查看中',
+          summary: `当前展示 ${currentCity}`,
+          detail: `定位识别到 ${detectedCity}，但你已切换为更关心的 ${currentCity}。`,
+        }
+      }
+
+      return {
+        badge: '手动查看中',
+        summary: `当前展示 ${currentCity}`,
+        detail: detectedCity
+          ? `定位识别同样落在 ${detectedCity}，你也可以随时切换到其他常看城市。`
+          : '你可以随时切换到其他常看城市，方便查看家人或工作地附近的变化。',
+      }
+    }
+
+    if (citySelectionSource === 'detected') {
+      return {
+        badge: '当前位置',
+        summary: `已根据当前位置切换到 ${currentCity}`,
+        detail: '如果你还想看看家人或工作地所在城市，可以直接在下拉中切换。',
+      }
+    }
+
+    if (locationStatus === 'detecting') {
+      return {
+        badge: '正在识别',
+        summary: `当前先展示 ${currentCity}`,
+        detail: '如果识别到你所在的支持城市，会自动切换；不想用定位也可以直接手动选择。',
+      }
+    }
+
+    if (locationStatus === 'blocked') {
+      return {
+        badge: '未读取位置',
+        summary: `当前先展示 ${currentCity}`,
+        detail: '没有获取到当前位置，先按常看城市展示；你仍可手动切换。',
+      }
+    }
+
+    if (locationStatus === 'unsupported') {
+      return {
+        badge: '定位不可用',
+        summary: `当前先展示 ${currentCity}`,
+        detail: '当前设备暂不支持定位，可直接手动选择城市观察范围。',
+      }
+    }
+
+    return {
+      badge: '默认城市',
+      summary: `当前先展示 ${currentCity}`,
+      detail: '你可以直接手动切换到其他支持城市，查看更关心的同城趋势。',
+    }
+  })()
+  const sourceLayerBadges = [
+    { label: '官方 / 公共来源', className: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' },
+    { label: '趋势 / 参考', className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-200' },
+    { label: '社区信号', className: 'border-amber-400/20 bg-amber-500/10 text-amber-200' },
+  ]
+  const mapLegendItems = [
+    { color: '#10B981', label: '相对平稳' },
+    { color: '#F59E0B', label: '持续关注' },
+    { color: '#F97316', label: '明显抬升' },
+    { color: '#EF4444', label: '优先留意' },
+  ]
+  const districtSourceCards = activeDistrict
+    ? [
+        {
+          id: 'official',
+          tier: '官方 / 公共来源',
+          title: dashboardSourceStatus.sourceLabel || '官方公开资料',
+          summary: dashboardSourceStatus.summary,
+          note: officialTimeLabel
+            ? `公开资料最近标注时间：${officialTimeLabel}`
+            : dashboardSourceStatus.note,
+          wrapperClass: 'border-emerald-400/20 bg-emerald-500/5',
+          tierClass: 'text-emerald-200',
+        },
+        {
+          id: 'trend',
+          tier: '趋势 / 参考',
+          title: `${activeDistrict.district}近 7 日热力与购药变化`,
+          summary: `趋势参考分 ${Math.round(activeDistrict.riskScore)}，${getTrendLabel(activeDistrict.trend)} ${formatTrendDelta(activeDistrict.trend, activeDistrict.trendPercent)}。`,
+          note: '用于比较同城片区变化，不等同于官方病例统计。',
+          wrapperClass: 'border-cyan-500/20 bg-cyan-500/5',
+          tierClass: 'text-cyan-200',
+        },
+        {
+          id: 'community',
+          tier: '社区信号',
+          title: activeDistrict.dataLabel,
+          summary: activeDistrict.sourceNote,
+          note: `最近整理时间：${activeDistrict.lastUpdated}`,
+          wrapperClass: 'border-amber-400/20 bg-amber-500/5',
+          tierClass: 'text-amber-200',
         },
       ]
     : []
@@ -387,26 +529,57 @@ export function EpidemicDashboard({ onBack }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col">
       {/* 顶部导航栏 */}
-      <div className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse mr-3 flex-shrink-0" />
-          <span className="text-white font-bold text-xl">{currentCity} · 公共健康观察</span>
-          <select
-            value={currentCity}
-            onChange={(e) => handleCityChange(e.target.value)}
-            className="ml-3 bg-white/10 text-white/80 text-xs px-2 py-1 rounded-lg border border-white/20 outline-none cursor-pointer"
-          >
-            {supportedCities.map(city => (
-              <option key={city} value={city} className="text-slate-900">{city}</option>
-            ))}
-          </select>
+      <div className="border-b border-white/10 px-6 py-4 flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+              <span className="text-white font-bold text-xl">{currentCity} · 同城健康观察</span>
+            </div>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <span className="bg-white/10 text-white/70 text-[10px] px-2 py-0.5 rounded-full">
+                {cityContext.badge}
+              </span>
+              <span className="text-white/75 text-xs">{cityContext.summary}</span>
+              {detectedCity && (
+                <span className="text-white/35 text-[11px]">
+                  定位识别：{detectedCity}
+                  {citySelectionSource === 'manual' && detectedCity !== currentCity ? '（当前已手动切换）' : ''}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-white/45 leading-relaxed">{cityContext.detail}</p>
+          </div>
+
+          <label className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 min-w-[190px]">
+            <span className="block text-[10px] tracking-[0.24em] uppercase text-white/35">
+              城市观察范围
+            </span>
+            <select
+              value={currentCity}
+              onChange={(e) => handleCityChange(e.target.value)}
+              className="mt-2 w-full bg-slate-950/60 text-white text-sm px-3 py-2 rounded-xl border border-white/10 outline-none cursor-pointer"
+            >
+              {supportedCities.map(city => (
+                <option key={city} value={city} className="text-slate-900">{city}</option>
+              ))}
+            </select>
+            <span className="mt-2 block text-[10px] text-white/35">支持自动识别，也支持手动切换常看城市</span>
+          </label>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap justify-end ml-auto">
           <span className="text-white/60 text-sm font-mono">{currentTime}</span>
-          <span className="bg-white/10 text-white/50 text-xs px-3 py-1 rounded-full hidden md:inline">
-            官方资料对照 · 综合趋势 · 健康动态
-          </span>
+          <div className="hidden xl:flex items-center gap-2 flex-wrap">
+            {sourceLayerBadges.map(item => (
+              <span
+                key={item.label}
+                className={`border text-[10px] px-2.5 py-1 rounded-full ${item.className}`}
+              >
+                {item.label}
+              </span>
+            ))}
+          </div>
           <button
             onClick={onBack}
             className="flex items-center gap-1 text-white/60 hover:text-white text-sm cursor-pointer transition-colors"
@@ -425,7 +598,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-white">{cityOverview.totalReports}</p>
-                <p className="text-white/50 text-xs mt-1">近 24 小时健康动态</p>
+                <p className="text-white/50 text-xs mt-1">近 24 小时本地问诊与自查</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                 <Activity size={18} className="text-blue-400" />
@@ -437,7 +610,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-orange-400">{cityOverview.alertDistricts}</p>
-                <p className="text-white/50 text-xs mt-1">近期关注区域</p>
+                <p className="text-white/50 text-xs mt-1">建议多看一眼的片区</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle size={18} className="text-orange-400" />
@@ -449,7 +622,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-3xl font-bold text-red-400">{cityOverview.criticalDistricts}</p>
-                <p className="text-white/50 text-xs mt-1">重点留意区域</p>
+                <p className="text-white/50 text-xs mt-1">优先留意的片区</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
                 <AlertOctagon size={18} className="text-red-400" />
@@ -461,7 +634,7 @@ export function EpidemicDashboard({ onBack }: Props) {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xl font-bold text-white">{cityOverview.dominantSymptom}</p>
-                <p className="text-white/50 text-xs mt-1">近期高频症状</p>
+                <p className="text-white/50 text-xs mt-1">本地高频不适</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
                 <TrendingUp size={18} className="text-green-400" />
@@ -478,24 +651,24 @@ export function EpidemicDashboard({ onBack }: Props) {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-amber-100 text-sm font-semibold">近期关注</span>
+                  <span className="text-amber-100 text-sm font-semibold">今日同城重点观察</span>
                   <span className="bg-amber-400/15 text-amber-200 text-[11px] px-2 py-0.5 rounded-full">
                     {focusDistrict.district}
                   </span>
                   <span className="text-white/35 text-[11px]">
-                    趋势参考分 {Math.round(focusDistrict.riskScore)} · {getRiskLabel(focusDistrict.riskLevel)}
+                    本地参考分 {Math.round(focusDistrict.riskScore)} · {getRiskLabel(focusDistrict.riskLevel)}
                   </span>
                 </div>
                 <p className="text-white/75 text-xs mt-1 leading-relaxed">
-                  近 7 日{focusDistrict.topSymptoms.slice(0, 2).join('、')}相关分诊与回访信号持续抬升，
-                  当前主要由症状上报 {focusDistrict.riskBreakdown.symptomReports} 分和趋势变化{' '}
-                  {focusDistrict.riskBreakdown.trendChange} 分驱动，建议先核对官方公开资料，再评估社区问诊与接诊压力。
+                  近 7 日 {focusDistrict.district} 的 {focusDistrict.topSymptoms.slice(0, 2).join('、')} 相关反馈持续抬升，
+                  当前主要由社区症状反馈 {focusDistrict.riskBreakdown.symptomReports} 分和近 7 日变化{' '}
+                  {focusDistrict.riskBreakdown.trendChange} 分带动。建议先核对官方 / 公共资料，再结合社区与药房信号判断。
                 </p>
               </div>
             </div>
             <div className="hidden xl:flex items-center gap-2 flex-wrap justify-end">
               <span className="bg-white/8 border border-white/10 text-white/65 text-[11px] px-2.5 py-1 rounded-full">
-                综合趋势参考
+                趋势 / 参考
               </span>
               {focusDistrict.alertReasons.slice(0, 2).map(reason => (
                 <span
@@ -517,8 +690,8 @@ export function EpidemicDashboard({ onBack }: Props) {
               <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3 flex-shrink-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Map size={16} className="text-white/60" />
-                  <span className="text-white font-medium text-sm">各区健康趋势热力图</span>
-                  <span className="text-white/30 text-[11px] hidden md:inline">趋势参考层 · 点击区域查看解释卡</span>
+                  <span className="text-white font-medium text-sm">{currentCity}各区近期关注热力图</span>
+                  <span className="text-white/30 text-[11px] hidden md:inline">趋势 / 参考 · 点击片区查看本地观察卡</span>
                   {activeDistrict && (
                     <span
                       className="text-[10px] px-2 py-0.5 rounded-full border"
@@ -534,14 +707,9 @@ export function EpidemicDashboard({ onBack }: Props) {
                 </div>
                 <div className="flex items-center gap-3 flex-wrap justify-end">
                   <span className="bg-cyan-500/15 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full">
-                    趋势参考层
+                    趋势 / 参考
                   </span>
-                  {[
-                    { color: '#10B981', label: '低风险' },
-                    { color: '#F59E0B', label: '中风险' },
-                    { color: '#F97316', label: '高风险' },
-                    { color: '#EF4444', label: '紧急' },
-                  ].map(item => (
+                  {mapLegendItems.map(item => (
                     <div key={item.label} className="flex items-center gap-1">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
                       <span className="text-white/40 text-xs">{item.label}</span>
@@ -555,12 +723,12 @@ export function EpidemicDashboard({ onBack }: Props) {
                   <div className="absolute inset-0 flex items-center justify-center bg-slate-950/65 px-5 text-center">
                     <div className="max-w-sm rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-4">
                       <p className="text-sm font-semibold text-white">
-                        {mapStatus === 'loading' ? '正在载入区域热力图' : '已切换为趋势参考视图'}
+                        {mapStatus === 'loading' ? `正在整理${currentCity}各区观察图` : `先看${currentCity}同城趋势摘要`}
                       </p>
                       <p className="mt-2 text-[11px] leading-relaxed text-white/65">{mapNote}</p>
                       {focusDistrict && (
                         <p className="mt-3 text-[11px] leading-relaxed text-cyan-200">
-                          当前重点关注 {focusDistrict.district}，高频症状为
+                          当前先留意 {focusDistrict.district}，高频不适为
                           {focusDistrict.topSymptoms.slice(0, 2).join('、')}。
                         </p>
                       )}
@@ -570,8 +738,8 @@ export function EpidemicDashboard({ onBack }: Props) {
                 {focusDistrict && (
                   <div className="absolute left-4 bottom-4 max-w-xs rounded-2xl border border-white/10 bg-slate-950/75 backdrop-blur px-3 py-2.5 shadow-2xl">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-white/85 text-xs font-medium">热点摘要</span>
-                      <span className="text-[10px] text-white/40">Top 1 区域</span>
+                      <span className="text-white/85 text-xs font-medium">{currentCity}同城热点摘要</span>
+                      <span className="text-[10px] text-white/40">当前最值得先看</span>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-sm font-semibold text-white">{focusDistrict.district}</span>
@@ -586,8 +754,8 @@ export function EpidemicDashboard({ onBack }: Props) {
                       </span>
                     </div>
                     <p className="text-[11px] text-white/65 mt-1 leading-relaxed">
-                      {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，趋势{formatTrendDelta(focusDistrict.trend, focusDistrict.trendPercent)}，
-                      建议结合下方信号卡和官方资料综合判断。
+                      {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，近 7 日变化
+                      {formatTrendDelta(focusDistrict.trend, focusDistrict.trendPercent)}，建议结合下方三类信息分层综合判断。
                     </p>
                   </div>
                 )}
@@ -598,7 +766,7 @@ export function EpidemicDashboard({ onBack }: Props) {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <AlertTriangle size={16} className="text-amber-300" />
-                  <span className="text-white font-medium text-sm">热点区域摘要</span>
+                  <span className="text-white font-medium text-sm">同城热点摘要</span>
                 </div>
                 <div className="space-y-2.5">
                   {hotspotSummary.map((district, index) => (
@@ -636,14 +804,14 @@ export function EpidemicDashboard({ onBack }: Props) {
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} className="text-emerald-300" />
-                    <span className="text-white font-medium text-sm">数据口径与阅读方式</span>
+                    <span className="text-white font-medium text-sm">信息分层与阅读方式</span>
                   </div>
                   <span className="bg-white/10 text-white/50 text-[10px] px-2 py-0.5 rounded-full">
                     分层展示
                   </span>
                 </div>
                 <p className="text-[11px] text-white/60 leading-relaxed">
-                  这张图将官方公开资料、趋势参考层和社区问诊信号分开展示，帮助你快速分辨哪些信息用于核对正式建议，哪些信息用于观察变化方向。
+                  这张图把官方 / 公共来源、趋势 / 参考和社区信号分开展示，方便你分辨哪些信息用来核对正式建议，哪些信息用来看同城变化方向。
                 </p>
                 <div className="space-y-2.5 mt-3">
                   {sourceTierCards.map(card => (
@@ -679,16 +847,16 @@ export function EpidemicDashboard({ onBack }: Props) {
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <TrendingUp size={16} className="text-cyan-300" />
-                    <span className="text-white font-medium text-sm">趋势参考信号</span>
+                    <span className="text-white font-medium text-sm">同城趋势参考信号</span>
                   </div>
                   <span className="bg-cyan-500/15 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full">
-                    估算口径
+                    趋势 / 参考
                   </span>
                 </div>
                 {signalDistrict && (
                   <p className="text-[11px] text-white/60 leading-relaxed mb-3">
                     以 <span className="text-white/85">{signalDistrict.district}</span> 为当前观察窗口，
-                    当前结合社区分诊、购药咨询与季节因子估算近期关注度，用于判断变化方向，不代表官方病例统计。
+                    当前结合社区分诊、购药咨询与季节因子估算近期关注度，用来看变化方向，不代表官方病例统计。
                   </p>
                 )}
                 <div className="space-y-2.5">
@@ -704,7 +872,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   ))}
                 </div>
                 <p className="text-[10px] text-white/35 mt-3">
-                  注：该卡用于补充用户体感与服务需求变化，建议与官方公开资料和线下接诊情况交叉判断。
+                  注：该卡更贴近居民体感与服务需求变化，建议与官方公开资料和线下接诊情况交叉判断。
                 </p>
               </div>
             </div>
@@ -717,9 +885,9 @@ export function EpidemicDashboard({ onBack }: Props) {
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
                   <BarChart2 size={16} className="text-white/60" />
-                  <span className="text-white font-medium text-sm">区域关注排行</span>
+                  <span className="text-white font-medium text-sm">各区观察优先级</span>
                 </div>
-                <span className="text-white/30 text-[11px]">基于趋势参考分</span>
+                <span className="text-white/30 text-[11px]">按本地参考分排序</span>
               </div>
               {sortedDistricts.map((d, i) => (
                 <div
@@ -760,7 +928,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   <BarChart2 size={16} className="text-white/60" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-medium text-sm">{activeDistrict.district} · 趋势解释卡</span>
+                      <span className="text-white font-medium text-sm">{activeDistrict.district} · 本地观察卡</span>
                       <span
                         className="text-[11px] px-2 py-0.5 rounded-full"
                         style={{
@@ -772,21 +940,21 @@ export function EpidemicDashboard({ onBack }: Props) {
                       </span>
                     </div>
                     <p className="text-white/35 text-[11px] mt-1">
-                      趋势参考分 = 症状上报 + 趋势变化 + 环境因素 + 最近回访
+                      这张卡把官方 / 公共来源、趋势 / 参考和社区信号分开说明，便于判断“正式建议”“变化方向”“居民体感”分别来自哪里。
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="rounded-xl bg-slate-950/40 border border-white/10 p-3">
-                    <p className="text-white/40 text-[11px]">趋势参考分</p>
+                    <p className="text-white/40 text-[11px]">近 7 日本地参考分</p>
                     <p className="text-2xl font-bold text-white mt-1">{Math.round(activeDistrict.riskScore)}</p>
                     <p className="text-xs mt-1" style={{ color: getRiskColor(activeDistrict.riskLevel) }}>
                       {getTrendLabel(activeDistrict.trend)} · {activeDistrict.trendPercent}%
                     </p>
                   </div>
                   <div className="rounded-xl bg-slate-950/40 border border-white/10 p-3">
-                    <p className="text-white/40 text-[11px]">最近主要症状</p>
+                    <p className="text-white/40 text-[11px]">居民近期高频不适</p>
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {activeDistrict.topSymptoms.map(symptom => (
                         <span
@@ -822,7 +990,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-white/10">
-                  <p className="text-white/45 text-[11px] mb-1.5">告警原因</p>
+                  <p className="text-white/45 text-[11px] mb-1.5">为什么近期要多看一眼</p>
                   <div className="space-y-1.5">
                     {activeDistrict.alertReasons.map(reason => (
                       <div key={reason} className="flex items-start gap-2 text-xs text-white/75">
@@ -834,17 +1002,23 @@ export function EpidemicDashboard({ onBack }: Props) {
 
                   <div className="mt-3 rounded-xl bg-slate-950/40 border border-white/10 p-2.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-cyan-200 text-[11px]">数据来源说明</span>
+                      <span className="text-cyan-200 text-[11px]">这张区域卡的信息来源</span>
                       <span className="bg-white/10 text-white/60 text-[10px] px-2 py-0.5 rounded-full">
-                        {activeDistrict.dataLabel}
+                        分层查看
                       </span>
                     </div>
-                    <p className="text-white/60 text-[11px] leading-relaxed mt-1">
-                      {activeDistrict.sourceNote}
-                    </p>
-                    <p className="text-white/35 text-[10px] mt-1">
-                      更新时间：{activeDistrict.lastUpdated}
-                    </p>
+                    <div className="grid gap-2 mt-2.5">
+                      {districtSourceCards.map(card => (
+                        <div key={card.id} className={`rounded-xl border p-2.5 ${card.wrapperClass}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[10px] font-medium ${card.tierClass}`}>{card.tier}</span>
+                          </div>
+                          <p className="text-white/85 text-[11px] mt-1">{card.title}</p>
+                          <p className="text-white/60 text-[11px] leading-relaxed mt-1">{card.summary}</p>
+                          <p className="text-white/35 text-[10px] leading-relaxed mt-2">{card.note}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -855,7 +1029,7 @@ export function EpidemicDashboard({ onBack }: Props) {
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={16} className="text-white/60" />
                 <span className="text-white font-medium text-sm">
-                  {activeDistrictName ? `${activeDistrictName} · 7日购药趋势` : '点击区域查看趋势'}
+                  {activeDistrictName ? `${activeDistrictName} · 7 日购药趋势` : '点击片区查看 7 日趋势'}
                 </span>
               </div>
               <div style={{ height: '140px' }}>
@@ -952,14 +1126,14 @@ export function EpidemicDashboard({ onBack }: Props) {
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} className="text-emerald-300" />
-                    <span className="text-white font-medium text-sm">官方公开资料对照</span>
+                    <span className="text-white font-medium text-sm">官方 / 公共来源对照</span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="bg-emerald-500/15 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full">
                       {officialFreshnessLabel}
                     </span>
                     {officialTimeLabel && (
-                      <span className="text-white/35 text-[10px]">最近资料时间：{officialTimeLabel}</span>
+                      <span className="text-white/35 text-[10px]">公开资料最近标注时间：{officialTimeLabel}</span>
                     )}
                   </div>
                 </div>
@@ -974,7 +1148,12 @@ export function EpidemicDashboard({ onBack }: Props) {
             <OfficialSourceComparison
               records={dashboardSources}
               theme="dark"
-              subtitle="权威对照层：资料来自疾控中心、卫健委及 WHO 等公开渠道，适合核对正式建议、就医路径和疾病背景。"
+              title={`${currentCity} 官方建议与就医入口`}
+              subtitle={
+                hasLocalOfficialSource
+                  ? `优先展示 ${currentCity} 本地官方入口，再补国家级与国际参考，方便先核对就医路径和正式建议。`
+                  : `暂未接入 ${currentCity} 本地官方来源，当前先提供国家级公开资料作为稳妥参考。`
+              }
             />
           </div>
         </div>

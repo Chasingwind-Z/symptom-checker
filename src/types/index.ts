@@ -85,6 +85,8 @@ export interface OfficialSourceRecord {
   summary: string;
   url?: string;
   linkLabel?: string;
+  scope?: 'local' | 'national' | 'international';
+  city?: string;
 }
 
 export type OfficialSourceFetchState = 'idle' | 'loading' | 'ready' | 'error';

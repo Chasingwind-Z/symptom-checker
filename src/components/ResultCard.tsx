@@ -584,6 +584,7 @@ export function ResultCard({
       webSearchNote: webNote,
       webQuery: typeof webPayload?.query === 'string' ? webPayload.query : '',
       officialSourceContext: {
+        city: profile?.city,
         level: result.level,
         departments: result.departments,
         reason: `${result.reason} ${symptomNames.join(' ')}`.trim(),
@@ -597,7 +598,7 @@ export function ResultCard({
           })
         : null,
     };
-  }, [messages, result]);
+  }, [messages, profile?.city, result]);
   const { records: officialSources } =
     useOfficialSourceComparisonSafe(officialSourceContext);
   const personalizedInsights = useMemo(

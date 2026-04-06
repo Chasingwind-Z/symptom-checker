@@ -8,9 +8,11 @@ import type {
   OfficialSourceSyncStatus,
   RiskLevel,
 } from '../types';
+import { getActiveCity } from './epidemicDataEngine';
 import { callGatewayJson, hasGatewayRoute } from './serverGateway';
 
 export interface OfficialSourceContext {
+  city?: string;
   level?: RiskLevel;
   departments?: string[];
   reason?: string;
@@ -22,6 +24,7 @@ interface SeededOfficialSource extends OfficialSourceRecord {
   topics: string[];
   departments: string[];
   levels?: RiskLevel[];
+  cities?: string[];
   featuredOnDashboard?: boolean;
   priority?: number;
 }
@@ -51,21 +54,31 @@ const DEFAULT_MAX_ITEMS = 3;
 const DEFAULT_SOURCE_LABEL = '官方公开资料对照';
 const gatewayAvailable = hasGatewayRoute('official-source-fetch');
 
+const SUPPORTED_CITY_ALIASES: Record<string, string[]> = {
+  苏州: ['苏州', '苏州市'],
+  北京: ['北京', '北京市'],
+  上海: ['上海', '上海市'],
+  广州: ['广州', '广州市'],
+  深圳: ['深圳', '深圳市'],
+  南京: ['南京', '南京市'],
+  杭州: ['杭州', '杭州市'],
+};
+
 const officialSourceMemoryCache = new Map<string, OfficialSourceBundle>();
 const officialSourceRequestCache = new Map<string, Promise<OfficialSourceBundle>>();
 
 const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
   {
     id: 'china-cdc-flu-weekly',
-    title: '中国疾控中心：流感与呼吸道传染病专题',
+    title: '中国疾控中心：流感与急性呼吸道传染病专题',
     sourceLabel: '中国疾病预防控制中心',
     sourceType: '疾控专题',
     status: '官方资料',
     lastUpdated: '2025-01-12T09:00:00+08:00',
     summary:
-      '适合对照发热、咳嗽、咽痛等症状的季节性变化；若出现持续高热、气促或精神状态变差，应尽快线下就医。',
+      '适合对照发热、咳嗽、咽痛等呼吸道症状的季节性变化；若出现持续高热、气促或精神状态变差，应尽快线下就医。',
     url: 'https://www.chinacdc.cn/jkzt/crb/lxxgm/',
-    linkLabel: '查看疾控流感专题',
+    linkLabel: '查看流感专题原文',
     topics: ['发热', '咳嗽', '咽痛', '流感', '呼吸道', '鼻塞'],
     departments: ['呼吸内科', '感染科', '全科医学科'],
     levels: ['green', 'yellow', 'orange'],
@@ -82,7 +95,7 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     summary:
       '当出现高热不退、气促、基础病加重，或老人、儿童持续不适时，建议优先前往发热门诊或急诊评估。',
     url: 'http://bmfw.www.gov.cn/yljgcx/index.html',
-    linkLabel: '查询附近发热门诊',
+    linkLabel: '进入发热门诊查询',
     topics: ['高热', '呼吸困难', '发热', '咳嗽', '胸闷'],
     departments: ['呼吸内科', '急诊科', '感染科'],
     levels: ['yellow', 'orange', 'red'],
@@ -96,9 +109,9 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     status: '健康知识',
     lastUpdated: '2025-01-11T08:30:00+08:00',
     summary:
-      '涵盖常见呼吸道、消化道传染病的预防知识，包括手卫生、口罩佩戴、居家隔离与就医时机判断。',
+      '涵盖常见呼吸道、消化道传染病的预防知识，适合继续核对手卫生、口罩佩戴、居家隔离与就医时机。',
     url: 'https://www.chinacdc.cn/jkzt/crb/',
-    linkLabel: '查看传染病防治专题',
+    linkLabel: '查看疾控健康知识',
     topics: ['呼吸道', '发热', '咳嗽', '传染病', '预防'],
     departments: ['呼吸内科', '儿科', '全科医学科'],
     levels: ['green', 'yellow', 'orange'],
@@ -113,9 +126,9 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     status: '背景资料',
     lastUpdated: '2024-12-19T12:00:00+08:00',
     summary:
-      '用于理解全球季节性流感和急性呼吸道感染的公共卫生背景，帮助判断趋势，但不替代个体诊断。',
+      '适合补充了解全球季节性流感与急性呼吸道感染背景，帮助理解趋势，但不替代个体诊断。',
     url: 'https://www.who.int/news-room/fact-sheets/detail/influenza-(seasonal)',
-    linkLabel: '查看 WHO 流感概述',
+    linkLabel: '查看 WHO 官方说明',
     topics: ['流感', '呼吸道', '发热', '疲劳', '咳嗽'],
     departments: ['呼吸内科', '感染科'],
     levels: ['green', 'yellow', 'orange'],
@@ -130,9 +143,9 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     status: '防控参考',
     lastUpdated: '2024-11-28T09:30:00+08:00',
     summary:
-      '若腹泻、呕吐、腹痛伴脱水风险，应及时补液，并留意是否需要消化内科或急诊进一步评估。',
+      '若腹泻、呕吐、腹痛伴脱水风险，应及时补液，并继续核对是否需要消化内科或急诊进一步评估。',
     url: 'https://www.chinacdc.cn/jkzt/crb/nrbdyzgr/',
-    linkLabel: '查看诺如防控指南',
+    linkLabel: '查看诺如防护要点',
     topics: ['腹泻', '呕吐', '腹痛', '恶心', '肠胃'],
     departments: ['消化内科', '急诊科'],
     levels: ['green', 'yellow', 'orange'],
@@ -148,7 +161,7 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     summary:
       '若出现口角歪斜、单侧无力、言语不清等急性神经系统症状，应立即拨打 120，不建议等待观察。',
     url: 'https://www.chinacdc.cn/jkzt/mxfcrjbhsh/nzcfjkjy/',
-    linkLabel: '查看卒中防治知识',
+    linkLabel: '查看卒中 FAST 识别',
     topics: ['头晕', '头痛', '言语不清', '肢体无力', '卒中'],
     departments: ['神经内科', '急诊科'],
     levels: ['orange', 'red'],
@@ -164,11 +177,147 @@ const SEEDED_OFFICIAL_SOURCES: SeededOfficialSource[] = [
     summary:
       '胸痛持续、伴大汗或呼吸困难时，应尽快启动急诊绿色通道，不建议自行驾车或延误观察。',
     url: 'https://www.chinacdc.cn/jkzt/mxfcrjbhsh/xxgjbfzjkjy/',
-    linkLabel: '查看心血管急救知识',
+    linkLabel: '查看胸痛急救要点',
     topics: ['胸痛', '胸闷', '心慌', '呼吸困难', '大汗'],
     departments: ['心内科', '急诊科'],
     levels: ['orange', 'red'],
     priority: 5,
+  },
+  {
+    id: 'suzhou-health-service',
+    title: '苏州市卫健委：本地就医服务与健康公告',
+    sourceLabel: '苏州市卫生健康委员会',
+    sourceType: '苏州就医入口',
+    status: '本地官方入口',
+    lastUpdated: '2025-01-15T09:00:00+08:00',
+    summary:
+      '适合在苏州场景下继续核对发热门诊、门急诊安排、医疗服务公告与本地健康提醒，作为线下就医前的官方入口。',
+    url: 'http://wjw.suzhou.gov.cn/',
+    linkLabel: '进入苏州卫健委入口',
+    topics: ['发热门诊', '门诊', '急诊', '就医', '医疗服务', '发热'],
+    departments: ['全科医学科', '急诊科', '呼吸内科'],
+    levels: ['yellow', 'orange', 'red'],
+    cities: ['苏州'],
+    priority: 4,
+  },
+  {
+    id: 'suzhou-cdc-alerts',
+    title: '苏州疾控：季节性传染病与健康提醒',
+    sourceLabel: '苏州市疾病预防控制中心',
+    sourceType: '苏州疾控提醒',
+    status: '本地防护参考',
+    lastUpdated: '2025-01-14T08:30:00+08:00',
+    summary:
+      '适合在苏州场景下继续核对流感、诺如等季节性疾病提醒与个人防护建议，帮助判断是否需要进一步线下咨询。',
+    url: 'http://www.szcdc.cn/',
+    linkLabel: '查看苏州疾控提醒',
+    topics: ['流感', '呼吸道', '发热', '咳嗽', '腹泻', '呕吐', '预防'],
+    departments: ['呼吸内科', '感染科', '消化内科', '全科医学科'],
+    levels: ['green', 'yellow', 'orange'],
+    cities: ['苏州'],
+    priority: 4,
+  },
+  {
+    id: 'beijing-health-service',
+    title: '北京市卫健委：医疗服务与健康信息发布',
+    sourceLabel: '北京市卫生健康委员会',
+    sourceType: '北京就医入口',
+    status: '本地官方入口',
+    lastUpdated: '2025-01-15T09:00:00+08:00',
+    summary:
+      '适合在北京场景下继续核对发热门诊、医疗机构服务与市级健康公告，帮助更快找到本地官方入口。',
+    url: 'https://wjw.beijing.gov.cn/',
+    linkLabel: '进入北京卫健委入口',
+    topics: ['发热门诊', '门诊', '急诊', '就医', '医疗服务', '发热'],
+    departments: ['全科医学科', '急诊科', '呼吸内科'],
+    levels: ['yellow', 'orange', 'red'],
+    cities: ['北京'],
+    priority: 3,
+  },
+  {
+    id: 'shanghai-health-service',
+    title: '上海市卫健委：医疗服务与健康公告',
+    sourceLabel: '上海市卫生健康委员会',
+    sourceType: '上海就医入口',
+    status: '本地官方入口',
+    lastUpdated: '2025-01-15T09:00:00+08:00',
+    summary:
+      '适合在上海场景下继续核对门急诊服务、发热就诊提示与市级卫生公告，帮助尽快进入本地官方信息链路。',
+    url: 'https://wsjkw.sh.gov.cn/',
+    linkLabel: '进入上海卫健委入口',
+    topics: ['发热门诊', '门诊', '急诊', '就医', '医疗服务', '发热'],
+    departments: ['全科医学科', '急诊科', '呼吸内科'],
+    levels: ['yellow', 'orange', 'red'],
+    cities: ['上海'],
+    priority: 3,
+  },
+  {
+    id: 'guangzhou-health-service',
+    title: '广州市卫健委：医疗服务与健康公告',
+    sourceLabel: '广州市卫生健康委员会',
+    sourceType: '广州就医入口',
+    status: '本地官方入口',
+    lastUpdated: '2025-01-15T09:00:00+08:00',
+    summary:
+      '适合在广州场景下继续核对发热就诊提示、门急诊服务与市级健康公告，帮助更快进入本地官方入口。',
+    url: 'http://wjw.gz.gov.cn/',
+    linkLabel: '进入广州卫健委入口',
+    topics: ['发热门诊', '门诊', '急诊', '就医', '医疗服务', '发热'],
+    departments: ['全科医学科', '急诊科', '呼吸内科'],
+    levels: ['yellow', 'orange', 'red'],
+    cities: ['广州'],
+    priority: 3,
+  },
+  {
+    id: 'shenzhen-health-service',
+    title: '深圳市卫健委：医疗服务与健康公告',
+    sourceLabel: '深圳市卫生健康委员会',
+    sourceType: '深圳就医入口',
+    status: '本地官方入口',
+    lastUpdated: '2025-01-15T09:00:00+08:00',
+    summary:
+      '适合在深圳场景下继续核对发热门诊、医疗机构服务与最新健康公告，帮助尽快进入本地官方信息入口。',
+    url: 'https://wjw.sz.gov.cn/',
+    linkLabel: '进入深圳卫健委入口',
+    topics: ['发热门诊', '门诊', '急诊', '就医', '医疗服务', '发热'],
+    departments: ['全科医学科', '急诊科', '呼吸内科'],
+    levels: ['yellow', 'orange', 'red'],
+    cities: ['深圳'],
+    priority: 3,
+  },
+  {
+    id: 'nanjing-health-service',
+    title: '南京市卫健委：医疗服务与健康公告',
+    sourceLabel: '南京市卫生健康委员会',
+    sourceType: '南京就医入口',
+    status: '本地官方入口',
+    lastUpdated: '2025-01-15T09:00:00+08:00',
+    summary:
+      '适合在南京场景下继续核对门急诊服务、发热就诊提示与市级健康公告，帮助快速找到本地官方入口。',
+    url: 'https://wjw.nanjing.gov.cn/',
+    linkLabel: '进入南京卫健委入口',
+    topics: ['发热门诊', '门诊', '急诊', '就医', '医疗服务', '发热'],
+    departments: ['全科医学科', '急诊科', '呼吸内科'],
+    levels: ['yellow', 'orange', 'red'],
+    cities: ['南京'],
+    priority: 3,
+  },
+  {
+    id: 'hangzhou-health-service',
+    title: '杭州市卫健委：医疗服务与健康公告',
+    sourceLabel: '杭州市卫生健康委员会',
+    sourceType: '杭州就医入口',
+    status: '本地官方入口',
+    lastUpdated: '2025-01-15T09:00:00+08:00',
+    summary:
+      '适合在杭州场景下继续核对发热门诊、门急诊安排与市级健康公告，帮助更顺畅地进入本地官方就医入口。',
+    url: 'http://wsjkw.hangzhou.gov.cn/',
+    linkLabel: '进入杭州卫健委入口',
+    topics: ['发热门诊', '门诊', '急诊', '就医', '医疗服务', '发热'],
+    departments: ['全科医学科', '急诊科', '呼吸内科'],
+    levels: ['yellow', 'orange', 'red'],
+    cities: ['杭州'],
+    priority: 3,
   },
 ];
 
@@ -176,8 +325,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function normalizeCityName(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  return Object.entries(SUPPORTED_CITY_ALIASES).find(([, aliases]) =>
+    aliases.some((alias) => normalized.includes(alias))
+  )?.[0];
+}
+
 function createKeywordText(context: OfficialSourceContext): string {
-  return [context.reason ?? '', ...(context.departments ?? []), ...(context.focusSymptoms ?? [])]
+  return [context.city ?? '', context.reason ?? '', ...(context.departments ?? []), ...(context.focusSymptoms ?? [])]
     .join(' ')
     .toLowerCase();
 }
@@ -185,6 +349,10 @@ function createKeywordText(context: OfficialSourceContext): string {
 function scoreSource(source: SeededOfficialSource, context: OfficialSourceContext): number {
   const keywordText = createKeywordText(context);
   let score = source.priority ?? 0;
+
+  if (source.cities?.length) {
+    score += context.city && source.cities.includes(context.city) ? 5 : -3;
+  }
 
   if (context.level && source.levels?.includes(context.level)) {
     score += 3;
@@ -275,7 +443,13 @@ function createSyncStatus(
 }
 
 function normalizeContext(context: OfficialSourceContext): OfficialSourceContext {
+  const city = normalizeCityName(
+    context.city ??
+      [context.reason ?? '', ...(context.departments ?? []), ...(context.focusSymptoms ?? [])].join(' ')
+  );
+
   return {
+    city,
     level: context.level,
     departments: Array.from(new Set((context.departments ?? []).filter(Boolean))),
     reason: context.reason?.trim() ?? '',
@@ -288,6 +462,7 @@ function getContextKey(context: OfficialSourceContext): string {
   const normalized = normalizeContext(context);
 
   return JSON.stringify({
+    city: normalized.city ?? '',
     level: normalized.level ?? '',
     departments: normalized.departments ?? [],
     reason: normalized.reason ?? '',
@@ -397,7 +572,16 @@ function buildOfficialSourceQuery(context: OfficialSourceContext): string {
       ? '就医提示'
       : '健康提醒';
 
-  return [...focusTerms, normalized.reason ?? '', riskHint, '官方', '卫健委', '疾控']
+  return [
+    normalized.city ?? '',
+    ...focusTerms,
+    normalized.reason ?? '',
+    riskHint,
+    normalized.city ? `${normalized.city} 本地就医` : '',
+    '官方',
+    '卫健委',
+    '疾控',
+  ]
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -684,6 +868,7 @@ export function getOfficialSourceComparison(context: OfficialSourceContext): Off
 
 export function getDashboardOfficialSources(focusSymptoms: string[] = []): OfficialSourceRecord[] {
   return getOfficialSourceComparison({
+    city: getActiveCity(),
     level: 'yellow',
     departments: ['呼吸内科', '全科医学科'],
     focusSymptoms,
@@ -730,6 +915,7 @@ export async function syncOfficialSourceBundle(
           query: buildOfficialSourceQuery(normalized),
           maxItems: normalized.maxItems ?? DEFAULT_MAX_ITEMS,
           maxResults: normalized.maxItems ?? DEFAULT_MAX_ITEMS,
+          city: normalized.city ?? '',
           level: normalized.level,
           departments: normalized.departments ?? [],
           focusSymptoms: normalized.focusSymptoms ?? [],
@@ -817,14 +1003,16 @@ export function useOfficialSourceComparison(context: OfficialSourceContext): Off
 }
 
 export function useDashboardOfficialSources(focusSymptoms: string[] = []): OfficialSourceBundle {
+  const city = getActiveCity();
   const context = useMemo(
     () => ({
+      city,
       level: 'yellow' as const,
       departments: ['呼吸内科', '全科医学科'],
       focusSymptoms,
       maxItems: 3,
     }),
-    [focusSymptoms]
+    [city, focusSymptoms]
   );
 
   return useOfficialSourceComparison(context);

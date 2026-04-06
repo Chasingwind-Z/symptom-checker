@@ -61,6 +61,19 @@ interface CityDistrictConfig {
   districts: Record<string, [number, number]>
 }
 
+interface CitySignalProfile {
+  name: string
+  respiratoryBias: number
+  giBias: number
+  densityBoost: number
+  mobilityBoost: number
+  hotspotDistricts: [string, string]
+  symptomPool: string[]
+  citySummary: string
+}
+
+const ACTIVE_CITY_STORAGE_KEY = 'symptom_active_city_v1'
+
 const CITY_CONFIGS: Record<string, CityDistrictConfig> = {
   苏州: {
     name: '苏州',
@@ -187,11 +200,102 @@ const CITY_CONFIGS: Record<string, CityDistrictConfig> = {
   },
 }
 
-let _activeCity = '苏州'
+const CITY_SIGNAL_PROFILES: Record<string, CitySignalProfile> = {
+  苏州: {
+    name: '苏州',
+    respiratoryBias: 1.08,
+    giBias: 1.02,
+    densityBoost: 1.06,
+    mobilityBoost: 1.08,
+    hotspotDistricts: ['工业园区', '姑苏区'],
+    symptomPool: ['咽痛', '咳嗽', '发热', '乏力', '鼻塞', '腹泻'],
+    citySummary: '园区通勤、商旅往来和季节变化更容易放大呼吸道与门诊服务压力。',
+  },
+  北京: {
+    name: '北京',
+    respiratoryBias: 1.14,
+    giBias: 0.96,
+    densityBoost: 1.12,
+    mobilityBoost: 1.1,
+    hotspotDistricts: ['朝阳区', '海淀区'],
+    symptomPool: ['发热', '咳嗽', '咽痛', '头痛', '乏力', '鼻塞'],
+    citySummary: '通勤半径大、季节切换明显，呼吸道与发热门诊压力更值得优先观察。',
+  },
+  上海: {
+    name: '上海',
+    respiratoryBias: 1.06,
+    giBias: 1.03,
+    densityBoost: 1.14,
+    mobilityBoost: 1.12,
+    hotspotDistricts: ['浦东新区', '黄浦区'],
+    symptomPool: ['咳嗽', '发热', '流涕', '咽痛', '腹泻', '乏力'],
+    citySummary: '核心商圈与交通枢纽密度高，适合把趋势参考和服务需求一起看。',
+  },
+  广州: {
+    name: '广州',
+    respiratoryBias: 1,
+    giBias: 1.12,
+    densityBoost: 1.08,
+    mobilityBoost: 1.06,
+    hotspotDistricts: ['天河区', '海珠区'],
+    symptomPool: ['腹泻', '恶心', '咳嗽', '发热', '咽痛', '乏力'],
+    citySummary: '湿热季节与人员流动并存，胃肠道与呼吸道信号都需要一起观察。',
+  },
+  深圳: {
+    name: '深圳',
+    respiratoryBias: 1.02,
+    giBias: 1.04,
+    densityBoost: 1.1,
+    mobilityBoost: 1.15,
+    hotspotDistricts: ['福田区', '南山区'],
+    symptomPool: ['咳嗽', '鼻塞', '发热', '乏力', '腹泻', '头痛'],
+    citySummary: '商务出行与跨区通勤密集，更适合观察服务需求与局部抬升片区。',
+  },
+  南京: {
+    name: '南京',
+    respiratoryBias: 1.09,
+    giBias: 0.98,
+    densityBoost: 1.03,
+    mobilityBoost: 1.02,
+    hotspotDistricts: ['鼓楼区', '秦淮区'],
+    symptomPool: ['发热', '咳嗽', '咽痛', '头痛', '乏力', '流涕'],
+    citySummary: '换季波动较明显，中心城区更适合优先核对呼吸道相关趋势。',
+  },
+  杭州: {
+    name: '杭州',
+    respiratoryBias: 1.04,
+    giBias: 1.01,
+    densityBoost: 1.05,
+    mobilityBoost: 1.06,
+    hotspotDistricts: ['上城区', '滨江区'],
+    symptomPool: ['咽痛', '咳嗽', '鼻塞', '发热', '乏力', '腹泻'],
+    citySummary: '核心城区与通勤片区变化更快，适合结合近期趋势和本地官方入口一起判断。',
+  },
+}
+
+function readStoredCity(): string {
+  if (typeof window === 'undefined') return '苏州'
+
+  try {
+    const stored = localStorage.getItem(ACTIVE_CITY_STORAGE_KEY)
+    return stored && CITY_CONFIGS[stored] ? stored : '苏州'
+  } catch {
+    return '苏州'
+  }
+}
+
+let _activeCity = readStoredCity()
 
 export function setActiveCity(cityName: string) {
   if (CITY_CONFIGS[cityName]) {
     _activeCity = cityName
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(ACTIVE_CITY_STORAGE_KEY, cityName)
+      } catch {
+        return
+      }
+    }
   }
 }
 
@@ -228,6 +332,10 @@ function getDistrictCenters(): Record<string, [number, number]> {
 
 function getDistricts(): string[] {
   return Object.keys(getDistrictCenters())
+}
+
+function getCitySignalProfile(): CitySignalProfile {
+  return CITY_SIGNAL_PROFILES[getActiveCity()] ?? CITY_SIGNAL_PROFILES['苏州']
 }
 
 const TOP_SYMPTOMS_POOL = [
@@ -345,6 +453,7 @@ function createDistrictRiskData(params: {
 }): DistrictRiskData {
   const riskScore = Math.round(sumRiskBreakdown(params.riskBreakdown) * 10) / 10
   const seasonalSignal = getSeasonalSignal()
+  const cityProfile = getCitySignalProfile()
 
   return {
     district: params.district,
@@ -369,9 +478,9 @@ function createDistrictRiskData(params: {
     ),
     sourceNote:
       params.sourceNote ??
-      `综合官方公开资料摘要、季节/天气因子与社区症状动态（${seasonalSignal.label}），用于解释区域变化方向，不等同于疾控通报。`,
+      `当前结合${cityProfile.name}本地公开资料、季节因子与社区健康动态（${seasonalSignal.label}）整理趋势参考，用于解释区域变化方向，不等同于疾控通报。`,
     lastUpdated: getLastUpdatedLabel(),
-    dataLabel: params.dataLabel ?? `趋势参考口径 · ${seasonalSignal.label}`,
+    dataLabel: params.dataLabel ?? `${cityProfile.name}趋势参考 · ${seasonalSignal.label}`,
   }
 }
 
@@ -386,33 +495,35 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
   const dSeed = getDistrictSeed(district)
   const base = daySeed + dSeed
   const seasonalSignal = getSeasonalSignal()
-  const allDistricts = getDistricts()
-  const isTopDistrict = allDistricts.indexOf(district) === 0
-  const isSecondDistrict = allDistricts.indexOf(district) === 1
+  const cityProfile = getCitySignalProfile()
+  const respiratoryBoost = seasonalSignal.respiratoryBoost * cityProfile.respiratoryBias
+  const giBoost = seasonalSignal.giBoost * cityProfile.giBias
+  const isTopDistrict = cityProfile.hotspotDistricts[0] === district
+  const isSecondDistrict = cityProfile.hotspotDistricts[1] === district
 
-  // First district in list gets elevated risk, second gets high risk
   if (isTopDistrict) {
     const weeklyData: number[] = []
     for (let d = 6; d >= 0; d--) {
       const pastSeed = getDaySeedOffset(-d) + dSeed
-      weeklyData.push(Math.round(60 + seededRandom(pastSeed, 7) * 25))
+      weeklyData.push(Math.round((58 + seededRandom(pastSeed, 7) * 28) * cityProfile.densityBoost))
     }
     return createDistrictRiskData({
       district,
-      totalReports: Math.round(seededRandom(base, 6) * 80 + 120),
-      feverDrugIndex: Math.round(82 * seasonalSignal.respiratoryBoost),
-      coughDrugIndex: Math.round(71 * seasonalSignal.respiratoryBoost),
-      giDrugIndex: Math.round((seededRandom(base, 3) * 30 + 30) * seasonalSignal.giBoost),
+      totalReports: Math.round((seededRandom(base, 6) * 72 + 110) * cityProfile.densityBoost),
+      feverDrugIndex: Math.round(78 * respiratoryBoost),
+      coughDrugIndex: Math.round((68 + cityProfile.mobilityBoost * 6) * respiratoryBoost),
+      giDrugIndex: Math.round((seededRandom(base, 3) * 28 + 28) * giBoost),
       trend: 'up',
-      trendPercent: 41,
-      topSymptoms: ['发热', '咳嗽', '乏力'],
+      trendPercent: Math.round(24 + cityProfile.mobilityBoost * 14),
+      topSymptoms: cityProfile.symptomPool.slice(0, 3),
       weeklyData,
       riskBreakdown: {
-        symptomReports: 37,
-        trendChange: 18,
-        environment: 11,
-        followUp: 15,
+        symptomReports: Math.round(34 * cityProfile.densityBoost),
+        trendChange: Math.round(14 + cityProfile.mobilityBoost * 4),
+        environment: Math.round(8 + cityProfile.respiratoryBias * 3),
+        followUp: Math.round(11 + cityProfile.mobilityBoost * 4),
       },
+      sourceNote: `${cityProfile.citySummary} 当前重点观察 ${district} 的片区变化。`,
     })
   }
 
@@ -420,31 +531,31 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
     const weeklyData: number[] = []
     for (let d = 6; d >= 0; d--) {
       const pastSeed = getDaySeedOffset(-d) + dSeed
-      weeklyData.push(Math.round(45 + seededRandom(pastSeed, 7) * 25))
+      weeklyData.push(Math.round((42 + seededRandom(pastSeed, 7) * 24) * cityProfile.densityBoost))
     }
     return createDistrictRiskData({
       district,
-      totalReports: Math.round(seededRandom(base, 6) * 60 + 90),
-      feverDrugIndex: Math.round(67 * seasonalSignal.respiratoryBoost),
-      coughDrugIndex: Math.round((seededRandom(base, 2) * 20 + 40) * seasonalSignal.respiratoryBoost),
-      giDrugIndex: Math.round(58 * seasonalSignal.giBoost),
+      totalReports: Math.round((seededRandom(base, 6) * 56 + 82) * cityProfile.densityBoost),
+      feverDrugIndex: Math.round(64 * respiratoryBoost),
+      coughDrugIndex: Math.round((seededRandom(base, 2) * 20 + 38) * respiratoryBoost),
+      giDrugIndex: Math.round(52 * giBoost),
       trend: 'up',
-      trendPercent: 23,
-      topSymptoms: ['发热', '腹泻', '恶心'],
+      trendPercent: Math.round(14 + cityProfile.mobilityBoost * 8),
+      topSymptoms: cityProfile.symptomPool.slice(1, 4),
       weeklyData,
       riskBreakdown: {
-        symptomReports: 30,
-        trendChange: 13,
-        environment: 9,
-        followUp: 13,
+        symptomReports: Math.round(26 * cityProfile.densityBoost),
+        trendChange: Math.round(10 + cityProfile.mobilityBoost * 3),
+        environment: Math.round(7 + cityProfile.giBias * 2),
+        followUp: Math.round(10 + cityProfile.mobilityBoost * 3),
       },
+      sourceNote: `${cityProfile.citySummary} ${district} 当前更适合结合官方入口与本地趋势一起看。`,
     })
   }
 
-  // 其余区域随机分布在 15-55
-  const feverDrugIndex = Math.round((seededRandom(base, 1) * 50 + 10) * seasonalSignal.respiratoryBoost)
-  const coughDrugIndex = Math.round((seededRandom(base, 2) * 50 + 10) * seasonalSignal.respiratoryBoost)
-  const giDrugIndex = Math.round((seededRandom(base, 3) * 50 + 10) * seasonalSignal.giBoost)
+  const feverDrugIndex = Math.round((seededRandom(base, 1) * 44 + 12) * respiratoryBoost)
+  const coughDrugIndex = Math.round((seededRandom(base, 2) * 46 + 12) * respiratoryBoost)
+  const giDrugIndex = Math.round((seededRandom(base, 3) * 42 + 12) * giBoost)
 
   const trendRaw = seededRandom(base, 4)
   let trend: 'up' | 'stable' | 'down'
@@ -452,11 +563,11 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
   else if (trendRaw < 0.66) trend = 'stable'
   else trend = 'up'
 
-  const trendPercent = Math.round(seededRandom(base, 5) * 20 + 1)
-  const totalReports = Math.round(seededRandom(base, 6) * 100 + 20)
+  const trendPercent = Math.round(seededRandom(base, 5) * (16 + cityProfile.mobilityBoost * 4) + 2)
+  const totalReports = Math.round((seededRandom(base, 6) * 86 + 24) * cityProfile.densityBoost)
 
   const topSymptoms: string[] = []
-  const pool = [...TOP_SYMPTOMS_POOL]
+  const pool = [...new Set([...cityProfile.symptomPool, ...TOP_SYMPTOMS_POOL])]
   for (let i = 0; i < 3; i++) {
     const idx = Math.floor(seededRandom(base, 10 + i) * pool.length)
     topSymptoms.push(pool.splice(idx, 1)[0])
@@ -471,7 +582,7 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
         seededRandom(pastSeed, 1) * 50 * 0.4 +
           seededRandom(pastSeed, 2) * 50 * 0.35 +
           seededRandom(pastSeed, 3) * 50 * 0.25 +
-          10
+          10 * cityProfile.densityBoost
       )
     )
     weeklyData.push(ps)
@@ -491,7 +602,7 @@ function generateDistrictData(district: string, daySeed: number): DistrictRiskDa
         ? Math.min(11, 4 + Math.round(trendPercent * 0.18))
         : Math.max(2, 5 - Math.round(trendPercent * 0.12)),
     environment: Math.round(seededRandom(base, 8) * 7 + 3 + (coughDrugIndex > 45 ? 2 : 0)),
-    followUp: Math.round(seededRandom(base, 9) * 6 + 2 + (totalReports > 80 ? 2 : 0)),
+    followUp: Math.round(seededRandom(base, 9) * 6 + 2 + (totalReports > 80 ? 2 : 0) + cityProfile.mobilityBoost),
   }
 
   return createDistrictRiskData({
@@ -548,12 +659,14 @@ export function getCityOverview(): CityOverview {
     minute: '2-digit',
   })
 
+  const trendGap = risingCount - fallingCount
+
   return {
     totalReports,
     alertDistricts,
     criticalDistricts,
     dominantSymptom,
-    weeklyTrend: risingCount >= fallingCount ? 'rising' : 'falling',
+    weeklyTrend: trendGap >= 2 ? 'rising' : trendGap <= -2 ? 'falling' : 'stable',
     lastUpdated,
   }
 }
@@ -565,6 +678,8 @@ export function getDrugTrendData(district: string): {
   gi: number[]
 } {
   const dSeed = getDistrictSeed(district)
+  const cityProfile = getCitySignalProfile()
+  const seasonalSignal = getSeasonalSignal()
   const labels: string[] = []
   const fever: number[] = []
   const cough: number[] = []
@@ -577,9 +692,9 @@ export function getDrugTrendData(district: string): {
     const base = daySeed + dSeed
 
     labels.push(`${dayObj.getMonth() + 1}/${dayObj.getDate()}`)
-    fever.push(Math.round(seededRandom(base, 1) * 80 + 10))
-    cough.push(Math.round(seededRandom(base, 2) * 80 + 10))
-    gi.push(Math.round(seededRandom(base, 3) * 80 + 10))
+    fever.push(Math.round((seededRandom(base, 1) * 72 + 12) * seasonalSignal.respiratoryBoost * cityProfile.respiratoryBias))
+    cough.push(Math.round((seededRandom(base, 2) * 72 + 12) * seasonalSignal.respiratoryBoost * cityProfile.respiratoryBias))
+    gi.push(Math.round((seededRandom(base, 3) * 72 + 12) * seasonalSignal.giBoost * cityProfile.giBias))
   }
 
   return { labels, fever, cough, gi }

@@ -18,6 +18,38 @@ function formatDate(dateStr: string): string {
   }
 }
 
+function getScopeMeta(record: OfficialSourceRecord) {
+  const scopeText = `${record.sourceLabel} ${record.title}`;
+
+  if (
+    record.scope === 'local' ||
+    /市卫生健康委员会|市疾病预防控制中心|卫健委：本地|疾控：/u.test(scopeText)
+  ) {
+    return {
+      label: '本地官方',
+      lightClass: 'bg-emerald-50 text-emerald-700',
+      darkClass: 'bg-emerald-500/15 text-emerald-200',
+    };
+  }
+
+  if (
+    record.scope === 'international' ||
+    /WHO|World Health Organization/i.test(scopeText)
+  ) {
+    return {
+      label: '国际参考',
+      lightClass: 'bg-violet-50 text-violet-700',
+      darkClass: 'bg-violet-500/15 text-violet-200',
+    };
+  }
+
+  return {
+    label: '国家级',
+    lightClass: 'bg-slate-100 text-slate-700',
+    darkClass: 'bg-white/10 text-white/70',
+  };
+}
+
 export function OfficialSourceComparison({
   records,
   title = '权威健康参考',
@@ -45,6 +77,7 @@ export function OfficialSourceComparison({
       <div className="mt-3 flex flex-col gap-2.5">
         {records.map((record) => {
           const dateLabel = formatDate(record.lastUpdated);
+          const scopeMeta = getScopeMeta(record);
           const cardBody = (
             <>
               <div className="flex items-start justify-between gap-3">
@@ -52,9 +85,19 @@ export function OfficialSourceComparison({
                   <p className={`text-sm font-medium ${isDark ? 'text-white/90' : 'text-slate-800'}`}>
                     {record.title}
                   </p>
-                  <p className={`text-[11px] mt-1 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
-                    {record.sourceLabel}{dateLabel ? ` · ${dateLabel}` : ''}
-                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <p className={`text-[11px] ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
+                      {record.sourceLabel}
+                      {dateLabel ? ` · ${dateLabel}` : ''}
+                    </p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                        isDark ? scopeMeta.darkClass : scopeMeta.lightClass
+                      }`}
+                    >
+                      {scopeMeta.label}
+                    </span>
+                  </div>
                 </div>
                 {record.url && (
                   <ExternalLink

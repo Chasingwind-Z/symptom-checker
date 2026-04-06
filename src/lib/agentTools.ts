@@ -1,6 +1,6 @@
 import type { RiskLevel, ToolCall } from '../types';
 import type { ChatToolCall, ChatToolDefinition } from './aiClient';
-import { getCityOverview, getDistrictRiskData, mergeLocalReports } from './epidemicDataEngine';
+import { getActiveCity, getCityOverview, getDistrictRiskData, mergeLocalReports } from './epidemicDataEngine';
 import { fetchWeather } from './geolocation';
 import { searchMedicalKnowledge } from './medicalKnowledge';
 import { getRecommendedHospitals, hospitals as mockHospitals } from './mockHospitals';
@@ -20,7 +20,14 @@ const OFFICIAL_SOURCE_DOMAINS = [
   'www.nhc.gov.cn',
   'www.chinacdc.cn',
   'www.who.int',
+  'wjw.suzhou.gov.cn',
+  'www.szcdc.cn',
   'wjw.beijing.gov.cn',
+  'wsjkw.sh.gov.cn',
+  'wjw.gz.gov.cn',
+  'wjw.sz.gov.cn',
+  'wjw.nanjing.gov.cn',
+  'wsjkw.hangzhou.gov.cn',
 ];
 
 export const AGENT_TOOLS: ChatToolDefinition[] = [
@@ -289,7 +296,7 @@ async function runWebSearch(query: string): Promise<string> {
     return JSON.stringify({
       ok: false,
       source: 'tavily',
-      sourceLabel: '官方信源检索（本地降级）',
+      sourceLabel: '官方公开资料检索',
       fetchedAt: new Date().toISOString(),
       message: '数据来源：官方公开资料。',
       officialDomains: OFFICIAL_SOURCE_DOMAINS,
@@ -512,7 +519,7 @@ export async function executeAgentTool(
 
       return {
         ok: true,
-        city: '北京',
+        city: getActiveCity(),
         sourceLabel: '匿名问诊上报 + OTC 购药热度 + 天气/环境协同因子',
         fetchedAt: new Date().toISOString(),
         overview,
