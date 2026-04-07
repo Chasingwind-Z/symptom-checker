@@ -643,7 +643,7 @@ export async function loadHealthWorkspace(limit = 5): Promise<HealthWorkspaceSna
       helperText:
         bootstrap.state === 'error'
           ? '暂时无法读取已同步资料，当前会继续保存在本设备中。'
-          : '暂未读取到有效邮箱会话。若刚打开邮件，请回到这里后刷新一次状态。',
+          : '游客模式 · 数据保存在本设备',
       profile: localProfile,
       recentCases: localCases,
       sessionEmail: null,

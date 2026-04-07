@@ -2,7 +2,6 @@ import {
   ArrowRight,
   Baby,
   CheckCircle2,
-  CloudSun,
   HeartPulse,
   MapPin,
   ShieldPlus,
@@ -251,7 +250,8 @@ export function WelcomeScreen({
   onApplyStarterText,
   selectedModeId,
   onSelectMode,
-  onToggleMap,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onToggleMap: _onToggleMap,
   sessionEmail,
   profile,
   weather,
@@ -274,7 +274,7 @@ export function WelcomeScreen({
   const normalizedProfileCity = normalizeText(profile?.city)
   const localCityLabel =
     normalizedProfileCity && normalizedProfileCity !== DEFAULT_PROFILE_CITY ? normalizedProfileCity : ''
-  const weatherSummary = buildWeatherExperienceSummary(weather ?? null)
+  void buildWeatherExperienceSummary(weather ?? null) // kept for focusPathCards internal use
   const focusPathCards = buildFocusPathCards({
     selectedModeId,
     cityLabel: localCityLabel,
@@ -433,38 +433,8 @@ export function WelcomeScreen({
           </div>
         </div>
 
+        {/* Weather card removed — already shown in top WeatherBar */}
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-          <section className="rounded-3xl border border-sky-100 bg-sky-50/70 px-4 py-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-3 py-1 text-[11px] text-sky-700">
-                  <CloudSun size={12} />
-                  本地天气与出门提醒
-                </div>
-                <p className="mt-3 text-sm font-semibold text-slate-900">{weatherSummary.headline}</p>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600">{weatherSummary.description}</p>
-              </div>
-              <button
-                type="button"
-                onClick={onToggleMap}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-white"
-              >
-                <MapPin size={13} />
-                地图
-              </button>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {weatherSummary.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[11px] text-slate-600"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </section>
-
           {/* Focus path cards hidden for cleaner first impression */}
           {/* eslint-disable-next-line no-constant-binary-expression */}
           {false && (
