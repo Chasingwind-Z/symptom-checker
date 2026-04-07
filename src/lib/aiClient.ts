@@ -1,5 +1,10 @@
 import { callGateway, hasGatewayRoute } from './serverGateway';
 
+// Production: replace direct API call with Supabase Edge Function proxy
+// const AI_ENDPOINT = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/ai-proxy'
+// This avoids exposing VITE_AI_API_KEY in frontend bundle.
+// See supabase/functions/ai-proxy/index.ts for the proxy implementation.
+
 const DIRECT_BASE_URL = import.meta.env.VITE_AI_BASE_URL as string | undefined;
 const MODEL = import.meta.env.VITE_AI_MODEL as string | undefined;
 const API_KEY = import.meta.env.VITE_AI_API_KEY as string | undefined;

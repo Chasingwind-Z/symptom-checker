@@ -14,7 +14,12 @@ import {
   SearchIntelligencePanel,
   type ConnectedWebSearchState,
 } from './SearchIntelligencePanel'
-import { SymptomTimeline } from './SymptomTimeline'
+
+const LazySymptomTimeline = lazy(() =>
+  import('./SymptomTimeline').then((module) => ({
+    default: module.SymptomTimeline,
+  }))
+)
 import { WORKSPACE_TAB_LABELS } from '../lib/appShellUtils'
 import type { ChatDensityPreference, DesktopSidebarMode, ExperienceSettings, LocationPreference, OfficialSourcePreference } from '../lib/experienceSettings'
 import type { LocationData } from '../lib/geolocation'
@@ -380,7 +385,16 @@ export function WorkspaceView({
           />
           <div className="mt-4">
             <p className="text-xs font-semibold text-slate-500 mb-2 px-1">症状追踪时间线</p>
-            <SymptomTimeline onStartConsultation={onStartNewSession} />
+            <Suspense
+              fallback={
+                <LazySurfaceFallback
+                  title="正在加载时间线"
+                  description="正在按需加载症状追踪时间线组件。"
+                />
+              }
+            >
+              <LazySymptomTimeline onStartConsultation={onStartNewSession} />
+            </Suspense>
           </div>
         </>
       )}

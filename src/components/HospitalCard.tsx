@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import { Cross, MapPin, Phone, Star, Clock, Navigation } from 'lucide-react';
 import type { Hospital } from '../types';
-import { MapModal } from './MapModal';
+
+const LazyMapModal = lazy(() =>
+  import('./MapModal').then((module) => ({
+    default: module.MapModal,
+  }))
+);
 
 interface HospitalCardProps {
   hospital: Hospital;
@@ -158,7 +163,11 @@ export function HospitalCard({ hospital, allHospitals }: HospitalCardProps) {
         </div>
       </div>
 
-      {showMap && <MapModal hospital={hospital} allHospitals={allHospitals} onClose={() => setShowMap(false)} />}
+      {showMap && (
+        <Suspense fallback={null}>
+          <LazyMapModal hospital={hospital} allHospitals={allHospitals} onClose={() => setShowMap(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -27,6 +27,19 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss(), reactRefreshPreamble],
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: 'vendor-react', test: /node_modules[\\/]react/, priority: 20 },
+              { name: 'vendor-framer', test: /node_modules[\\/]framer-motion/, priority: 15 },
+              { name: 'vendor', test: /node_modules/, minSize: 20000, priority: 10 },
+            ],
+          },
+        },
+      },
+    },
     server: {
       host: 'localhost',
       port: 5173,

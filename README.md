@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![在线体验](https://img.shields.io/badge/在线体验-健康助手-2563EB?style=for-the-badge)](https://symptom-checker-ahvsmkovl-chasingwinds-projects.vercel.app/)
+[![在线体验](https://img.shields.io/badge/在线体验-健康助手-2563EB?style=for-the-badge)](https://symptom-checker-eosin.vercel.app/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20Data-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
@@ -16,7 +16,7 @@
 
 ## 在线体验
 
-**地址：** https://symptom-checker-ahvsmkovl-chasingwinds-projects.vercel.app/
+**地址：** https://symptom-checker-eosin.vercel.app/
 
 推荐使用 **Chrome / Edge / Safari**，可获得更完整的语音输入、地图与 PWA 安装体验。
 

@@ -94,10 +94,19 @@ export default function App() {
   const [welcomeDraftValue, setWelcomeDraftValue] = useState('');
   const [welcomeFocusSignal, setWelcomeFocusSignal] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showShareBanner, setShowShareBanner] = useState(false);
 
   useEffect(() => {
     const id = window.setTimeout(() => setShowOnboarding(!localStorage.getItem('onboarding_done')), 0);
     return () => window.clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('share') === '1') {
+      const id = window.setTimeout(() => setShowShareBanner(true), 0);
+      return () => window.clearTimeout(id);
+    }
   }, []);
   const selectedConsultationMode = useMemo(
     () => getConsultationModePreset(selectedConsultationModeId),
@@ -982,6 +991,16 @@ export default function App() {
   return (
     <GuardianThemeProvider modeId={selectedConsultationModeId}>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 lg:flex">
+      {showShareBanner && (
+        <div className="w-full bg-blue-600 text-white text-center text-sm py-2 px-4 lg:fixed lg:top-0 lg:z-50">
+          查看朋友分享的问诊参考
+          <button
+            onClick={() => setShowShareBanner(false)}
+            className="ml-3 text-white/80 hover:text-white"
+            aria-label="关闭"
+          >✕</button>
+        </div>
+      )}
       <AppSidebar
         activeSection={showWorkspace ? workspaceSection : null}
         searchQuery={recordSearchQuery}
