@@ -262,6 +262,7 @@ interface ResultCardProps {
   officialSourcePreference?: OfficialSourcePreference;
   hospitalSectionTitle?: string;
   hospitalSectionMeta?: string;
+  consultationModeId?: string | null;
   onReport?: () => void;
   onOpenMedicationHub?: () => void;
   onToggleMap?: () => void;
@@ -333,6 +334,7 @@ export function ResultCard({
   officialSourcePreference = 'balanced',
   hospitalSectionTitle = '附近推荐医院',
   hospitalSectionMeta = '支持导航 · 电话 · 地图查看',
+  consultationModeId,
   onReport,
   onOpenMedicationHub,
   onToggleMap,
@@ -751,6 +753,26 @@ export function ResultCard({
       {/* Top color strip — 4px, exact level color */}
       <div style={{ height: '4px', backgroundColor: { green: '#10B981', yellow: '#F59E0B', orange: '#F97316', red: '#EF4444' }[result.level] }} />
 
+      {/* Guardian mode banner */}
+      {consultationModeId === 'child' && (
+        <div className="bg-blue-50 border-b border-blue-100 px-6 py-2.5 flex items-center gap-2">
+          <span className="text-sm">👶</span>
+          <span className="text-xs font-semibold text-blue-700">儿童专属建议 · 14岁以下适用</span>
+        </div>
+      )}
+      {consultationModeId === 'elderly' && (
+        <div className="bg-orange-50 border-b border-orange-100 px-6 py-2.5 flex items-center gap-2">
+          <span className="text-sm">🧓</span>
+          <span className="text-xs font-semibold text-orange-700">老年人专属建议 · 60岁以上适用</span>
+        </div>
+      )}
+      {consultationModeId === 'chronic' && (
+        <div className="bg-purple-50 border-b border-purple-100 px-6 py-2.5 flex items-center gap-2">
+          <span className="text-sm">💊</span>
+          <span className="text-xs font-semibold text-purple-700">慢病患者专属建议</span>
+        </div>
+      )}
+
       <div className="p-6">
         {/* Risk Gauge */}
         <div className="flex justify-center mt-6 mb-2 w-full max-w-xs mx-auto">
@@ -772,6 +794,30 @@ export function ResultCard({
         {/* Action checklist */}
         <div className={`rounded-xl px-4 py-3 mb-4 ${config.bg}`}>
           <p className={`text-xs font-semibold mb-2 ${config.text}`}>行动清单</p>
+
+          {/* Guardian mode extra actions */}
+          {consultationModeId === 'child' && (
+            <p className="text-xs text-blue-700 bg-blue-100/60 rounded-lg px-3 py-1.5 mb-2">
+              👶 就医时携带儿童医保卡和疫苗接种本
+            </p>
+          )}
+          {consultationModeId === 'elderly' && (
+            <>
+              <p className="text-xs text-orange-700 bg-orange-100/60 rounded-lg px-3 py-1.5 mb-2">
+                🧓 建议家人陪同就医
+              </p>
+              {(result.level === 'yellow' || result.level === 'orange') && (
+                <p className="text-xs text-orange-700 bg-orange-100/60 rounded-lg px-3 py-1.5 mb-2">
+                  ⚠️ 老年人症状变化快，建议尽早就医而不是等待观察
+                </p>
+              )}
+            </>
+          )}
+          {consultationModeId === 'chronic' && (
+            <p className="text-xs text-purple-700 bg-purple-100/60 rounded-lg px-3 py-1.5 mb-2">
+              💊 就医时携带当前用药清单
+            </p>
+          )}
           <ul className="flex flex-col gap-2">
             {ACTION_ITEMS[result.level].map((item, i) => (
               <li key={item} className="flex items-center gap-2.5">

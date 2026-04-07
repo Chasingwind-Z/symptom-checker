@@ -11,6 +11,7 @@ import { ChatBubble } from './components/ChatBubble';
 import { ChatInput, type ChatInputLayoutMetrics } from './components/ChatInput';
 import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
+import { FollowUpReminder } from './components/FollowUpReminder';
 import { Header } from './components/Header';
 import { LazySurfaceFallback } from './components/LazySurfaceFallback';
 import {
@@ -1234,6 +1235,7 @@ export default function App() {
                       officialSourcePreference={experienceSettings.officialSourcePreference}
                       hospitalSectionTitle={hospitalSectionTitle}
                       hospitalSectionMeta={hospitalSectionMeta}
+                      consultationModeId={selectedConsultationModeId}
                       onReport={() => setReportCount(getReportCount())}
                       onOpenMedicationHub={() => handleOpenWorkspaceSection('medication')}
                       onToggleMap={handleOpenMap}
@@ -1289,6 +1291,8 @@ export default function App() {
         onClose={handleCloseAuthDialog}
         onRefresh={workspace.refresh}
       />
+
+      <FollowUpReminder />
     </div>
   );
 }

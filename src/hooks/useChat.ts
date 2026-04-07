@@ -16,6 +16,7 @@ import type { AgentMemoryContext } from '../agents/types';
 import { primeMedicalKnowledgeCorpus, searchMedicalKnowledge } from '../lib/medicalKnowledge';
 import { requestGeolocation, fetchWeather } from '../lib/geolocation';
 import { loadCloudConversationSessions, persistCaseRecord } from '../lib/healthData';
+import { saveTrackingEntry } from '../lib/symptomTracking';
 import {
   FOLLOW_UP_RESPONSE_OPTIONS,
   getCompletedFollowUpRecords,
@@ -745,6 +746,18 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           if (!isFollowUpReply || !activeFollowUpRecord) {
             queueFollowUpRecord(displayText, result);
           }
+          // Save symptom tracking entry
+          try {
+            const symptomsList = result.reason ? [result.reason] : [displayText];
+            const severity = result.level === 'green' ? 'mild' as const : result.level === 'red' ? 'severe' as const : 'moderate' as const;
+            saveTrackingEntry({
+              sessionId,
+              timestamp: Date.now(),
+              symptoms: symptomsList,
+              severity,
+              level: result.level,
+            });
+          } catch { /* tracking is non-critical */ }
           const finalSessionMessages = [...messages, userMessage, assistantMessage];
           void persistCaseRecord({
             caseId: sessionStorage === 'supabase' ? sessionId : undefined,

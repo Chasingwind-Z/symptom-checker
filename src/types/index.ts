@@ -174,3 +174,20 @@ export interface SymptomReport {
   followUpStatus?: FollowUpResponseOption;
   summary?: string;
 }
+
+export interface SymptomTrackingEntry {
+  id: string
+  sessionId: string
+  timestamp: number
+  symptoms: string[]
+  severity: 'mild' | 'moderate' | 'severe'
+  level: 'green' | 'yellow' | 'orange' | 'red'
+  followUpStatus: 'pending' | 'better' | 'same' | 'worse'
+  followUpTimestamp?: number
+  notes?: string
+}
+
+export interface SymptomTimeline {
+  entries: SymptomTrackingEntry[]
+  activeTracking: string[]
+}
