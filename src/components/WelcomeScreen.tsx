@@ -1,13 +1,25 @@
-import { Baby, HeartPulse, LogIn, MessageCircle, ShieldPlus, UserRound } from 'lucide-react'
+import {
+  ArrowRight,
+  Baby,
+  CheckCircle2,
+  CloudSun,
+  HeartPulse,
+  MapPin,
+  ShieldPlus,
+  UserRound,
+  type LucideIcon,
+} from 'lucide-react'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
+import type { WeatherData } from '../lib/geolocation'
 import { maskEmail } from '../lib/supabase'
 import type { ConversationSession } from '../types'
-import { ConversationHistoryPanel } from './ConversationHistoryPanel'
-
-type WelcomeProfileContext = Pick<
-  ProfileDraft,
-  'city' | 'careFocus' | 'chronicConditions' | 'allergies' | 'currentMedications'
->
+import {
+  getConsultationModePreset,
+  type ConsultationModeId,
+} from '../lib/consultationModes'
+import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
+import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
+import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
 
 interface ScenarioChip {
   label: string
@@ -15,29 +27,55 @@ interface ScenarioChip {
 }
 
 interface WelcomeScreenProps {
-  onSendMessage: (text: string) => void
+  onStartConsultation: () => void
+  onApplyStarterText: (text: string) => void
+  selectedModeId?: ConsultationModeId | null
+  onSelectMode: (modeId: ConsultationModeId) => void
   onToggleMap: () => void
-  onOpenWorkspace: () => void
   sessionEmail?: string | null
-  canOpenAuth?: boolean
-  onOpenAuth?: () => void
-  authActionLabel?: string
-  profile?: WelcomeProfileContext | null
+  profile?: ProfileDraft | null
+  weather?: WeatherData | null
+  pendingFollowUpCount?: number
+  householdProfiles?: HouseholdProfileRecord[]
+  switchingHouseholdProfileId?: string | null
   recentCases?: CaseHistoryItem[]
   recentSessions: ConversationSession[]
-  activeSessionId?: string | null
   onOpenConversation: (sessionId: string) => void
+  onSelectHouseholdProfile: (record: HouseholdProfileRecord) => void
+  onManageProfiles: () => void
+}
+
+interface FocusPathCard {
+  id: string
+  title: string
+  description: string
+  sendText: string
+  icon: LucideIcon
+  toneClass: string
 }
 
 const COMMON_SCENARIOS: ScenarioChip[] = [
-  { label: '发烧了不知道严不严重', sendText: '我发烧了，不知道严不严重' },
-  { label: '头痛持续三天要去医院吗', sendText: '我头痛已经持续三天了' },
-  { label: '孩子咳嗽该去哪里看', sendText: '我的孩子一直在咳嗽' },
+  { label: '发烧 38.5℃，要不要去医院', sendText: '发烧 38.5℃，要不要去医院' },
+  { label: '咳嗽三天，晚上更重', sendText: '咳嗽三天，晚上更重' },
+  { label: '先把过敏史和现在用药说清楚', sendText: '先把过敏史和现在用药说清楚' },
 ]
 
 const DEFAULT_PROFILE_CITY = '中国大陆'
 const MIN_SCENARIO_CHIP_COUNT = 3
 const MAX_PERSONALIZED_CHIP_COUNT = 4
+
+function getModeSubject(modeId?: ConsultationModeId | null) {
+  switch (modeId) {
+    case 'child':
+      return '孩子现在的情况'
+    case 'elderly':
+      return '家里老人现在的情况'
+    case 'chronic':
+      return '我这种有慢病背景的情况'
+    default:
+      return '我这次情况'
+  }
+}
 
 function normalizeText(value?: string | null) {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
@@ -65,7 +103,7 @@ function getRecentSessionReference(session: ConversationSession) {
 }
 
 function buildPersonalizedScenarios(params: {
-  profile?: WelcomeProfileContext | null
+  profile?: ProfileDraft | null
   recentCases?: CaseHistoryItem[]
   recentSessions: ConversationSession[]
 }) {
@@ -130,150 +168,348 @@ function buildPersonalizedScenarios(params: {
   return personalized
 }
 
+function buildFocusPathCards(params: {
+  selectedModeId?: ConsultationModeId | null
+  cityLabel?: string
+  weather?: WeatherData | null
+}): FocusPathCard[] {
+  const subject = getModeSubject(params.selectedModeId)
+  const weatherSummary = buildWeatherExperienceSummary(params.weather ?? null)
+  const localAccessLabel = params.cityLabel ? `${params.cityLabel} 本地资源` : '附近门诊 / 药房入口'
+
+  return [
+    {
+      id: 'severity-first',
+      title: '先判断严不严重',
+      description: '优先做保守分级，先知道要不要马上线下处理。',
+      sendText: `请先判断${subject}现在严不严重，我会马上补充主要症状、持续时间和伴随表现。`,
+      icon: ShieldPlus,
+      toneClass: 'border-amber-100 bg-amber-50/70',
+    },
+    {
+      id: 'action-first',
+      title: '先看现在怎么办',
+      description: '先拿到家庭处理、观察重点和复诊时机。',
+      sendText: `请先告诉我${subject}现在在家该怎么处理、重点观察什么，以及什么情况要尽快就医。`,
+      icon: HeartPulse,
+      toneClass: 'border-cyan-100 bg-cyan-50/70',
+    },
+    {
+      id: 'access-first',
+      title: '先找去哪看 / 买药',
+      description: `${localAccessLabel} + ${weatherSummary.tags[0]}，更适合先判断行动入口。`,
+      sendText: `请先判断${subject}是否需要尽快去医院，还是可以先看附近药房或 OTC 方向；也请说明适合挂什么科。`,
+      icon: MapPin,
+      toneClass: 'border-violet-100 bg-violet-50/70',
+    },
+  ]
+}
+
+function wasUpdatedWithinOneDay(value: string) {
+  const updatedAt = new Date(value)
+  if (Number.isNaN(updatedAt.getTime())) return false
+  return Date.now() - updatedAt.getTime() <= 24 * 60 * 60 * 1000
+}
+
 const GUARDIAN_MODES = [
   {
+    id: 'self' as const,
     label: '本人',
     subtitle: '标准问诊',
-    sendText: '我想咨询自己的身体不适，请按标准问诊流程开始。',
     icon: UserRound,
     className: 'bg-white text-blue-700 border-blue-100 hover:bg-blue-50',
+    activeClassName: 'border-blue-300 bg-blue-50/80 shadow-sm',
   },
   {
+    id: 'child' as const,
     label: '儿童守护',
     subtitle: '儿科优先',
-    sendText: '这是孩子的情况，请按儿童模式帮我问诊并优先考虑儿科建议。',
     icon: Baby,
     className: 'bg-white text-amber-700 border-amber-100 hover:bg-amber-50',
+    activeClassName: 'border-amber-300 bg-amber-50/80 shadow-sm',
   },
   {
+    id: 'elderly' as const,
     label: '老人守护',
     subtitle: '高风险优先',
-    sendText: '这是家里老人的情况，请按老年人高风险模式帮我问诊。',
     icon: ShieldPlus,
     className: 'bg-white text-violet-700 border-violet-100 hover:bg-violet-50',
+    activeClassName: 'border-violet-300 bg-violet-50/80 shadow-sm',
   },
   {
+    id: 'chronic' as const,
     label: '慢病守护',
     subtitle: '基础病叠加',
-    sendText: '我有高血压/糖尿病等慢性病，请按慢病患者模式帮我问诊。',
     icon: HeartPulse,
     className: 'bg-white text-rose-700 border-rose-100 hover:bg-rose-50',
+    activeClassName: 'border-rose-300 bg-rose-50/80 shadow-sm',
   },
 ] as const
 
 export function WelcomeScreen({
-  onSendMessage,
+  onStartConsultation,
+  onApplyStarterText,
+  selectedModeId,
+  onSelectMode,
   onToggleMap,
   sessionEmail,
-  canOpenAuth,
-  onOpenAuth,
-  authActionLabel,
   profile,
+  weather,
+  pendingFollowUpCount = 0,
+  householdProfiles = [],
+  switchingHouseholdProfileId,
   recentCases = [],
   recentSessions,
-  activeSessionId,
   onOpenConversation,
+  onSelectHouseholdProfile,
+  onManageProfiles,
 }: WelcomeScreenProps) {
   const personalizedScenarios = buildPersonalizedScenarios({
     profile,
     recentCases,
     recentSessions,
   })
-  const canOpenAuthEntry = canOpenAuth !== false && Boolean(onOpenAuth)
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : ''
-  const scenarioChips =
-    personalizedScenarios.length === 0
-      ? COMMON_SCENARIOS
-      : personalizedScenarios.length < MIN_SCENARIO_CHIP_COUNT
-        ? [...personalizedScenarios, ...COMMON_SCENARIOS].slice(0, MIN_SCENARIO_CHIP_COUNT)
-        : personalizedScenarios.slice(0, MAX_PERSONALIZED_CHIP_COUNT)
-  const hasPersonalizedScenarios = personalizedScenarios.length > 0
+  const selectedMode = getConsultationModePreset(selectedModeId)
+  const normalizedProfileCity = normalizeText(profile?.city)
+  const localCityLabel =
+    normalizedProfileCity && normalizedProfileCity !== DEFAULT_PROFILE_CITY ? normalizedProfileCity : ''
+  const weatherSummary = buildWeatherExperienceSummary(weather ?? null)
+  const focusPathCards = buildFocusPathCards({
+    selectedModeId,
+    cityLabel: localCityLabel,
+    weather,
+  })
+  const modeStarterScenarios = selectedMode
+    ? selectedMode.starterPrompts.map((prompt) => ({
+        label: truncateText(prompt, 18),
+        sendText: prompt,
+      }))
+    : COMMON_SCENARIOS
+  const scenarioChips = Array.from(
+    new Map(
+      [
+        ...personalizedScenarios.slice(0, selectedMode ? 1 : 2),
+        ...modeStarterScenarios,
+        ...COMMON_SCENARIOS,
+      ].map((item) => [item.sendText, item] as const)
+    ).values()
+  ).slice(0, selectedMode ? MAX_PERSONALIZED_CHIP_COUNT : MIN_SCENARIO_CHIP_COUNT)
+  // const hasPersonalizedScenarios = personalizedScenarios.length > 0
+  const recentConversationChips = recentSessions.slice(0, 3)
+  const latestSession = recentSessions[0] ?? null
+  const cloudSessions = recentSessions.filter((session) => session.storage === 'supabase')
+  const latestCloudSession = cloudSessions[0] ?? null
+  const showReengagement = Boolean(
+    latestSession && (pendingFollowUpCount > 0 || wasUpdatedWithinOneDay(latestSession.updatedAt))
+  )
 
   return (
-    <div className="w-full py-6 sm:py-7">
-      <div className="space-y-4">
+    <div className="space-y-4">
+        <HouseholdProfileSwitcher
+          currentProfile={profile ?? {
+            displayName: '',
+            city: '中国大陆',
+            birthYear: null,
+            gender: '',
+            medicalNotes: '',
+            chronicConditions: '',
+            allergies: '',
+            currentMedications: '',
+            careFocus: '',
+            profileMode: 'custom',
+          }}
+          householdProfiles={householdProfiles}
+          isSwitchingId={switchingHouseholdProfileId}
+          onSwitchProfile={onSelectHouseholdProfile}
+          onManageProfiles={onManageProfiles}
+        />
+
+        {showReengagement && latestSession && (
+          <button
+            type="button"
+            onClick={() => onOpenConversation(latestSession.id)}
+            className="w-full rounded-3xl border border-amber-100 bg-amber-50/90 px-4 py-4 text-left shadow-sm transition-colors hover:bg-amber-100/70"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  {pendingFollowUpCount > 0 ? `还有 ${pendingFollowUpCount} 项跟进未处理` : '上次问诊还有内容未完成'}
+                </p>
+                <p className="mt-1 truncate text-xs text-slate-600">
+                  {truncateText(getRecentSessionReference(latestSession) || latestSession.title, 24)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">点击继续，可接着之前的上下文提问。</p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-amber-700">
+                继续上次
+                <ArrowRight size={13} />
+              </span>
+            </div>
+          </button>
+        )}
+
+        {!showReengagement && sessionEmail && latestCloudSession && (
+          <button
+            type="button"
+            onClick={() => onOpenConversation(latestCloudSession.id)}
+            className="w-full rounded-3xl border border-blue-100 bg-blue-50/80 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">已同步 {cloudSessions.length} 段问诊，可跨设备继续</p>
+                <p className="mt-1 truncate text-xs text-slate-600">
+                  {truncateText(getRecentSessionReference(latestCloudSession) || latestCloudSession.title, 24)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">适合直接回到上次线程继续补充，不必从头再说。</p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-700">
+                继续查看
+                <ArrowRight size={13} />
+              </span>
+            </div>
+          </button>
+        )}
+
         <div className="rounded-3xl border border-slate-200 bg-white/95 px-5 pb-5 pt-4 shadow-sm">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
             <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-            {sessionEmail ? `已同步 · ${maskedSessionEmail}` : '无需登录，直接开始症状自查'}
+            {sessionEmail
+              ? `已登录 · ${maskedSessionEmail}${cloudSessions.length > 0 ? ` · ${cloudSessions.length} 段问诊可继续` : ''}`
+              : '未登录 · 仅本设备保存'}
           </div>
           <h1 className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">
-            先描述不适，再决定下一步
+            今天哪里不舒服？
           </h1>
 
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {GUARDIAN_MODES.map((mode) => {
+              const isSelected = selectedModeId === mode.id
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => onSelectMode(mode.id)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                    isSelected
+                      ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              )
+            })}
+          </div>
+          {selectedMode && (
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              {selectedMode.summary}
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
+            {[
+              '先判断今天需不需要线下处理',
+              '年龄、慢病和用药会自动带入',
+              '登录后可跨设备继续上次问诊',
+            ].map((item) => (
+              <span key={item} className="text-xs text-slate-500">
+                <span className="mr-1 font-semibold text-emerald-500">✓</span>
+                {item}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+            <span>直接在下方输入症状，或先点一个起步词条。</span>
             <button
-              onClick={() => onSendMessage('我想做一次症状自查，请按标准流程开始问我第一个问题。')}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              type="button"
+              onClick={onStartConsultation}
+              className="inline-flex items-center gap-1 font-medium text-blue-600 transition-colors hover:text-blue-700"
             >
-              <MessageCircle size={16} />
-              立即开始
-            </button>
-            {canOpenAuthEntry && !sessionEmail && (
-              <button
-                onClick={onOpenAuth}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100"
-              >
-                <LogIn size={16} />
-                {authActionLabel ?? '登录 / 注册'}
-              </button>
-            )}
-            {onOpenAuth && sessionEmail && (
-              <button
-                onClick={onOpenAuth}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-4 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-600"
-              >
-                {authActionLabel ?? '管理账号'}
-              </button>
-            )}
-            <button
-              onClick={onToggleMap}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-transparent px-4 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
-            >
-              健康地图
+              <CheckCircle2 size={14} />
+              直接输入症状
             </button>
           </div>
-          <div className="mt-4 border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">选择更贴近的问诊模式</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  儿童、老人和慢病人群会直接走更保守的追问和风险判断。
-                </p>
-              </div>
-            </div>
+        </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {GUARDIAN_MODES.map((mode) => {
-                const Icon = mode.icon
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+          <section className="rounded-3xl border border-sky-100 bg-sky-50/70 px-4 py-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-3 py-1 text-[11px] text-sky-700">
+                  <CloudSun size={12} />
+                  本地天气与出门提醒
+                </div>
+                <p className="mt-3 text-sm font-semibold text-slate-900">{weatherSummary.headline}</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600">{weatherSummary.description}</p>
+              </div>
+              <button
+                type="button"
+                onClick={onToggleMap}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-white"
+              >
+                <MapPin size={13} />
+                地图
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {weatherSummary.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[11px] text-slate-600"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          {/* Focus path cards hidden for cleaner first impression */}
+          {/* eslint-disable-next-line no-constant-binary-expression */}
+          {false && (
+          <section className="rounded-3xl border border-slate-200 bg-white/95 px-4 py-4 shadow-sm">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold text-slate-900">今天先解决什么</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                先走这 3 条高频主路径之一，词条会先写进输入框，你确认后再发。
+              </p>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {focusPathCards.map((item) => {
+                const Icon = item.icon
                 return (
                   <button
-                    key={mode.label}
-                    onClick={() => onSendMessage(mode.sendText)}
-                    className={`rounded-2xl border px-3 py-3 text-left transition-all hover:shadow-sm ${mode.className}`}
+                    key={item.id}
+                    type="button"
+                    onClick={() => onApplyStarterText(item.sendText)}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${item.toneClass}`}
                   >
-                    <Icon size={16} className="mb-2" />
-                    <p className="text-xs font-semibold">{mode.label}</p>
-                    <p className="mt-1 text-[11px] opacity-80">{mode.subtitle}</p>
+                    <div className="inline-flex rounded-xl bg-white/90 p-2 text-slate-700 shadow-sm">
+                      <Icon size={16} />
+                    </div>
+                    <p className="mt-3 text-sm font-semibold text-slate-900">{item.title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.description}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                      预填问题
+                      <ArrowRight size={12} />
+                    </span>
                   </button>
                 )
               })}
             </div>
-          </div>
+          </section>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-3">
           <div className="space-y-2">
-            {hasPersonalizedScenarios && (
-              <p className="text-xs text-slate-500">
-                这些入口已结合你保存的档案和近期记录；不符合的话，也可以直接描述这次不适。
-              </p>
-            )}
+            {/* Personalized scenario description hidden for cleaner first impression */}
             <div className="flex flex-wrap gap-2">
               {scenarioChips.map((item) => (
                 <button
                   key={item.label}
-                  onClick={() => onSendMessage(item.sendText)}
+                  onClick={() => onApplyStarterText(item.sendText)}
                   className="rounded-full border border-transparent bg-slate-100 px-3.5 py-1.5 text-xs text-slate-700 transition-colors hover:bg-slate-200"
                 >
                   {item.label}
@@ -282,20 +518,22 @@ export function WelcomeScreen({
             </div>
           </div>
 
-          <div className="lg:hidden">
-            <ConversationHistoryPanel
-              sessions={recentSessions}
-              activeSessionId={activeSessionId}
-              onOpenSession={onOpenConversation}
-              title="最近对话"
-              description="手机端也能在这里继续之前的问诊线程。"
-              maxItems={5}
-              showStartButton={false}
-              emptyMessage="完成第一次问诊后，最近对话会出现在这里。下次回来时可以直接继续，不必重新描述全部症状。"
-            />
-          </div>
+          {recentConversationChips.length > 0 && (
+            <div className="flex flex-wrap gap-2 lg:hidden">
+              <span className="w-full text-xs text-slate-400">最近问诊</span>
+                {recentConversationChips.map((session) => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => onOpenConversation(session.id)}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-700 transition-colors hover:border-cyan-200 hover:bg-cyan-50"
+                  >
+                    {truncateText(getRecentSessionReference(session) || session.title, 16)}
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
-      </div>
     </div>
   )
 }

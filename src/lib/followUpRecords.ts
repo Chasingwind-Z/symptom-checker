@@ -135,6 +135,10 @@ function createFollowUpRecord(userText: string, result: DiagnosisResult): Stored
   };
 }
 
+function normalizeFollowUpSummaryKey(value: string) {
+  return value.replace(/\s+/g, '').replace(/[^\w\u4e00-\u9fff]/g, '').toLowerCase()
+}
+
 export function subscribeToFollowUpRecords(listener: () => void) {
   if (typeof window === 'undefined') {
     return () => undefined;
@@ -164,7 +168,17 @@ export function readFollowUpRecords(): FollowUpRecord[] {
 
 export function queueFollowUpRecord(userText: string, result: DiagnosisResult) {
   const nextRecord = createFollowUpRecord(userText, result);
-  const existingRecords = readStoredFollowUpRecords().filter((record) => record.id !== nextRecord.id);
+  const nextSummaryKey = normalizeFollowUpSummaryKey(nextRecord.summary)
+  const existingRecords = readStoredFollowUpRecords().filter((record) => {
+    if (record.id === nextRecord.id) return false
+
+    const isSamePendingSummary =
+      !record.response &&
+      record.level === nextRecord.level &&
+      normalizeFollowUpSummaryKey(record.summary) === nextSummaryKey
+
+    return !isSamePendingSummary
+  });
   writeStoredFollowUpRecords([nextRecord, ...existingRecords].slice(0, MAX_FOLLOW_UP_RECORDS));
 
   return toFollowUpRecord(nextRecord);

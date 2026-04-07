@@ -1,4 +1,4 @@
-import { ArrowRight, Clock3, MessageSquareText, Plus } from 'lucide-react';
+import { ArrowRight, Clock3, MessageSquareText, Plus, Trash2 } from 'lucide-react';
 import { getRiskPresentation } from '../lib/riskPresentation';
 import type { ConversationSession } from '../types';
 
@@ -6,6 +6,7 @@ interface ConversationHistoryPanelProps {
   sessions: ConversationSession[];
   activeSessionId?: string | null;
   onOpenSession: (sessionId: string) => void;
+  onDeleteSession?: (sessionId: string) => void;
   onStartNewSession?: () => void;
   title?: string;
   description?: string;
@@ -54,6 +55,7 @@ export function ConversationHistoryPanel({
   sessions,
   activeSessionId,
   onOpenSession,
+  onDeleteSession,
   onStartNewSession,
   title = '历史会话',
   description = '现在会按对话线程保存问诊历史，点开后可以直接继续聊，不再只是摘要卡片。',
@@ -68,6 +70,18 @@ export function ConversationHistoryPanel({
   const hiddenCount = Math.max(0, sessions.length - visibleSessions.length);
   const isShelf = variant === 'shelf';
   const isSidebar = variant === 'sidebar';
+  const renderDeleteButton = (sessionId: string, sessionTitle: string) =>
+    onDeleteSession ? (
+      <button
+        type="button"
+        onClick={() => onDeleteSession(sessionId)}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+        aria-label={`删除会话 ${sessionTitle}`}
+        title="删除会话"
+      >
+        <Trash2 size={14} />
+      </button>
+    ) : null;
 
   return (
     <section
@@ -118,41 +132,50 @@ export function ConversationHistoryPanel({
               const isActive = activeSessionId === session.id;
 
               return (
-                <button
-                  key={session.id}
-                  type="button"
-                  onClick={() => onOpenSession(session.id)}
-                  className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
-                    isActive
-                      ? 'border-cyan-300 bg-cyan-50/80 shadow-sm'
-                      : 'border-slate-200 bg-white hover:border-cyan-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
-                        {isActive && (
-                          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
-                            当前
-                          </span>
-                        )}
+                <div key={session.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => onOpenSession(session.id)}
+                    className={`w-full rounded-2xl border px-3 py-3 pr-12 text-left transition-colors ${
+                      isActive
+                        ? 'border-cyan-300 bg-cyan-50/80 shadow-sm'
+                        : 'border-slate-200 bg-white hover:border-cyan-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
+                          {isActive && (
+                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                              当前
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                          {getPreviewText(session)}
+                        </p>
                       </div>
-                      <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-                        {getPreviewText(session)}
-                      </p>
+                      <span
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                      >
+                        {riskMeta.label}
+                      </span>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
-                    >
-                      {riskMeta.label}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-400">
-                    <span>{formatUpdatedAt(session.updatedAt)}</span>
-                    <span>{session.messages.length} 条</span>
-                  </div>
-                </button>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                      <span>{formatUpdatedAt(session.updatedAt)}</span>
+                      <div className="flex items-center gap-2">
+                        <span>{session.messages.length} 条</span>
+                        <span>{getStorageLabel(session.storage)}</span>
+                      </div>
+                    </div>
+                  </button>
+                  {onDeleteSession && (
+                    <div className="absolute right-3 top-3">
+                      {renderDeleteButton(session.id, session.title)}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
@@ -169,51 +192,57 @@ export function ConversationHistoryPanel({
             const isActive = activeSessionId === session.id;
 
             return (
-              <button
-                key={session.id}
-                type="button"
-                onClick={() => onOpenSession(session.id)}
-                className={`min-w-[260px] max-w-[300px] flex-1 rounded-2xl border px-4 py-3 text-left transition-colors ${
-                  isActive
-                    ? 'border-cyan-300 bg-cyan-50/70'
-                    : 'border-slate-200 bg-slate-50/80 hover:border-cyan-200 hover:bg-cyan-50/50'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
-                      >
-                        {riskMeta.label}
-                      </span>
-                      {isActive && (
-                        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
-                          当前
+              <div key={session.id} className="relative min-w-[260px] max-w-[300px] flex-1">
+                <button
+                  type="button"
+                  onClick={() => onOpenSession(session.id)}
+                  className={`h-full w-full rounded-2xl border px-4 py-3 pr-12 text-left transition-colors ${
+                    isActive
+                      ? 'border-cyan-300 bg-cyan-50/70'
+                      : 'border-slate-200 bg-slate-50/80 hover:border-cyan-200 hover:bg-cyan-50/50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                        >
+                          {riskMeta.label}
                         </span>
-                      )}
+                        {isActive && (
+                          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                            当前
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                        {getPreviewText(session)}
+                      </p>
                     </div>
-                    <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                      {getPreviewText(session)}
-                    </p>
                   </div>
-                </div>
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
-                    <span className="inline-flex items-center gap-1">
-                      <Clock3 size={12} />
-                      {formatUpdatedAt(session.updatedAt)}
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock3 size={12} />
+                        {formatUpdatedAt(session.updatedAt)}
+                      </span>
+                      <span>{session.messages.length} 条</span>
+                      <span>{getStorageLabel(session.storage)}</span>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs text-cyan-700">
+                      打开
+                      <ArrowRight size={13} />
                     </span>
-                    <span>{session.messages.length} 条</span>
-                    <span>{getStorageLabel(session.storage)}</span>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-xs text-cyan-700">
-                    打开
-                    <ArrowRight size={13} />
-                  </span>
-                </div>
-              </button>
+                </button>
+                {onDeleteSession && (
+                  <div className="absolute right-3 top-3">
+                    {renderDeleteButton(session.id, session.title)}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -225,51 +254,57 @@ export function ConversationHistoryPanel({
               const isActive = activeSessionId === session.id;
 
               return (
-                <button
-                  key={session.id}
-                  type="button"
-                  onClick={() => onOpenSession(session.id)}
-                  className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
-                    isActive
-                      ? 'border-cyan-300 bg-cyan-50/70'
-                      : 'border-slate-200 bg-slate-50/70 hover:border-cyan-200 hover:bg-cyan-50/40'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="truncate text-sm font-semibold text-slate-800">
-                          {session.title}
-                        </p>
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
-                        >
-                          {riskMeta.label}
-                        </span>
-                        {isActive && (
-                          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
-                            当前会话
+                <div key={session.id} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => onOpenSession(session.id)}
+                    className={`w-full rounded-2xl border px-4 py-3 pr-12 text-left transition-colors ${
+                      isActive
+                        ? 'border-cyan-300 bg-cyan-50/70'
+                        : 'border-slate-200 bg-slate-50/70 hover:border-cyan-200 hover:bg-cyan-50/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="truncate text-sm font-semibold text-slate-800">
+                            {session.title}
+                          </p>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                          >
+                            {riskMeta.label}
                           </span>
-                        )}
+                          {isActive && (
+                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                              当前会话
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                          {getPreviewText(session)}
+                        </p>
+                        <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock3 size={12} />
+                            {formatUpdatedAt(session.updatedAt)}
+                          </span>
+                          <span>{session.messages.length} 条消息</span>
+                          <span>{getStorageLabel(session.storage)}</span>
+                        </div>
                       </div>
-                      <p className="mt-2 text-xs leading-relaxed text-slate-600">
-                        {getPreviewText(session)}
-                      </p>
-                      <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
-                        <span className="inline-flex items-center gap-1">
-                          <Clock3 size={12} />
-                          {formatUpdatedAt(session.updatedAt)}
-                        </span>
-                        <span>{session.messages.length} 条消息</span>
-                        <span>{getStorageLabel(session.storage)}</span>
-                      </div>
+                      <span className="inline-flex items-center gap-1 text-xs text-cyan-700">
+                        继续
+                        <ArrowRight size={13} />
+                      </span>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-xs text-cyan-700">
-                      继续
-                      <ArrowRight size={13} />
-                    </span>
-                  </div>
-                </button>
+                  </button>
+                  {onDeleteSession && (
+                    <div className="absolute right-3 top-3">
+                      {renderDeleteButton(session.id, session.title)}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>

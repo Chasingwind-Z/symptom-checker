@@ -17,6 +17,12 @@ export interface AgentMemoryContext {
     gender?: string;
     medicalNotes?: string;
   } | null;
+  consultationMode?: {
+    id: string;
+    label: string;
+    subtitle?: string;
+    promptNote: string;
+  } | null;
   recentCases?: Array<{
     chiefComplaint: string;
     triageLevel: DiagnosisResult['level'] | 'pending';

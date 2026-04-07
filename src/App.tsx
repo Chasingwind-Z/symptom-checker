@@ -1,11 +1,3 @@
-import {
-  AlertTriangle,
-  CheckCircle2,
-  RefreshCw,
-  Search,
-  Sparkles,
-  WifiOff,
-} from 'lucide-react';
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppSidebar,
@@ -20,21 +12,34 @@ import { ChatInput, type ChatInputLayoutMetrics } from './components/ChatInput';
 import { ConversationHistoryPanel } from './components/ConversationHistoryPanel';
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { Header } from './components/Header';
-import { HealthSettingsPanel } from './components/HealthSettingsPanel';
+import { LazySurfaceFallback } from './components/LazySurfaceFallback';
 import {
-  RecordsCenterPanel,
   type RecordsCenterSummaryItem,
 } from './components/RecordsCenterPanel';
+import type { ConnectedWebSearchState } from './components/SearchIntelligencePanel';
+import { ShellStatusBanner } from './components/ShellStatusBanner';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
+import { MobileBottomNav, MOBILE_BOTTOM_NAV_HEIGHT } from './components/MobileBottomNav';
 import { WelcomeScreen } from './components/WelcomeScreen';
+import { InfoBar } from './components/WeatherBar';
+import { WorkspaceView } from './components/WorkspaceView';
 import { useChat } from './hooks/useChat';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { usePwaInstall } from './hooks/usePwaInstall';
-import type { CaseHistoryItem } from './lib/healthData';
+import { searchWebSources } from './lib/agentTools';
+import { deleteCaseHistoryItem } from './lib/healthData';
+import {
+  getConsultationModePreset,
+  type ConsultationModeId,
+} from './lib/consultationModes';
 import { getRecommendedHospitals } from './lib/mockHospitals';
+import { searchMedicalKnowledge } from './lib/medicalKnowledge';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
-import { buildProfileCompletionGuide } from './lib/healthWorkspaceInsights';
+import {
+  buildProfileCompletionGuide,
+  type HouseholdProfileRecord,
+} from './lib/healthWorkspaceInsights';
 import {
   DEFAULT_EXPERIENCE_SETTINGS,
   loadExperienceSettings,
@@ -48,33 +53,25 @@ import {
   applyPersonalizedOrdering,
   buildCombinedMedicalNotes,
   buildPersonalizationRankingContext,
+  getMedicationGuidance,
 } from './lib/personalization';
-import type { ConversationSession, Hospital, SendMessageInput } from './types';
-
-const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
-  search: '搜索记录',
-  profile: '健康档案',
-  history: '历史会话',
-  records: '记录中心',
-  medication: '用药建议',
-  settings: '偏好设置',
-};
+import {
+  findMatchingCase,
+  findMatchingConversation,
+  formatDateTimeLabel,
+  getCaseSourceLabel,
+  getConversationReferenceText,
+  getConversationSourceLabel,
+  getReportCount,
+  matchesSearchQuery,
+  normalizeRecordKey,
+  trimText,
+} from './lib/appShellUtils';
+import type { Hospital, SendMessageInput } from './types';
 
 const LazyEpidemicDashboard = lazy(() =>
   import('./components/EpidemicDashboard').then((module) => ({
     default: module.EpidemicDashboard,
-  }))
-);
-
-const LazyMedicationRecommendationsPanel = lazy(() =>
-  import('./components/MedicationRecommendationsPanel').then((module) => ({
-    default: module.MedicationRecommendationsPanel,
-  }))
-);
-
-const LazyCloudSyncCard = lazy(() =>
-  import('./components/CloudSyncCard').then((module) => ({
-    default: module.CloudSyncCard,
   }))
 );
 
@@ -84,240 +81,36 @@ const LazyResultCard = lazy(() =>
   }))
 );
 
-type ShellBannerTone = 'warning' | 'success' | 'info';
-
-interface ShellBannerAction {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  isLoading?: boolean;
-}
-
-interface ShellStatusBannerProps {
-  tone: ShellBannerTone;
-  title: string;
-  description: string;
-  primaryAction?: ShellBannerAction;
-  secondaryAction?: ShellBannerAction;
-}
-
-const SHELL_BANNER_STYLES: Record<
-  ShellBannerTone,
-  {
-    container: string;
-    icon: string;
-    title: string;
-    description: string;
-    primaryButton: string;
-    secondaryButton: string;
-  }
-> = {
-  warning: {
-    container: 'border-amber-200 bg-amber-50/95',
-    icon: 'bg-amber-100 text-amber-700',
-    title: 'text-amber-950',
-    description: 'text-amber-900/80',
-    primaryButton: 'bg-amber-700 text-white hover:bg-amber-800',
-    secondaryButton: 'border border-amber-200 bg-white text-amber-900 hover:bg-amber-100',
-  },
-  success: {
-    container: 'border-emerald-200 bg-emerald-50/95',
-    icon: 'bg-emerald-100 text-emerald-700',
-    title: 'text-emerald-950',
-    description: 'text-emerald-900/80',
-    primaryButton: 'bg-emerald-700 text-white hover:bg-emerald-800',
-    secondaryButton: 'border border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-100',
-  },
-  info: {
-    container: 'border-sky-200 bg-sky-50/95',
-    icon: 'bg-sky-100 text-sky-700',
-    title: 'text-sky-950',
-    description: 'text-sky-900/80',
-    primaryButton: 'bg-sky-700 text-white hover:bg-sky-800',
-    secondaryButton: 'border border-sky-200 bg-white text-sky-900 hover:bg-sky-100',
-  },
-};
-
-function ShellStatusBanner({
-  tone,
-  title,
-  description,
-  primaryAction,
-  secondaryAction,
-}: ShellStatusBannerProps) {
-  const Icon = tone === 'warning' ? WifiOff : tone === 'success' ? CheckCircle2 : AlertTriangle;
-  const styles = SHELL_BANNER_STYLES[tone];
-
-  const renderAction = (
-    action: ShellBannerAction,
-    variant: 'primary' | 'secondary'
-  ) => (
-    <button
-      type="button"
-      onClick={action.onClick}
-      disabled={action.disabled || action.isLoading}
-      className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
-        variant === 'primary' ? styles.primaryButton : styles.secondaryButton
-      }`}
-    >
-      {action.isLoading && <RefreshCw size={14} className="animate-spin" />}
-      {action.label}
-    </button>
-  );
-
-  return (
-    <section
-      className={`rounded-2xl border px-4 py-3 shadow-sm ${styles.container}`}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className={`rounded-2xl p-2 ${styles.icon}`}>
-            <Icon size={18} />
-          </div>
-          <div className="min-w-0">
-            <p className={`text-sm font-semibold ${styles.title}`}>{title}</p>
-            <p className={`mt-1 text-sm leading-relaxed ${styles.description}`}>{description}</p>
-          </div>
-        </div>
-
-        {(secondaryAction || primaryAction) && (
-          <div className="flex flex-wrap gap-2">
-            {secondaryAction && renderAction(secondaryAction, 'secondary')}
-            {primaryAction && renderAction(primaryAction, 'primary')}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function LazySurfaceFallback({
-  title,
-  description,
-  fullHeight = false,
-}: {
-  title: string;
-  description: string;
-  fullHeight?: boolean;
-}) {
-  const content = (
-    <div className="mx-auto w-full max-w-3xl rounded-3xl border border-slate-200 bg-white/95 px-6 py-7 shadow-sm">
-      <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-        <RefreshCw size={14} className="animate-spin" />
-        正在准备内容
-      </div>
-      <h2 className="mt-3 text-lg font-semibold text-slate-900">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">{description}</p>
-    </div>
-  );
-
-  if (fullHeight) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 px-4 py-6 md:px-6">
-        {content}
-      </div>
-    );
-  }
-
-  return content;
-}
-
-function getReportCount(): number {
-  try {
-    return (JSON.parse(localStorage.getItem('symptom_reports') ?? '[]') as unknown[]).length;
-  } catch {
-    return 0;
-  }
-}
-
-function stripRecordMetadata(content: string): string {
-  return content
-    .replace(/```json[\s\S]*?```/g, '')
-    .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function normalizeRecordKey(content: string): string {
-  return stripRecordMetadata(content).replace(/[^a-z0-9\u4e00-\u9fff]/gi, '').toLowerCase();
-}
-
-function matchesSearchQuery(value: string | null | undefined, normalizedQuery: string): boolean {
-  if (!normalizedQuery) return true;
-  return normalizeRecordKey(value ?? '').includes(normalizedQuery);
-}
-
-function getConversationReferenceText(session: ConversationSession): string {
-  const firstUserMessage = session.messages.find((message) => message.role === 'user');
-  return stripRecordMetadata(firstUserMessage?.content ?? session.title);
-}
-
-function findMatchingConversation(
-  summary: string,
-  sessions: ConversationSession[]
-): ConversationSession | null {
-  const summaryKey = normalizeRecordKey(summary);
-  if (!summaryKey) return null;
-
-  return (
-    sessions.find((session) => {
-      const sessionKey = normalizeRecordKey(getConversationReferenceText(session));
-      return Boolean(sessionKey) && (sessionKey.includes(summaryKey) || summaryKey.includes(sessionKey));
-    }) ?? null
-  );
-}
-
-function findMatchingCase(summary: string, recentCases: CaseHistoryItem[]): CaseHistoryItem | null {
-  const summaryKey = normalizeRecordKey(summary);
-  if (!summaryKey) return null;
-
-  return (
-    recentCases.find((item) => {
-      const caseKey = normalizeRecordKey(item.chiefComplaint);
-      return Boolean(caseKey) && (caseKey.includes(summaryKey) || summaryKey.includes(caseKey));
-    }) ?? null
-  );
-}
-
-function formatDateTimeLabel(value: string | number): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return '刚刚';
-
-  return parsed.toLocaleString('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function trimText(text: string, maxLength = 92): string {
-  return text.length > maxLength ? `${text.slice(0, maxLength).trim()}…` : text;
-}
-
-function getConversationSourceLabel(storage: ConversationSession['storage']): string {
-  return storage === 'supabase' ? '云端会话' : '本机会话';
-}
-
-function getCaseSourceLabel(source: CaseHistoryItem['source']): string {
-  return source === 'supabase' ? '云端摘要' : '本机摘要';
-}
-
 export default function App() {
   const workspace = useHealthWorkspace();
   const network = useNetworkStatus();
   const pwa = usePwaInstall();
+  const [selectedConsultationModeId, setSelectedConsultationModeId] = useState<ConsultationModeId | null>(
+    null
+  );
+  const [welcomeDraftValue, setWelcomeDraftValue] = useState('');
+  const [welcomeFocusSignal, setWelcomeFocusSignal] = useState(0);
+  const selectedConsultationMode = useMemo(
+    () => getConsultationModePreset(selectedConsultationModeId),
+    [selectedConsultationModeId]
+  );
   const chatMemoryContext = useMemo(
     () => ({
       profile: {
         ...workspace.profile,
         medicalNotes: buildCombinedMedicalNotes(workspace.profile),
       },
+      consultationMode: selectedConsultationMode
+        ? {
+            id: selectedConsultationMode.id,
+            label: selectedConsultationMode.label,
+            subtitle: selectedConsultationMode.subtitle,
+            promptNote: selectedConsultationMode.promptNote,
+          }
+        : null,
       recentCases: workspace.recentCases,
     }),
-    [workspace.profile, workspace.recentCases]
+    [selectedConsultationMode, workspace.profile, workspace.recentCases]
   );
   const {
     messages,
@@ -327,6 +120,7 @@ export default function App() {
     isSearchingKB,
     activeToolCalls,
     activeAgentRoute,
+    weatherData,
     activeSessionId,
     conversationSessions,
     locationData,
@@ -336,6 +130,7 @@ export default function App() {
     sendMessage,
     openFollowUpRecord,
     loadConversationSession,
+    deleteConversationSession,
     resetChat,
   } = useChat(chatMemoryContext);
 
@@ -353,7 +148,11 @@ export default function App() {
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [recordSearchQuery, setRecordSearchQuery] = useState('');
+  const [connectedWebSearch, setConnectedWebSearch] = useState<ConnectedWebSearchState>({
+    status: 'idle',
+  });
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [switchingHouseholdProfileId, setSwitchingHouseholdProfileId] = useState<string | null>(null);
   const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
     height: 148,
     keyboardOffset: 0,
@@ -411,29 +210,115 @@ export default function App() {
     };
   }, [diagnosisResult, experienceSettings.locationPreference]);
 
-  const defaultWorkspaceSection: SidebarSection = 'profile';
+  const defaultWorkspaceSection: SidebarSection = 'records';
 
   const handleSendMessage = useCallback(
     (input: string | SendMessageInput) => {
       setCurrentPage('chat');
+      setWelcomeDraftValue('');
       sendMessage(input);
     },
     [sendMessage]
   );
 
+  const handleStartConsultation = useCallback(() => {
+    setWelcomeFocusSignal((current) => current + 1);
+  }, []);
+
+  const handleApplyStarterText = useCallback((text: string) => {
+    setWelcomeDraftValue(text);
+    setWelcomeFocusSignal((current) => current + 1);
+  }, []);
+
+  const handleSelectConsultationMode = useCallback((modeId: ConsultationModeId) => {
+    setSelectedConsultationModeId(modeId);
+    window.setTimeout(() => {
+      setWelcomeFocusSignal((current) => current + 1);
+    }, 320);
+  }, []);
+
+  const handleSelectHouseholdProfile = useCallback(
+    async (record: HouseholdProfileRecord) => {
+      setSwitchingHouseholdProfileId(record.id)
+
+      try {
+        await workspace.updateProfile(record.profile)
+
+        const age = record.profile.birthYear
+          ? new Date().getFullYear() - record.profile.birthYear
+          : null
+        const nextMode: ConsultationModeId =
+          age !== null && age < 18
+            ? 'child'
+            : age !== null && age >= 60
+              ? 'elderly'
+              : record.profile.chronicConditions.trim()
+                ? 'chronic'
+                : 'self'
+
+        setSelectedConsultationModeId(nextMode)
+        setWelcomeDraftValue('')
+      } finally {
+        setSwitchingHouseholdProfileId(null)
+      }
+    },
+    [workspace]
+  )
+
+  const handleClearSelectedConsultationMode = useCallback(() => {
+    setSelectedConsultationModeId(null);
+  }, []);
+
   const handleResetChat = useCallback(() => {
     resetChat();
+    setSelectedConsultationModeId(null);
+    setWelcomeDraftValue('');
     setCurrentPage('home');
   }, [resetChat]);
 
   const handleOpenConversation = useCallback(
     (sessionId: string) => {
       if (loadConversationSession(sessionId)) {
+        setSelectedConsultationModeId(null);
+        setWelcomeDraftValue('');
         setCurrentPage('chat');
       }
     },
     [loadConversationSession]
   );
+
+  const handleDeleteConversation = useCallback(
+    async (sessionId: string) => {
+      const target = conversationSessions.find((session) => session.id === sessionId)
+      if (!target) return
+
+      const confirmed = window.confirm(`确认删除会话“${target.title}”？删除后将不再出现在历史与搜索结果中。`)
+      if (!confirmed) return
+
+      const deletedSession = deleteConversationSession(sessionId)
+      if (!deletedSession) return
+
+      if (deletedSession.storage === 'supabase') {
+        await deleteCaseHistoryItem(sessionId)
+        await workspace.refresh()
+      }
+
+      if (activeSessionId === sessionId) {
+        setSelectedConsultationModeId(null)
+        setWelcomeDraftValue('')
+        setCurrentPage('home')
+      }
+    },
+    [activeSessionId, conversationSessions, deleteConversationSession, workspace]
+  )
+
+  const handleDeleteCaseRecord = useCallback(async (caseId: string, title: string) => {
+    const confirmed = window.confirm(`确认删除记录“${title}”？删除后将从记录中心与搜索结果里移除。`)
+    if (!confirmed) return
+
+    await deleteCaseHistoryItem(caseId)
+    await workspace.refresh()
+  }, [workspace])
 
   const handleOpenWorkspaceSection = useCallback((section: SidebarSection) => {
     setWorkspaceSection(section);
@@ -498,6 +383,14 @@ export default function App() {
 
   const handleRecordSearchChange = useCallback((value: string) => {
     setRecordSearchQuery(value);
+    setConnectedWebSearch(
+      value.trim()
+        ? {
+            status: 'loading',
+            sourceLabel: '公开资料检索',
+          }
+        : { status: 'idle' }
+    );
     if (value.trim()) {
       setWorkspaceSection('search');
       setCurrentPage('workspace');
@@ -600,10 +493,10 @@ export default function App() {
         matchedCase?.assistantPreview ??
         '可继续打开相关记录，回看上次的问诊判断与后续建议。';
 
-      items.push({
-        id: `followup-summary-${record.id}`,
-        title: `随访 · ${record.summary}`,
-        summary: trimText(`${responseLabel}${contextSummary}`),
+        items.push({
+          id: `followup-summary-${record.id}`,
+          title: `随访 · ${record.summary}`,
+          summary: trimText(`${responseLabel}${contextSummary}`),
         metaLabel: `完成于 ${formatDateTimeLabel(record.respondedAt ?? record.createdAt)}`,
         sourceLabel: matchedSession
           ? `${getConversationSourceLabel(matchedSession.storage)} · 已完成随访`
@@ -612,15 +505,22 @@ export default function App() {
             : '已完成随访',
         departments: matchedSession?.diagnosisResult?.departments ?? matchedCase?.departments ?? [],
         riskLevel: matchedSession?.riskLevel ?? matchedCase?.triageLevel ?? record.level,
-        primaryAction: matchedSession
-          ? {
-              label: '继续咨询',
-              onClick: () => handleOpenConversation(matchedSession.id),
-              tone: 'primary',
-            }
-          : undefined,
+          primaryAction: matchedSession
+            ? {
+                label: '继续咨询',
+                onClick: () => handleOpenConversation(matchedSession.id),
+                tone: 'primary',
+              }
+            : undefined,
+          onDelete: matchedSession
+            ? () => handleDeleteConversation(matchedSession.id)
+            : matchedCase
+              ? () => {
+                  void handleDeleteCaseRecord(matchedCase.id, matchedCase.chiefComplaint)
+                }
+              : undefined,
+        });
       });
-    });
 
     conversationSessions
       .filter((session) => session.diagnosisResult && !linkedSessionIds.has(session.id))
@@ -641,16 +541,62 @@ export default function App() {
             onClick: () => handleOpenConversation(session.id),
             tone: 'primary',
           },
+          onDelete: () => handleDeleteConversation(session.id),
         });
       });
 
     return items;
-  }, [completedFollowUpRecords, conversationSessions, handleOpenConversation, workspace.recentCases]);
+  }, [
+    completedFollowUpRecords,
+    conversationSessions,
+    handleDeleteCaseRecord,
+    handleDeleteConversation,
+    handleOpenConversation,
+    workspace.recentCases,
+  ]);
 
   const normalizedSearchQuery = useMemo(
     () => normalizeRecordKey(recordSearchQuery),
     [recordSearchQuery]
   );
+  const knowledgeSearchPreview = useMemo(
+    () =>
+      normalizedSearchQuery ? searchMedicalKnowledge(recordSearchQuery.trim(), { limit: 8 }) : null,
+    [normalizedSearchQuery, recordSearchQuery]
+  );
+
+  useEffect(() => {
+    if (workspaceSection !== 'search' || !recordSearchQuery.trim()) return;
+
+    let cancelled = false;
+    const query = recordSearchQuery.trim();
+    const timeoutId = window.setTimeout(() => {
+      void searchWebSources(query)
+        .then((result) => {
+          if (cancelled) return;
+          setConnectedWebSearch({
+            status: 'ready',
+            sourceLabel: result.sourceLabel,
+            fetchedAt: result.fetchedAt,
+            message: result.message,
+            results: result.results,
+          });
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setConnectedWebSearch({
+            status: 'error',
+            sourceLabel: '公开资料检索',
+            message: '联网检索暂时不可用，可先查看本地知识命中或改用外部搜索。',
+          });
+        });
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [recordSearchQuery, workspaceSection]);
 
   const personalizationRankingContext = useMemo(
     () =>
@@ -784,6 +730,12 @@ export default function App() {
     ).length;
   }, [normalizedSearchQuery, workspace.recentCases]);
 
+  const medicationBadgeCount = useMemo(() => {
+    if (!diagnosisResult) return 0;
+    return getMedicationGuidance(diagnosisResult, workspace.profile).filter((item) => item.suitable)
+      .length;
+  }, [diagnosisResult, workspace.profile]);
+
   const searchPersonalizationHintVisible =
     Boolean(normalizedSearchQuery) &&
     (personalizedConversationSearch.changed ||
@@ -811,19 +763,36 @@ export default function App() {
   const showWorkspace = effectivePage === 'workspace';
   const showWelcome = !showWorkspace && messages.length === 0;
   const showConversationShelf = !showWorkspace && !showWelcome && conversationSessions.length > 0;
+
+  // Mobile bottom nav is visible on home and workspace pages; hidden during active chat
+  // so it never overlaps the floating ChatInput.
+  const showMobileBottomNav = effectivePage !== 'chat';
+  const mobileBottomNavActivePrimaryTab: 'chat' | 'search' | 'records' | 'profile' | null =
+    showWorkspace && workspaceSection === 'search'
+      ? 'search'
+      : showWorkspace && workspaceSection === 'records'
+        ? 'records'
+        : showWorkspace && workspaceSection === 'profile'
+          ? 'profile'
+          : effectivePage === 'home'
+            ? 'chat'
+            : null;
+
   const contentWidthClass = showWorkspace
     ? workspaceSection === 'profile' || workspaceSection === 'settings'
       ? 'max-w-6xl'
       : 'max-w-5xl'
     : showWelcome
-      ? 'max-w-4xl'
+      ? 'max-w-5xl'
       : experienceSettings.chatDensity === 'compact'
         ? 'max-w-5xl'
         : 'max-w-4xl';
   const chatThreadClass =
     experienceSettings.chatDensity === 'compact' ? 'mt-1 space-y-2 py-3' : 'mt-2 space-y-3 py-4';
+  // On chat page the floating input drives the bottom padding; on home/workspace add room
+  // for the mobile bottom nav bar (56 px) on small screens.
   const chatScrollPaddingBottom = showWorkspace || showWelcome
-    ? '40px'
+    ? `max(40px, calc(${MOBILE_BOTTOM_NAV_HEIGHT}px + env(safe-area-inset-bottom) + 8px))`
     : `${Math.max(148, chatInputLayout.height + chatInputLayout.keyboardOffset + 20)}px`;
 
   useEffect(() => {
@@ -852,42 +821,47 @@ export default function App() {
       switch (workspaceSection) {
         case 'search':
           return {
-            title: '搜索记录',
+            title: '查记录',
             subtitle: recordSearchQuery.trim()
-              ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索${
-                  searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                }`
-              : '按症状、标题、科室或建议快速查找历史会话与记录。',
+              ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索，并同步联动知识库与公开资料${
+                    searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                  }`
+              : '按症状、标题、科室或建议快速查找历史会话、医学知识和公开资料。',
           };
         case 'profile':
           return {
-            title: '健康档案',
-            subtitle: '只保留账号、同步与基础资料，不再把记录和说明卡堆在同一页。',
+            title: '我的资料',
+            subtitle: '管理基础资料、家庭成员和云端同步，后续问诊会自动沿用这些信息。',
+          };
+        case 'evidence':
+          return {
+            title: '为什么这样建议',
+            subtitle: '把这次分级的主要原因、医学知识参考和公开资料核对点整理在一起，方便理解为什么这样建议。',
           };
         case 'history':
           return {
-            title: '历史会话',
+            title: '历史问诊',
             subtitle: recordSearchQuery.trim()
               ? `已按“${recordSearchQuery}”筛选历史线程${
-                  searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                }`
+                    searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
+                  }`
               : '所有问诊会按线程保存，方便随时回到原上下文继续咨询。',
           };
         case 'medication':
           return {
-            title: '用药建议',
+            title: '服务入口',
             subtitle:
               '把最近问诊里的 OTC / 家庭处理方向前置展示出来，并保留风险提醒与回到原线程的入口。',
           };
         case 'settings':
           return {
-            title: '问诊设置',
+            title: '偏好设置',
             subtitle:
-              '调整桌面侧栏、定位使用方式、权威资料展示顺序和聊天排版；更改只保存在当前浏览器。',
+              '调整侧栏宽度、定位使用方式、资料展示顺序和聊天排版；更改只保存在当前浏览器。',
           };
         default:
           return {
-            title: '记录中心',
+            title: '记录与跟进',
             subtitle:
               pendingFollowUpRecords.length > 0
                 ? `当前有 ${pendingFollowUpRecords.length} 项待跟进，建议优先处理。`
@@ -957,7 +931,7 @@ export default function App() {
         ? {
             tone: 'info' as const,
             title: workspace.statusLabel,
-            description: `${workspace.helperText} 问诊和本机缓存仍可继续使用。`,
+            description: `${workspace.helperText} 问诊和当前设备保存的资料仍可继续使用。`,
             primaryAction: network.isOnline
               ? {
                   label: workspace.isRefreshing ? '重连中…' : '重新连接',
@@ -999,16 +973,15 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 lg:flex">
       <AppSidebar
-        activeSection={showWorkspace ? workspaceSection : effectivePage === 'chat' ? 'chat' : null}
+        activeSection={showWorkspace ? workspaceSection : null}
         searchQuery={recordSearchQuery}
-        onSearchQueryChange={handleRecordSearchChange}
         sessions={filteredConversationSessions}
-        totalSessionCount={conversationSessions.length}
         activeSessionId={activeSessionId}
         onOpenSession={handleOpenConversation}
+        onDeleteSession={handleDeleteConversation}
         onStartNewSession={handleResetChat}
-        onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
         onSelectSearch={() => handleOpenWorkspaceSection('search')}
+        onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
         onSelectProfile={() => handleOpenWorkspaceSection('profile')}
         onSelectHistory={() => handleOpenWorkspaceSection('history')}
         onSelectRecords={() => handleOpenWorkspaceSection('records')}
@@ -1025,6 +998,7 @@ export default function App() {
         statusHelperText={workspace.helperText}
         profileCompletion={profileCompletion}
         pendingFollowUpCount={pendingFollowUpRecords.length}
+        medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
       />
 
       <div className="flex min-h-screen flex-1 flex-col">
@@ -1043,7 +1017,17 @@ export default function App() {
           onInstallApp={() => {
             void pwa.promptInstall();
           }}
+          diagnosisRiskLevel={diagnosisResult?.level ?? null}
         />
+
+        {!showWorkspace && (
+          <InfoBar
+            weather={weatherData}
+            profileCity={localCity}
+            chronicConditions={workspace.profile.chronicConditions}
+            onOpenMap={handleOpenMap}
+          />
+        )}
 
         {shellBanner && (
           <div className="px-4 pt-3 lg:px-6">
@@ -1059,255 +1043,89 @@ export default function App() {
         >
           <div className={`${contentWidthClass} mx-auto w-full`}>
             {showWorkspace && (
-              <div className="space-y-4 py-5">
-                <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
-                  {(Object.keys(WORKSPACE_TAB_LABELS) as SidebarSection[]).map((section) => (
-                    <button
-                      key={section}
-                      type="button"
-                      onClick={() => handleOpenWorkspaceSection(section)}
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors ${
-                        workspaceSection === section
-                          ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
-                          : 'border-slate-200 bg-white text-slate-600'
-                      }`}
-                    >
-                      {WORKSPACE_TAB_LABELS[section]}
-                    </button>
-                  ))}
-                </div>
-
-                {workspaceSection === 'search' && (
-                  <div className="space-y-4">
-                    <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="max-w-2xl">
-                          <p className="text-sm font-semibold text-slate-900">统一搜索</p>
-                          <p className="mt-2 text-sm leading-relaxed text-slate-500">
-                            支持按症状、标题、建议、科室和随访说明搜索会话与记录。
-                          </p>
-                        </div>
-                        {recordSearchQuery.trim() && (
-                          <button
-                            type="button"
-                            onClick={() => setRecordSearchQuery('')}
-                            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-50"
-                          >
-                            清空关键词
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                        <Search size={16} className="text-slate-400" />
-                        <input
-                          value={recordSearchQuery}
-                          onChange={(event) => setRecordSearchQuery(event.target.value)}
-                          placeholder="例如：发烧、头痛、消化内科、复诊、去医院"
-                          className="w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
-                        />
-                      </div>
-
-                      {searchPersonalizationHintVisible && (
-                        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
-                          <Sparkles size={12} />
-                          已结合档案与最近记录排序
-                        </div>
-                      )}
-
-                      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] text-slate-500">匹配会话</p>
-                          <p className="mt-2 text-sm font-semibold text-slate-800">
-                            {filteredConversationSessions.length} 段
-                          </p>
-                          <p className="mt-1 text-[11px] text-slate-500">覆盖标题、提问与分诊建议。</p>
-                        </div>
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] text-slate-500">待跟进</p>
-                          <p className="mt-2 text-sm font-semibold text-slate-800">
-                            {filteredRecordsCenterFollowUps.length} 项
-                          </p>
-                          <p className="mt-1 text-[11px] text-slate-500">适合搜索随访提醒与待补充信息。</p>
-                        </div>
-                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                          <p className="text-[11px] text-slate-500">问诊摘要</p>
-                          <p className="mt-2 text-sm font-semibold text-slate-800">{filteredCaseCount} 条</p>
-                          <p className="mt-1 text-[11px] text-slate-500">支持按科室、风险和摘要内容查找。</p>
-                        </div>
-                      </div>
-                    </section>
-
-                    {recordSearchQuery.trim() ? (
-                      <>
-                        <ConversationHistoryPanel
-                          sessions={filteredConversationSessions}
-                          activeSessionId={activeSessionId}
-                          onOpenSession={handleOpenConversation}
-                          onStartNewSession={handleResetChat}
-                          title="匹配会话"
-                          description={
-                            searchPersonalizationHintVisible
-                              ? `当前关键词“${recordSearchQuery}”命中的历史线程，已结合档案与最近记录微调排序`
-                              : `当前关键词“${recordSearchQuery}”命中的历史线程`
-                          }
-                          emptyMessage="没有匹配到相关会话，请换一个症状或建议关键词。"
-                        />
-
-                        <RecordsCenterPanel
-                          statusLabel="搜索结果"
-                          title="匹配的记录与随访"
-                          helperText={
-                            searchPersonalizationHintVisible
-                              ? '同步展示待跟进项目和最近完成的摘要，并结合档案与最近记录微调排序。'
-                              : '同步展示待跟进项目和最近完成的摘要，方便直接回看或继续咨询。'
-                          }
-                          followUps={filteredRecordsCenterFollowUps}
-                          recentSummaries={filteredRecordsCenterSummaries}
-                          emptyFollowUpsMessage="没有匹配到待跟进项目。"
-                          emptySummariesMessage="没有匹配到最近摘要。"
-                        />
-                      </>
-                    ) : (
-                      <section className="rounded-3xl border border-dashed border-slate-200 bg-white/80 px-5 py-10 text-center text-sm text-slate-500">
-                        在上方输入症状、标题、科室或建议后，这里会同步展示匹配的会话、摘要和随访记录。
-                      </section>
-                    )}
-                  </div>
-                )}
-
-                {workspaceSection === 'profile' && (
-                  <div className="space-y-4">
-                    <Suspense
-                      fallback={
-                        <LazySurfaceFallback
-                          title="正在打开健康档案"
-                          description="正在按需加载同步状态、档案摘要和个性化资料卡片。"
-                        />
-                      }
-                    >
-                      <LazyCloudSyncCard
-                        mode={workspace.mode}
-                        statusLabel={workspace.statusLabel}
-                        helperText={workspace.helperText}
-                        recentCases={workspace.recentCases}
-                        profile={workspace.profile}
-                        householdProfiles={workspace.householdProfiles}
-                        reportCount={reportCount}
-                        sessionEmail={workspace.sessionEmail}
-                        onRefresh={workspace.refresh}
-                        isRefreshing={workspace.isRefreshing}
-                        onSaveProfile={workspace.updateProfile}
-                        onApplyDemoPersona={workspace.loadDemoPersona}
-                        onSaveHouseholdProfile={workspace.saveHouseholdProfile}
-                        onRemoveHouseholdProfile={workspace.deleteHouseholdProfile}
-                        onOpenWorkspaceSection={handleOpenWorkspaceSection}
-                        onOpenAuth={handleOpenAuthDialog}
-                      />
-                    </Suspense>
-                  </div>
-                )}
-
-                {workspaceSection === 'settings' && (
-                  <HealthSettingsPanel
-                    settings={experienceSettings}
-                    currentCity={localCity}
-                    conversationCount={conversationSessions.length}
-                    pendingFollowUpCount={pendingFollowUpRecords.length}
-                    sessionEmail={workspace.sessionEmail}
-                    onDesktopSidebarModeChange={handleDesktopSidebarModeChange}
-                    onLocationPreferenceChange={handleLocationPreferenceChange}
-                    onOfficialSourcePreferenceChange={handleOfficialSourcePreferenceChange}
-                    onChatDensityChange={handleChatDensityChange}
-                    onReset={handleResetExperienceSettings}
-                  />
-                )}
-
-                {workspaceSection === 'history' && (
-                  <ConversationHistoryPanel
-                    sessions={filteredConversationSessions}
-                    activeSessionId={activeSessionId}
-                    onOpenSession={handleOpenConversation}
-                    onStartNewSession={handleResetChat}
-                    title={recordSearchQuery.trim() ? '筛选后的历史会话' : '历史会话'}
-                    description={
-                      recordSearchQuery.trim()
-                        ? searchPersonalizationHintVisible
-                          ? `已按“${recordSearchQuery}”筛选历史线程，并结合档案与最近记录微调排序。`
-                          : `已按“${recordSearchQuery}”筛选历史线程。`
-                        : '所有会话会按最近更新时间排序，点击即可回到原线程继续问诊。'
-                    }
-                    emptyMessage={
-                      recordSearchQuery.trim()
-                        ? '当前关键词没有匹配到会话。'
-                        : '还没有历史会话。完成一次问诊后，这里会自动保存新的线程。'
-                    }
-                  />
-                )}
-
-                {workspaceSection === 'medication' && (
-                  <Suspense
-                    fallback={
-                      <LazySurfaceFallback
-                        title="正在准备用药建议"
-                        description="正在按需加载个性化支持方向和风险提醒，马上就好。"
-                      />
-                    }
-                  >
-                    <LazyMedicationRecommendationsPanel
-                      profile={workspace.profile}
-                      currentDiagnosis={diagnosisResult}
-                      activeSessionId={activeSessionId}
-                      conversationSessions={conversationSessions}
-                      recentCases={workspace.recentCases}
-                      currentLocation={locationData}
-                      onOpenConversation={handleOpenConversation}
-                      onStartNewConversation={handleResetChat}
-                    />
-                  </Suspense>
-                )}
-
-                {workspaceSection === 'records' && (
-                  <RecordsCenterPanel
-                    statusLabel={
-                      pendingFollowUpRecords.length > 0 ? '待处理随访与最近摘要' : '随访与记录'
-                    }
-                    helperText={
-                      pendingFollowUpRecords.length > 0
-                        ? '优先回复待跟进项目，再继续打开最近完成的摘要或原问诊记录。'
-                        : '新的随访提醒和最近完成的摘要会统一汇总在这里，方便随时回看和继续咨询。'
-                    }
-                    followUps={recordsCenterFollowUps}
-                    recentSummaries={recordsCenterSummaries}
-                    emptyFollowUpsMessage="当前没有待回复随访。新的复诊提醒或观察任务出现后，会自动汇总在这里。"
-                    emptySummariesMessage="还没有最近完成的摘要。完成一次问诊或随访后，记录中心会自动展示可继续打开的记录。"
-                  />
-                )}
-              </div>
-            )}
-
-            {showWelcome && (
-              <WelcomeScreen
-                onSendMessage={handleSendMessage}
-                onOpenWorkspace={handleOpenWorkspace}
-                onOpenAuth={handleOpenAuthDialog}
-                authActionLabel={authActionLabel}
-                onToggleMap={handleOpenMap}
-                sessionEmail={workspace.sessionEmail}
+              <WorkspaceView
+                workspaceSection={workspaceSection}
+                onSelectSection={handleOpenWorkspaceSection}
+                recordSearchQuery={recordSearchQuery}
+                onRecordSearchChange={handleRecordSearchChange}
+                filteredConversationSessions={filteredConversationSessions}
+                activeSessionId={activeSessionId}
+                onOpenSession={handleOpenConversation}
+                onDeleteSession={handleDeleteConversation}
+                onStartNewSession={handleResetChat}
+                filteredRecordsCenterFollowUps={filteredRecordsCenterFollowUps}
+                filteredRecordsCenterSummaries={filteredRecordsCenterSummaries}
+                filteredCaseCount={filteredCaseCount}
+                knowledgeSearchPreview={knowledgeSearchPreview}
+                connectedWebSearch={connectedWebSearch}
+                searchPersonalizationHintVisible={searchPersonalizationHintVisible}
+                workspaceMode={workspace.mode}
+                workspaceStatusLabel={workspace.statusLabel}
+                workspaceHelperText={workspace.helperText}
                 profile={workspace.profile}
                 recentCases={workspace.recentCases}
-                recentSessions={conversationSessions}
-                activeSessionId={activeSessionId}
+                householdProfiles={workspace.householdProfiles}
+                reportCount={reportCount}
+                sessionEmail={workspace.sessionEmail}
+                onRefreshWorkspace={workspace.refresh}
+                isRefreshingWorkspace={workspace.isRefreshing}
+                onSaveProfile={workspace.updateProfile}
+                onApplyDemoPersona={workspace.loadDemoPersona}
+                onSaveHouseholdProfile={workspace.saveHouseholdProfile}
+                onRemoveHouseholdProfile={workspace.deleteHouseholdProfile}
+                onOpenWorkspaceSection={handleOpenWorkspaceSection}
+                onOpenAuth={handleOpenAuthDialog}
+                experienceSettings={experienceSettings}
+                currentCity={localCity}
+                conversationCount={conversationSessions.length}
+                conversationSessions={conversationSessions}
+                pendingFollowUpCount={pendingFollowUpRecords.length}
+                onDesktopSidebarModeChange={handleDesktopSidebarModeChange}
+                onLocationPreferenceChange={handleLocationPreferenceChange}
+                onOfficialSourcePreferenceChange={handleOfficialSourcePreferenceChange}
+                onChatDensityChange={handleChatDensityChange}
+                onResetExperienceSettings={handleResetExperienceSettings}
+                diagnosisResult={diagnosisResult}
+                locationData={locationData}
                 onOpenConversation={handleOpenConversation}
+                recordsCenterFollowUps={recordsCenterFollowUps}
+                recordsCenterSummaries={recordsCenterSummaries}
               />
             )}
 
             {showWelcome && (
-              <ChatInput
-                variant="inline"
-                onSend={handleSendMessage}
-                isLoading={isLoading}
-              />
+              <div className="w-full space-y-3 py-6 sm:py-7">
+                <WelcomeScreen
+                  onStartConsultation={handleStartConsultation}
+                  onApplyStarterText={handleApplyStarterText}
+                  selectedModeId={selectedConsultationModeId}
+                  onSelectMode={handleSelectConsultationMode}
+                  onToggleMap={handleOpenMap}
+                  sessionEmail={workspace.sessionEmail}
+                  profile={workspace.profile}
+                  weather={weatherData}
+                  pendingFollowUpCount={pendingFollowUpRecords.length}
+                  householdProfiles={workspace.householdProfiles}
+                  switchingHouseholdProfileId={switchingHouseholdProfileId}
+                  recentCases={workspace.recentCases}
+                  recentSessions={conversationSessions}
+                  onOpenConversation={handleOpenConversation}
+                  onSelectHouseholdProfile={handleSelectHouseholdProfile}
+                  onManageProfiles={() => handleOpenWorkspaceSection('profile')}
+                />
+                <ChatInput
+                  variant="inline"
+                  onSend={handleSendMessage}
+                  isLoading={isLoading}
+                  draftValue={welcomeDraftValue}
+                  onDraftChange={setWelcomeDraftValue}
+                  placeholderOverride={selectedConsultationMode?.placeholder}
+                  selectedModeLabel={selectedConsultationMode?.label}
+                  selectedModeSummary={selectedConsultationMode?.summary}
+                  onClearSelectedMode={handleClearSelectedConsultationMode}
+                  focusSignal={welcomeFocusSignal}
+                />
+              </div>
             )}
 
             {!showWorkspace && messages.length > 0 && (
@@ -1318,6 +1136,7 @@ export default function App() {
                       sessions={conversationSessions}
                       activeSessionId={activeSessionId}
                       onOpenSession={handleOpenConversation}
+                      onDeleteSession={handleDeleteConversation}
                       onStartNewSession={handleResetChat}
                       title="最近对话"
                       description="手机端也能在主聊天界面切换到之前的问诊线程。"
@@ -1410,6 +1229,7 @@ export default function App() {
                       messages={messages}
                       profile={workspace.profile}
                       recentCases={workspace.recentCases}
+                      weather={weatherData}
                       officialSourceCity={localCity}
                       officialSourcePreference={experienceSettings.officialSourcePreference}
                       hospitalSectionTitle={hospitalSectionTitle}
@@ -1434,9 +1254,33 @@ export default function App() {
             withDesktopSidebar
             desktopSidebarWidth={desktopSidebarWidth}
             onLayoutChange={handleChatInputLayoutChange}
+            selectedModeLabel={selectedConsultationMode?.label}
+            selectedModeSummary={selectedConsultationMode?.summary}
+            onClearSelectedMode={handleClearSelectedConsultationMode}
           />
         )}
       </div>
+
+      {showMobileBottomNav && (
+        <MobileBottomNav
+          activePrimaryTab={mobileBottomNavActivePrimaryTab}
+          pendingFollowUpCount={pendingFollowUpRecords.length}
+          profileCompletion={profileCompletion}
+          medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
+          currentCity={localCity}
+          authActionLabel={authActionLabel}
+          onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
+          onSelectSearch={() => handleOpenWorkspaceSection('search')}
+          onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
+          onSelectRecords={() => handleOpenWorkspaceSection('records')}
+          onSelectProfile={() => handleOpenWorkspaceSection('profile')}
+          onSelectHistory={() => handleOpenWorkspaceSection('history')}
+          onSelectMedication={() => handleOpenWorkspaceSection('medication')}
+          onOpenMap={handleOpenMap}
+          onOpenSettings={handleOpenSettings}
+          onOpenAuth={handleOpenAuthDialog}
+        />
+      )}
 
       <AuthDialog
         isOpen={isAuthDialogOpen}

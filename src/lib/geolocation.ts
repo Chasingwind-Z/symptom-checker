@@ -81,10 +81,10 @@ export async function fetchWeather(
 function getWeatherSuggestion(now: Record<string, string>): string {
   const temp = parseInt(now.temp)
   const text = now.text || ''
-  if (temp < 5) return '天气寒冷，注意保暖预防感冒'
-  if (temp > 35) return '天气炎热，注意防暑补水'
-  if (text.includes('雨')) return '今天下雨，就医建议打车'
-  if (text.includes('雪')) return '今天下雪，路面湿滑注意安全'
-  if (parseInt(now.humidity) > 80) return '湿度较高，注意防潮'
-  return '天气适宜，注意适时增减衣物'
+  if (temp < 5) return '注意保暖'
+  if (temp > 35) return '防暑补水'
+  if (text.includes('雨')) return '雨天建议打车'
+  if (text.includes('雪')) return '路面湿滑'
+  if (parseInt(now.humidity) > 80) return '湿度偏高'
+  return '天气适宜'
 }

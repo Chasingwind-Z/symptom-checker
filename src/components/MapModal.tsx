@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import type { Hospital } from '../types'
 
@@ -39,9 +39,18 @@ interface AMapWindow extends Window {
 
 export function MapModal({ hospital, onClose }: Props) {
   const mapRef = useRef<HTMLDivElement>(null)
+  const mapFailed = useRef(false)
+  const [showFallback, setShowFallback] = useState(false)
 
   useEffect(() => {
     const key = import.meta.env.VITE_AMAP_JS_KEY as string
+
+    if (!key) {
+      mapFailed.current = true
+      window.setTimeout(() => setShowFallback(true), 0)
+      return
+    }
+
     const securityKey = import.meta.env.VITE_AMAP_JS_SECURITY_KEY as string
 
     const initMap = () => {
@@ -79,6 +88,19 @@ export function MapModal({ hospital, onClose }: Props) {
         document.head.appendChild(script)
       }
     }
+
+    // Fallback: if map doesn't load within 5 seconds, show web link
+    const fallbackTimer = window.setTimeout(() => {
+      if (!mapFailed.current) {
+        const amapCheck = window as AMapWindow
+        if (!amapCheck.AMap) {
+          mapFailed.current = true
+          setShowFallback(true)
+        }
+      }
+    }, 5000)
+
+    return () => window.clearTimeout(fallbackTimer)
   }, [hospital])
 
   return (
@@ -103,7 +125,21 @@ export function MapModal({ hospital, onClose }: Props) {
           </button>
         </div>
 
-        <div ref={mapRef} style={{ height: window.innerWidth < 768 ? '250px' : '300px', width: '100%' }} />
+        {showFallback ? (
+          <div style={{ height: window.innerWidth < 768 ? '250px' : '300px', width: '100%' }} className="flex flex-col items-center justify-center bg-slate-100 gap-3">
+            <p className="text-sm text-slate-500">地图加载失败</p>
+            <a
+              href={`https://www.amap.com/search?query=${encodeURIComponent(hospital.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              在高德地图中搜索
+            </a>
+          </div>
+        ) : (
+          <div ref={mapRef} style={{ height: window.innerWidth < 768 ? '250px' : '300px', width: '100%' }} />
+        )}
 
         <div className="px-5 py-4 bg-slate-50 space-y-2">
           <div className="flex items-center gap-2 text-sm text-slate-600">

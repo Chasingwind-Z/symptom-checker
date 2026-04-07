@@ -119,22 +119,22 @@ export function getSupabaseBootstrapStatus(): SupabaseBootstrapStatus {
     return {
       state: 'error',
       label: '邮箱同步暂不可用',
-      helperText: '当前先回退到游客模式，资料仍会保存在当前浏览器。',
+      helperText: '当前会先回退到仅本设备保存，你的资料和记录仍可继续使用。',
     };
   }
 
   if (!isSupabaseConfigured) {
     return {
       state: 'unconfigured',
-      label: '游客模式（仅保存在当前浏览器）',
-      helperText: '可直接开始问诊；接入 Supabase 后即可启用邮箱登录同步。',
+      label: '未登录 · 仅本设备保存',
+      helperText: '可直接开始问诊；接入邮箱登录后即可跨设备继续查看资料与问诊记录。',
     };
   }
 
   return {
     state: 'ready',
     label: '支持邮箱登录同步',
-    helperText: '先输入邮箱即可继续；登录后可跨设备查看档案、历史会话与同步结果。',
+    helperText: '输入邮箱后即可继续；登录后可跨设备查看资料、历史问诊与同步结果。',
   };
 }
 
