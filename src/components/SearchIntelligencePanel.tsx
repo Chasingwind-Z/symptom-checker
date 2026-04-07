@@ -168,6 +168,9 @@ export function SearchIntelligencePanel({
                       相关原因：{trimText(item.reasons.join('；'), 92)}
                     </p>
                   )}
+                  {item.document.sourceLabel && (
+                    <p className="text-xs text-slate-400 mt-1">参考来源：{item.document.sourceLabel}</p>
+                  )}
                 </article>
               ))}
             </div>

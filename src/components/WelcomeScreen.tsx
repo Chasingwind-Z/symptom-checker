@@ -1,11 +1,10 @@
+import { useEffect, useState } from 'react'
 import {
   ArrowRight,
-  Baby,
   CheckCircle2,
   HeartPulse,
   MapPin,
   ShieldPlus,
-  UserRound,
   type LucideIcon,
 } from 'lucide-react'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
@@ -210,38 +209,45 @@ function wasUpdatedWithinOneDay(value: string) {
   return Date.now() - updatedAt.getTime() <= 24 * 60 * 60 * 1000
 }
 
+function getTimeGreeting(hour: number): string {
+  if (hour >= 6 && hour < 12) return '早上好，身体有什么不舒服吗？'
+  if (hour >= 12 && hour < 18) return '下午好，今天感觉怎么样？'
+  if (hour >= 18 && hour < 24) return '晚上好，有什么需要帮助的吗？'
+  return '深夜了，有什么不舒服吗？'
+}
+
 const GUARDIAN_MODES = [
   {
     id: 'self' as const,
+    emoji: '👤',
     label: '本人',
-    subtitle: '标准问诊',
-    icon: UserRound,
-    className: 'bg-white text-blue-700 border-blue-100 hover:bg-blue-50',
-    activeClassName: 'border-blue-300 bg-blue-50/80 shadow-sm',
+    description: '为自己问诊',
+    iconColor: 'text-blue-500',
+    defaultClass: 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30',
   },
   {
     id: 'child' as const,
+    emoji: '👶',
     label: '儿童守护',
-    subtitle: '儿科优先',
-    icon: Baby,
-    className: 'bg-white text-amber-700 border-amber-100 hover:bg-amber-50',
-    activeClassName: 'border-amber-300 bg-amber-50/80 shadow-sm',
+    description: '孩子14岁以下',
+    iconColor: 'text-green-500',
+    defaultClass: 'border-slate-200 bg-white hover:border-green-200 hover:bg-green-50/30',
   },
   {
     id: 'elderly' as const,
+    emoji: '👴',
     label: '老人守护',
-    subtitle: '高风险优先',
-    icon: ShieldPlus,
-    className: 'bg-white text-violet-700 border-violet-100 hover:bg-violet-50',
-    activeClassName: 'border-violet-300 bg-violet-50/80 shadow-sm',
+    description: '家中60岁以上老人',
+    iconColor: 'text-orange-500',
+    defaultClass: 'border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/30',
   },
   {
     id: 'chronic' as const,
+    emoji: '💊',
     label: '慢病守护',
-    subtitle: '基础病叠加',
-    icon: HeartPulse,
-    className: 'bg-white text-rose-700 border-rose-100 hover:bg-rose-50',
-    activeClassName: 'border-rose-300 bg-rose-50/80 shadow-sm',
+    description: '有基础疾病或长期用药',
+    iconColor: 'text-purple-500',
+    defaultClass: 'border-slate-200 bg-white hover:border-purple-200 hover:bg-purple-50/30',
   },
 ] as const
 
@@ -264,6 +270,12 @@ export function WelcomeScreen({
   onSelectHouseholdProfile,
   onManageProfiles,
 }: WelcomeScreenProps) {
+  const [hour, setHour] = useState(12)
+  useEffect(() => {
+    window.setTimeout(() => setHour(new Date().getHours()), 0)
+  }, [])
+  const greeting = getTimeGreeting(hour)
+
   const personalizedScenarios = buildPersonalizedScenarios({
     profile,
     recentCases,
@@ -378,11 +390,11 @@ export function WelcomeScreen({
               ? `已登录 · ${maskedSessionEmail}${cloudSessions.length > 0 ? ` · ${cloudSessions.length} 段问诊可继续` : ''}`
               : '未登录 · 仅本设备保存'}
           </div>
-          <h1 className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">
-            今天哪里不舒服？
+          <h1 className="text-xl font-medium text-slate-700">
+            {greeting}
           </h1>
 
-          <div className="mt-4 flex flex-wrap gap-1.5">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             {GUARDIAN_MODES.map((mode) => {
               const isSelected = selectedModeId === mode.id
               return (
@@ -390,13 +402,15 @@ export function WelcomeScreen({
                   key={mode.id}
                   type="button"
                   onClick={() => onSelectMode(mode.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
+                  className={`rounded-xl border px-3 py-3 text-left transition-all ${
                     isSelected
-                      ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      ? 'border-blue-400 bg-blue-50/50 shadow-sm'
+                      : mode.defaultClass
                   }`}
                 >
-                  {mode.label}
+                  <span className={`text-2xl leading-none ${mode.iconColor}`}>{mode.emoji}</span>
+                  <p className="mt-1.5 text-sm font-medium text-slate-800">{mode.label}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{mode.description}</p>
                 </button>
               )
             })}
@@ -407,6 +421,8 @@ export function WelcomeScreen({
             </p>
           )}
 
+          {/* eslint-disable-next-line no-constant-binary-expression */}
+          {false && (
           <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
             {[
               '先判断今天需不需要线下处理',
@@ -419,6 +435,7 @@ export function WelcomeScreen({
               </span>
             ))}
           </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
             <span>直接在下方输入症状，或先点一个起步词条。</span>
@@ -471,6 +488,23 @@ export function WelcomeScreen({
           </section>
           )}
         </div>
+
+        {latestSession && (
+          <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-sm text-slate-600">
+                继续上次问诊：{truncateText(getRecentSessionReference(latestSession) || latestSession.title, 15)}
+              </p>
+              <button
+                type="button"
+                onClick={() => onOpenConversation(latestSession.id)}
+                className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+              >
+                继续 →
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-3">
           <div className="space-y-2">

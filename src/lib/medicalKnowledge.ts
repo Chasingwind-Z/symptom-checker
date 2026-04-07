@@ -376,12 +376,13 @@ function toSymptomKnowledgeDocument(symptom: SymptomInfo): MedicalKnowledgeDocum
       `居家先做：${symptom.self_care.slice(0, 3).join('；')}`,
       `建议优先咨询：${symptom.departments.slice(0, 3).join('、')}`,
       `若出现 ${symptom.danger_signs.slice(0, 2).join('、')}，请尽快线下评估。`,
+      ...(symptom.source ? [`${symptom.source}`] : []),
     ],
     dangerSigns: symptom.danger_signs,
     departments: symptom.departments,
     tags: [symptom.name, ...symptom.aliases.slice(0, 6)],
     keywords: [...symptom.aliases, ...symptom.departments, ...symptom.self_care],
-    sourceLabel: SOURCE_LABEL,
+    sourceLabel: symptom.source || SOURCE_LABEL,
     updatedAt: KNOWLEDGE_UPDATED_AT,
   };
 }

@@ -405,6 +405,13 @@ export const RISK_COLORS: Record<string, string> = {
   critical: '#EF4444',
 }
 
+const DISTRICT_BASE_RISK: Record<string, number> = {
+  '海淀区': 55, '朝阳区': 52, '东城区': 48,
+  '西城区': 47, '丰台区': 44, '通州区': 42,
+  '石景山区': 38, '顺义区': 35, '昌平区': 33,
+  '大兴区': 32, '房山区': 28, '门头沟区': 22
+}
+
 const seededRandom = (seed: number, offset: number = 0): number => {
   const x = Math.sin(seed + offset) * 10000
   return x - Math.floor(x)
@@ -452,6 +459,42 @@ function getSeasonalSignal() {
     giBoost: 1,
     label: '季节信号平稳',
   }
+}
+
+export function getSeasonalWeights(): Record<string, number> {
+  const month = new Date().getMonth() + 1
+  if (month >= 11 || month <= 3) {
+    return { '发烧': 1.8, '咳嗽': 1.6, '流感': 2.0, '肺炎': 1.5 }
+  }
+  if (month >= 6 && month <= 8) {
+    return { '腹泻': 1.7, '食物中毒': 1.5, '中暑': 1.8, '肠胃炎': 1.6 }
+  }
+  if (month >= 3 && month <= 5) {
+    return { '过敏': 1.6, '鼻炎': 1.4, '花粉症': 1.5 }
+  }
+  return { '感冒': 1.4, '咳嗽': 1.3 }
+}
+
+function getSeasonalBoostFactors(): { respiratory: number; gi: number } {
+  const weights = getSeasonalWeights()
+  const respiratoryKeys = ['发烧', '咳嗽', '流感', '肺炎', '感冒', '过敏', '鼻炎', '花粉症']
+  const giKeys = ['腹泻', '食物中毒', '中暑', '肠胃炎']
+  let respiratory = 1
+  let gi = 1
+  for (const [key, val] of Object.entries(weights)) {
+    if (respiratoryKeys.includes(key)) respiratory = Math.max(respiratory, val)
+    if (giKeys.includes(key)) gi = Math.max(gi, val)
+  }
+  return { respiratory, gi }
+}
+
+function getSeasonalAlertText(): string {
+  const month = new Date().getMonth() + 1
+  if (month >= 1 && month <= 3) return '冬春季流感高发，建议加强防护'
+  if (month >= 4 && month <= 5) return '春季过敏高发，外出注意防护'
+  if (month >= 6 && month <= 8) return '夏季肠胃疾病高发，注意饮食卫生'
+  if (month >= 9 && month <= 10) return '换季感冒多发，注意保暖'
+  return '冬季呼吸道疾病高发，建议接种流感疫苗'
 }
 
 function sumRiskBreakdown(breakdown: RiskBreakdown): number {
@@ -553,6 +596,7 @@ function generateDistrictData(
   const giBoost = seasonalSignal.giBoost * cityProfile.giBias
   const isTopDistrict = cityProfile.hotspotDistricts[0] === district
   const isSecondDistrict = cityProfile.hotspotDistricts[1] === district
+  const seasonalBoost = getSeasonalBoostFactors()
 
   if (isTopDistrict) {
     const weeklyData: number[] = []
@@ -563,9 +607,9 @@ function generateDistrictData(
     return createDistrictRiskData({
       district,
       totalReports: Math.round((seededRandom(base, 6) * 72 + 110) * cityProfile.densityBoost),
-      feverDrugIndex: Math.round(78 * respiratoryBoost),
-      coughDrugIndex: Math.round((68 + cityProfile.mobilityBoost * 6) * respiratoryBoost),
-      giDrugIndex: Math.round((seededRandom(base, 3) * 28 + 28) * giBoost),
+      feverDrugIndex: Math.round(78 * respiratoryBoost * seasonalBoost.respiratory),
+      coughDrugIndex: Math.round((68 + cityProfile.mobilityBoost * 6) * respiratoryBoost * seasonalBoost.respiratory),
+      giDrugIndex: Math.round((seededRandom(base, 3) * 28 + 28) * giBoost * seasonalBoost.gi),
       trend: 'up',
       trendPercent: Math.round(24 + cityProfile.mobilityBoost * 14),
       topSymptoms: cityProfile.symptomPool.slice(0, 3),
@@ -590,9 +634,9 @@ function generateDistrictData(
     return createDistrictRiskData({
       district,
       totalReports: Math.round((seededRandom(base, 6) * 56 + 82) * cityProfile.densityBoost),
-      feverDrugIndex: Math.round(64 * respiratoryBoost),
-      coughDrugIndex: Math.round((seededRandom(base, 2) * 20 + 38) * respiratoryBoost),
-      giDrugIndex: Math.round(52 * giBoost),
+      feverDrugIndex: Math.round(64 * respiratoryBoost * seasonalBoost.respiratory),
+      coughDrugIndex: Math.round((seededRandom(base, 2) * 20 + 38) * respiratoryBoost * seasonalBoost.respiratory),
+      giDrugIndex: Math.round(52 * giBoost * seasonalBoost.gi),
       trend: 'up',
       trendPercent: Math.round(14 + cityProfile.mobilityBoost * 8),
       topSymptoms: cityProfile.symptomPool.slice(1, 4),
@@ -608,9 +652,9 @@ function generateDistrictData(
     })
   }
 
-  const feverDrugIndex = Math.round((seededRandom(base, 1) * 44 + 12) * respiratoryBoost)
-  const coughDrugIndex = Math.round((seededRandom(base, 2) * 46 + 12) * respiratoryBoost)
-  const giDrugIndex = Math.round((seededRandom(base, 3) * 42 + 12) * giBoost)
+  const feverDrugIndex = Math.round((seededRandom(base, 1) * 44 + 12) * respiratoryBoost * seasonalBoost.respiratory)
+  const coughDrugIndex = Math.round((seededRandom(base, 2) * 46 + 12) * respiratoryBoost * seasonalBoost.respiratory)
+  const giDrugIndex = Math.round((seededRandom(base, 3) * 42 + 12) * giBoost * seasonalBoost.gi)
 
   const trendRaw = seededRandom(base, 4)
   let trend: 'up' | 'stable' | 'down'
@@ -619,7 +663,11 @@ function generateDistrictData(
   else trend = 'up'
 
   const trendPercent = Math.round(seededRandom(base, 5) * (16 + cityProfile.mobilityBoost * 4) + 2)
-  const totalReports = Math.round((seededRandom(base, 6) * 86 + 24) * cityProfile.densityBoost)
+  const baseRisk = DISTRICT_BASE_RISK[district]
+  const densityBase = baseRisk != null
+    ? baseRisk * (0.8 + seededRandom(base, 6) * 0.4)
+    : seededRandom(base, 6) * 86 + 24
+  const totalReports = Math.round(densityBase * cityProfile.densityBoost)
 
   const topSymptoms: string[] = []
   const pool = [...new Set([...cityProfile.symptomPool, ...TOP_SYMPTOMS_POOL])]
@@ -760,8 +808,11 @@ export function getAIWarningText(data: DistrictRiskData[]): string {
   const topTwo = [...data].sort((a, b) => b.riskScore - a.riskScore).slice(0, 2)
   const top1 = topTwo[0]
   const top2 = topTwo[1] ?? top1
+  const seasonalAlert = getSeasonalAlertText()
 
-  return `以下内容为基于综合症状信号、近 7 日变化和公开资料摘要生成的健康动态，用于辅助观察近期健康压力，不替代官方疫情通报。
+  return `⚠️ ${seasonalAlert}
+
+以下内容为基于综合症状信号、近 7 日变化和公开资料摘要生成的健康动态，用于辅助观察近期健康压力，不替代官方疫情通报。
 
 近期值得优先留意的是 ${top1.district}，当前风险分 ${Math.round(top1.riskScore)}，主要集中在${top1.topSymptoms.join('、')}等信号。
 

@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import {
+  AlertTriangle,
   ArrowRight,
   Clock3,
   ImagePlus,
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import { buildMedicationHubContexts } from '../lib/medicationHub';
+import { checkMedicationSafety } from '../lib/medicationSafety';
 import {
   applyPersonalizedOrdering,
   buildPersonalizationRankingContext,
@@ -263,6 +265,20 @@ export function MedicationRecommendationsPanel({
 
     return notes.slice(0, 3);
   }, [orderedContexts]);
+
+  // Drug interaction safety check
+  const drugInteractionWarnings = useMemo(() => {
+    const userMeds = (profile as ProfileDraft | undefined)?.currentMedications;
+    if (!userMeds) return [];
+    const userMedList = userMeds.split(/[,，、\s]+/).filter(Boolean);
+    if (userMedList.length === 0) return [];
+    const recommendedDrugs = orderedContexts.flatMap((ctx) =>
+      ctx.recommendations.map((r) => r.title)
+    );
+    if (recommendedDrugs.length === 0) return [];
+    return checkMedicationSafety(userMedList, recommendedDrugs);
+  }, [orderedContexts, profile]);
+
   const normalizedCity = normalizeCity(profile?.city);
   const preferredRecommendation =
     featuredContext?.recommendations.find((recommendation) => recommendation.suitable) ??
@@ -697,6 +713,24 @@ export function MedicationRecommendationsPanel({
                 })}
               </div>
             </div>
+
+            {drugInteractionWarnings.length > 0 && (
+              <div className="rounded-2xl border-l-4 border-red-500 bg-red-50 px-4 py-3 mb-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={16} className="text-red-600" />
+                  <p className="text-sm font-semibold text-red-800">⚠️ 用药安全提示</p>
+                </div>
+                <p className="text-xs text-red-700 mb-2">检测到与您现用药物的潜在相互作用，购药前请告知药师您正在服用的药物清单</p>
+                <ul className="space-y-1.5">
+                  {drugInteractionWarnings.map((w) => (
+                    <li key={`${w.triggeredBy.current}-${w.triggeredBy.recommended}`} className={`flex gap-2 text-xs leading-relaxed ${w.interaction.severity === 'high' ? 'text-red-700' : 'text-orange-700'}`}>
+                      <span className={`mt-1 h-1.5 w-1.5 rounded-full ${w.interaction.severity === 'high' ? 'bg-red-500' : 'bg-orange-400'}`} />
+                      <span><strong>{w.triggeredBy.current}</strong> + <strong>{w.triggeredBy.recommended}</strong>：{w.interaction.warning}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-4">
               <div className="flex items-center gap-2">

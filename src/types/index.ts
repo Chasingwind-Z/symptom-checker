@@ -163,6 +163,8 @@ export interface SymptomInfo {
   self_care: string[];
   when_to_worry: string;
   default_min_level: RiskLevel;
+  source?: string;
+  source_url?: string;
 }
 
 export interface SymptomReport {

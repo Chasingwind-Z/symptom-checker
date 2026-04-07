@@ -1393,6 +1393,12 @@ export function EpidemicDashboard({ onBack }: Props) {
           </div>
         )
       })()}
+
+      <div className="text-xs text-slate-400 text-center mt-4 px-4">
+        <p>本平台数据基于季节性流行病学模型模拟生成</p>
+        <p>不代表官方疫情数据，仅供公共卫生参考</p>
+        <p>查看官方数据：<a href="https://www.chinacdc.cn" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">中国疾控中心</a></p>
+      </div>
     </div>
   )
 }

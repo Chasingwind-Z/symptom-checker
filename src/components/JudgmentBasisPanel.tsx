@@ -114,6 +114,9 @@ export function JudgmentBasisPanel({
                   <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
                     {trimText(item.snippet, 92)}
                   </p>
+                  {item.document.sourceLabel && (
+                    <p className="text-xs text-slate-400 mt-1">参考来源：{item.document.sourceLabel}</p>
+                  )}
                 </div>
               ))}
             </div>

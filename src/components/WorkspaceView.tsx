@@ -14,6 +14,7 @@ import {
   SearchIntelligencePanel,
   type ConnectedWebSearchState,
 } from './SearchIntelligencePanel'
+import { SymptomTimeline } from './SymptomTimeline'
 import { WORKSPACE_TAB_LABELS } from '../lib/appShellUtils'
 import type { ChatDensityPreference, DesktopSidebarMode, ExperienceSettings, LocationPreference, OfficialSourcePreference } from '../lib/experienceSettings'
 import type { LocationData } from '../lib/geolocation'
@@ -364,18 +365,24 @@ export function WorkspaceView({
       )}
 
       {workspaceSection === 'records' && (
-        <RecordsCenterPanel
-          statusLabel={pendingFollowUpCount > 0 ? '待处理随访与最近摘要' : '随访与记录'}
-          helperText={
-            pendingFollowUpCount > 0
-              ? '优先回复待跟进项目，再继续打开最近完成的摘要或原问诊记录。'
-              : '新的随访提醒和最近完成的摘要会统一汇总在这里，方便随时回看和继续咨询。'
-          }
-          followUps={recordsCenterFollowUps}
-          recentSummaries={recordsCenterSummaries}
-          emptyFollowUpsMessage="当前没有待回复随访。新的复诊提醒或观察任务出现后，会自动汇总在这里。"
-          emptySummariesMessage="还没有最近完成的摘要。完成一次问诊或随访后，记录中心会自动展示可继续打开的记录。"
-        />
+        <>
+          <RecordsCenterPanel
+            statusLabel={pendingFollowUpCount > 0 ? '待处理随访与最近摘要' : '随访与记录'}
+            helperText={
+              pendingFollowUpCount > 0
+                ? '优先回复待跟进项目，再继续打开最近完成的摘要或原问诊记录。'
+                : '新的随访提醒和最近完成的摘要会统一汇总在这里，方便随时回看和继续咨询。'
+            }
+            followUps={recordsCenterFollowUps}
+            recentSummaries={recordsCenterSummaries}
+            emptyFollowUpsMessage="当前没有待回复随访。新的复诊提醒或观察任务出现后，会自动汇总在这里。"
+            emptySummariesMessage="还没有最近完成的摘要。完成一次问诊或随访后，记录中心会自动展示可继续打开的记录。"
+          />
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-slate-500 mb-2 px-1">症状追踪时间线</p>
+            <SymptomTimeline onStartConsultation={onStartNewSession} />
+          </div>
+        </>
       )}
     </div>
   )

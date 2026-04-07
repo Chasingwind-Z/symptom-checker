@@ -13,6 +13,7 @@ import { ConversationHistoryPanel } from './components/ConversationHistoryPanel'
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { FollowUpReminder } from './components/FollowUpReminder';
 import { Header } from './components/Header';
+import { OnboardingFlow } from './components/OnboardingFlow';
 import { LazySurfaceFallback } from './components/LazySurfaceFallback';
 import {
   type RecordsCenterSummaryItem,
@@ -91,6 +92,12 @@ export default function App() {
   );
   const [welcomeDraftValue, setWelcomeDraftValue] = useState('');
   const [welcomeFocusSignal, setWelcomeFocusSignal] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setShowOnboarding(!localStorage.getItem('onboarding_done')), 0);
+    return () => window.clearTimeout(id);
+  }, []);
   const selectedConsultationMode = useMemo(
     () => getConsultationModePreset(selectedConsultationModeId),
     [selectedConsultationModeId]
@@ -1293,6 +1300,8 @@ export default function App() {
       />
 
       <FollowUpReminder />
+
+      {showOnboarding && <OnboardingFlow onComplete={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); }} />}
     </div>
   );
 }

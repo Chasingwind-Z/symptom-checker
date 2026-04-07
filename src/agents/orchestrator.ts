@@ -1,4 +1,5 @@
 import { loadSkills } from '../lib/skillLoader';
+import { getHistoryContextForAI } from '../lib/symptomTracking';
 import type { AgentBadge, AgentId, AgentRoute, AgentStep, SymptomInfo } from '../types';
 import { careNavigatorAgent } from './careNavigatorAgent';
 import { evidenceAgent } from './evidenceAgent';
@@ -309,6 +310,11 @@ function buildContextNotes(context: AgentPromptContext): string[] {
         )
         .join('\n')}\n如果用户提到“上次/之前/又来了”，请先利用这些上下文衔接，不要重复从零开始问诊。`
     );
+  }
+
+  const trackingContext = getHistoryContextForAI();
+  if (trackingContext) {
+    notes.push(`【症状追踪记录】\n${trackingContext}\n注意：如果用户之前的症状已好转，不要再追问相关问题。如果状态为"更严重了"，优先关注加重原因。`);
   }
 
   if (context.kbResults.length > 0) {
