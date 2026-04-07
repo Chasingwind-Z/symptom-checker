@@ -132,7 +132,7 @@ function buildHelperText(attachmentCount: number): string {
   if (attachmentCount === 0) {
     return AI_VISION_ENABLED
       ? '支持文字、语音和最多 3 张图片；药盒、检查单图片会优先尝试识别可见文字。'
-      : '支持文字、语音和图片（最多 3 张）。当前 AI 不直接识别像素，图片以文件名与类型作为文字上下文辅助分析。';
+      : '支持文字、语音与图片，AI 综合分析';
   }
 
   return AI_VISION_ENABLED

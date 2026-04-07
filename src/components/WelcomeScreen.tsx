@@ -295,7 +295,7 @@ export function WelcomeScreen({
       ].map((item) => [item.sendText, item] as const)
     ).values()
   ).slice(0, selectedMode ? MAX_PERSONALIZED_CHIP_COUNT : MIN_SCENARIO_CHIP_COUNT)
-  const hasPersonalizedScenarios = personalizedScenarios.length > 0
+  // const hasPersonalizedScenarios = personalizedScenarios.length > 0
   const recentConversationChips = recentSessions.slice(0, 3)
   const latestSession = recentSessions[0] ?? null
   const cloudSessions = recentSessions.filter((session) => session.storage === 'supabase')
@@ -465,6 +465,9 @@ export function WelcomeScreen({
             </div>
           </section>
 
+          {/* Focus path cards hidden for cleaner first impression */}
+          {/* eslint-disable-next-line no-constant-binary-expression */}
+          {false && (
           <section className="rounded-3xl border border-slate-200 bg-white/95 px-4 py-4 shadow-sm">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold text-slate-900">今天先解决什么</p>
@@ -496,17 +499,12 @@ export function WelcomeScreen({
               })}
             </div>
           </section>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-3">
           <div className="space-y-2">
-            {(hasPersonalizedScenarios || selectedMode) && (
-              <p className="text-xs text-slate-500">
-                {selectedMode
-                  ? `已按 ${selectedMode.label} 模式换了一组更贴近的起步词条；点击后会先写入输入框。`
-                  : '这些入口已结合你保存的档案和近期记录；点击后会先写入输入框，不会直接发送。'}
-              </p>
-            )}
+            {/* Personalized scenario description hidden for cleaner first impression */}
             <div className="flex flex-wrap gap-2">
               {scenarioChips.map((item) => (
                 <button

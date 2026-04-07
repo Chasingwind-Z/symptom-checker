@@ -269,10 +269,32 @@ function buildContextNotes(context: AgentPromptContext): string[] {
   }
 
   if (consultationMode) {
+    const guardianModeExtras: Record<string, string> = {
+      child: `\n【当前模式：儿童守护】
+用户咨询的是14岁以下儿童的症状。
+- 发烧超过38.5°C直接建议就医，不建议居家观察
+- 优先推荐儿童医院或有儿科的医院
+- 不提及成人用药
+- 追问时关注：年龄（月龄）、接种疫苗情况
+- 风险等级整体上调一级`,
+      elderly: `\n【当前模式：老人守护】
+用户咨询的是60岁以上老年人的症状。
+- 风险等级整体上调一级
+- 重点追问：是否独居、有无慢性病、有无人陪同
+- 对胸闷、头晕、乏力保持更高警惕
+- 行动建议中强调需要家人陪同就医`,
+      chronic: `\n【当前模式：慢病守护】
+用户有慢性基础疾病（高血压/糖尿病/心脏病等）。
+- 风险等级整体上调一级
+- 追问时关注：当前用药情况、症状与慢性病的关联
+- 提醒可能的药物相互作用风险
+- 行动建议优先推荐有专科的医院`,
+    };
+    const extra = guardianModeExtras[consultationMode.id as string] ?? '';
     notes.push(
       `【当前咨询模式】\n已选择：${consultationMode.label}${
         consultationMode.subtitle ? `（${consultationMode.subtitle}）` : ''
-      }。${consultationMode.promptNote}\n注意：如果用户只是选择了模式但还没给出具体症状，不要假设已经知道病情，先请对方描述这次最主要的不适。`
+      }。${consultationMode.promptNote}\n注意：如果用户只是选择了模式但还没给出具体症状，不要假设已经知道病情，先请对方描述这次最主要的不适。${extra}`
     );
   }
 
@@ -380,6 +402,7 @@ export function createAgentOrchestration(context: AgentPromptContext): AgentOrch
 
   const systemPrompt = [
     `你正在以“健康助手”多 Agent 产品形态对外服务用户。请把多个专职 Agent 的意见整合成一次自然、可信、中文优先的回复。`,
+    `【绝对禁止】\n- 禁止在同一条回复中提问两个问题\n- 禁止重复询问用户已经回答过的任何信息\n- 用户选择快捷回答后，视为明确回答，不得要求澄清\n- 最多追问4轮，第4轮后必须给出分级结论\n- 天气工具在第一条消息时已自动调用，后续不要再问用户「您在哪个城市」`,
     `【本轮路由】\n- 主责 Agent：${AGENT_REGISTRY[primaryAgent].label}\n- 激活协作 Agent：${activeIds
       .map((agentId) => AGENT_REGISTRY[agentId].label)
       .join('、')}\n- 路由原因：${reasoning}`,
