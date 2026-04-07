@@ -25,6 +25,7 @@ import { MobileBottomNav, MOBILE_BOTTOM_NAV_HEIGHT } from './components/MobileBo
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { InfoBar } from './components/WeatherBar';
 import { WorkspaceView } from './components/WorkspaceView';
+import { GuardianThemeProvider } from './contexts/GuardianThemeContext';
 import { useChat } from './hooks/useChat';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
@@ -979,6 +980,7 @@ export default function App() {
   }
 
   return (
+    <GuardianThemeProvider modeId={selectedConsultationModeId}>
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 lg:flex">
       <AppSidebar
         activeSection={showWorkspace ? workspaceSection : null}
@@ -1303,5 +1305,6 @@ export default function App() {
 
       {showOnboarding && <OnboardingFlow onComplete={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); }} />}
     </div>
+    </GuardianThemeProvider>
   );
 }

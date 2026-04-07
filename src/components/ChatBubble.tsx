@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import type { ChatDensityPreference } from '../lib/experienceSettings';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
+import { useGuardianTheme } from '../hooks/useGuardianTheme';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { ToolCallIndicator } from './ToolCallIndicator';
@@ -225,6 +226,8 @@ export function ChatBubble({
   density = 'comfortable',
 }: ChatBubbleProps) {
   const isUser = message.role === 'user';
+  const guardianTheme = useGuardianTheme();
+  const isElderlyMode = guardianTheme.id === 'elderly';
   const displayContent = isUser ? message.content : stripJsonBlock(message.content);
   const animatedStreamingContent = useAnimatedStreamingText(displayContent, Boolean(!isUser && isStreaming));
   const hasJsonBlock = message.content.includes('```json');
@@ -318,12 +321,15 @@ export function ChatBubble({
 
   const bubbleSpacingClass = density === 'compact' ? 'mb-3' : 'mb-4';
   const bubblePaddingClass = density === 'compact' ? 'px-3 py-2.5' : 'px-4 py-3';
-  const bubbleTextClass = density === 'compact' ? 'text-[13px] leading-6' : 'text-sm leading-relaxed';
+  const bubbleTextClass = isElderlyMode
+    ? 'text-base leading-relaxed'
+    : density === 'compact' ? 'text-[13px] leading-6' : 'text-sm leading-relaxed';
   const innerGapClass = density === 'compact' ? 'gap-2' : 'gap-2.5';
   const timestampMarginClass = density === 'compact' ? 'mt-0.5' : 'mt-1';
   const suggestionMarginClass = density === 'compact' ? 'mt-2.5' : 'mt-3';
-  const suggestionButtonClass =
-    density === 'compact' ? 'px-3 py-1.5 text-[13px]' : 'px-3.5 py-2 text-sm';
+  const suggestionButtonClass = isElderlyMode
+    ? 'px-5 py-3 text-base'
+    : density === 'compact' ? 'px-3 py-1.5 text-[13px]' : 'px-3.5 py-2 text-sm';
 
   if (isSummary) {
     return (

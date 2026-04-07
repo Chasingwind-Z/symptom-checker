@@ -4,15 +4,23 @@ import type { Hospital } from '../types'
 
 interface Props {
   hospital: Hospital
+  allHospitals?: Hospital[]
   onClose: () => void
+}
+
+interface AMapInfoWindowInstance {
+  setContent: (content: string) => void
+  open: (map: AMapMapInstance, position: [number, number]) => void
 }
 
 interface AMapMarkerInstance {
   setMap: (map: AMapMapInstance) => void
+  on: (event: string, handler: () => void) => void
 }
 
 interface AMapMapInstance {
   destroy?: () => void
+  setFitView?: (markers?: AMapMarkerInstance[]) => void
 }
 
 interface AMapConstructor {
@@ -28,6 +36,12 @@ interface AMapConstructor {
     position: [number, number]
     title: string
   }) => AMapMarkerInstance
+  InfoWindow: new (options: {
+    content?: string
+    offset?: unknown
+    closeWhenClickMap?: boolean
+  }) => AMapInfoWindowInstance
+  Pixel: new (x: number, y: number) => unknown
 }
 
 interface AMapWindow extends Window {
@@ -37,7 +51,7 @@ interface AMapWindow extends Window {
   }
 }
 
-export function MapModal({ hospital, onClose }: Props) {
+export function MapModal({ hospital, allHospitals, onClose }: Props) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapFailed = useRef(false)
   const [showFallback, setShowFallback] = useState(false)
@@ -53,20 +67,48 @@ export function MapModal({ hospital, onClose }: Props) {
 
     const securityKey = import.meta.env.VITE_AMAP_JS_SECURITY_KEY as string
 
+    // Deduplicate and build the list of hospitals to show on the map
+    const hospitalsToShow =
+      allHospitals && allHospitals.length > 1
+        ? allHospitals
+        : [hospital]
+
     const initMap = () => {
       const amapWindow = window as AMapWindow
       if (!mapRef.current || !amapWindow.AMap) return
       const AMap = amapWindow.AMap
+
+      const hasMultiple = hospitalsToShow.length > 1
       const map = new AMap.Map(mapRef.current, {
-        zoom: 15,
+        zoom: hasMultiple ? 13 : 15,
         center: [hospital.longitude, hospital.latitude],
         mapStyle: 'amap://styles/light',
       })
-      const marker = new AMap.Marker({
-        position: [hospital.longitude, hospital.latitude],
-        title: hospital.name,
+
+      const infoWindow = new AMap.InfoWindow({
+        offset: new AMap.Pixel(0, -30),
+        closeWhenClickMap: true,
       })
-      marker.setMap(map)
+
+      const markers: AMapMarkerInstance[] = []
+      hospitalsToShow.forEach((h) => {
+        const marker = new AMap.Marker({
+          position: [h.longitude, h.latitude],
+          title: h.name,
+        })
+        marker.on('click', () => {
+          infoWindow.setContent(
+            `<div style="padding:4px 8px;font-size:13px;white-space:nowrap">${h.name}</div>`
+          )
+          infoWindow.open(map, [h.longitude, h.latitude])
+        })
+        marker.setMap(map)
+        markers.push(marker)
+      })
+
+      if (hasMultiple && map.setFitView) {
+        map.setFitView(markers)
+      }
     }
 
     const amapWindow = window as AMapWindow
@@ -101,7 +143,7 @@ export function MapModal({ hospital, onClose }: Props) {
     }, 5000)
 
     return () => window.clearTimeout(fallbackTimer)
-  }, [hospital])
+  }, [hospital, allHospitals])
 
   return (
     <div

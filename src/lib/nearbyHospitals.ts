@@ -68,22 +68,33 @@ export async function getUserLocation(): Promise<[number, number]> {
   });
 }
 
+const KEYWORD_BY_LEVEL: Record<RiskLevel, string> = {
+  red: '急救中心,三甲医院,急诊',
+  orange: '医院,综合医院',
+  yellow: '社区卫生服务中心,诊所,医院',
+  green: '社区卫生服务中心,诊所,药店',
+};
+
 export async function searchNearbyHospitals(
   longitude: number,
   latitude: number,
   level: RiskLevel
 ): Promise<Hospital[]> {
   const isUrgent = level === 'red' || level === 'orange';
-  // 090100 综合医院 | 090101 三甲 | 090200 专科 | 090300 诊所
-  const types = isUrgent ? '090100|090101|090200' : '090100|090200|090300';
+  // 090100 综合医院 | 090101 三甲 | 090200 专科 | 090300 诊所 | 090400 药店
+  const types = isUrgent
+    ? '090100|090101|090200'
+    : '090100|090200|090300|090400';
   const radius = isUrgent ? 5000 : 3000;
 
   const url = new URL('https://restapi.amap.com/v3/place/around');
   url.searchParams.set('key', WEB_KEY);
   url.searchParams.set('location', `${longitude},${latitude}`);
+  url.searchParams.set('keywords', KEYWORD_BY_LEVEL[level]);
   url.searchParams.set('types', types);
   url.searchParams.set('radius', String(radius));
-  url.searchParams.set('offset', '5');
+  url.searchParams.set('sortrule', 'distance');
+  url.searchParams.set('offset', '8');
   url.searchParams.set('output', 'JSON');
   url.searchParams.set('extensions', 'base');
 

@@ -750,8 +750,29 @@ export function ResultCard({
         config.pulse ? 'animate-[pulse_2.5s_ease-in-out_infinite]' : ''
       }`}
     >
-      {/* Top color strip — 4px, exact level color */}
-      <div style={{ height: '4px', backgroundColor: { green: '#10B981', yellow: '#F59E0B', orange: '#F97316', red: '#EF4444' }[result.level] }} />
+      {/* Top gradient header */}
+      <div className={`px-6 py-5 ${
+        result.level === 'green' ? 'bg-gradient-to-r from-emerald-50 to-emerald-100' :
+        result.level === 'yellow' ? 'bg-gradient-to-r from-yellow-50 to-amber-100' :
+        result.level === 'orange' ? 'bg-gradient-to-r from-orange-50 to-orange-100' :
+        'bg-gradient-to-r from-red-50 to-red-100'
+      }`}>
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">{
+            result.level === 'green' ? '✅' :
+            result.level === 'yellow' ? '🟡' :
+            result.level === 'orange' ? '🟠' : '🔴'
+          }</span>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800">{
+              result.level === 'green' ? '可居家观察' :
+              result.level === 'yellow' ? '建议尽快就诊' :
+              result.level === 'orange' ? '建议今日就医' : '请立即急诊'
+            }</h2>
+            <p className="text-sm text-slate-600 mt-0.5">{result.reason}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Guardian mode banner */}
       {consultationModeId === 'child' && (
@@ -843,7 +864,7 @@ export function ResultCard({
             ))}
           </ul>
           {checked.every(Boolean) && (
-            <p className="text-emerald-500 text-xs font-medium mt-3 text-center">✓ 准备就绪，祝您早日康复</p>
+            <p className="text-sm text-emerald-600 font-medium mt-2 text-center">✓ 准备就绪，祝您早日康复 🌿</p>
           )}
         </div>
 
@@ -1264,15 +1285,28 @@ export function ResultCard({
             </div>
             <div className="flex flex-col gap-3">
               {hospitals.map((hospital) => (
-                <HospitalCard key={hospital.id} hospital={hospital} />
+                <HospitalCard key={hospital.id} hospital={hospital} allHospitals={hospitals} />
               ))}
             </div>
           </div>
         )}
 
         {/* Export */}
-        <div className="flex justify-center mt-5">
+        <div className="mt-5">
           <ReportExport result={result} messages={messages} />
+          <button
+            onClick={() => {
+              const shareUrl = `${window.location.origin}?share=1&level=${result.level}&reason=${encodeURIComponent(result.reason.slice(0, 50))}`;
+              if (navigator.share) {
+                navigator.share({ title: '健康助手问诊结果', text: `AI 评估：${result.reason}`, url: shareUrl });
+              } else {
+                navigator.clipboard.writeText(shareUrl);
+              }
+            }}
+            className="w-full mt-2 flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <span>↗</span> 分享给家人看
+          </button>
         </div>
 
         {/* Disclaimer */}

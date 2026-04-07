@@ -5,6 +5,7 @@ import { MapModal } from './MapModal';
 
 interface HospitalCardProps {
   hospital: Hospital;
+  allHospitals?: Hospital[];
 }
 
 interface QuickActionProps {
@@ -61,7 +62,7 @@ function QuickAction({ label, icon, href, onClick, primary = false, disabled = f
   );
 }
 
-export function HospitalCard({ hospital }: HospitalCardProps) {
+export function HospitalCard({ hospital, allHospitals }: HospitalCardProps) {
   const [showMap, setShowMap] = useState(false);
   const hasPhone = hospital.phone.trim().length > 0 && !hospital.phone.includes('暂无');
   const phoneHref = hasPhone ? `tel:${hospital.phone.replace(/\s+/g, '')}` : undefined;
@@ -157,7 +158,7 @@ export function HospitalCard({ hospital }: HospitalCardProps) {
         </div>
       </div>
 
-      {showMap && <MapModal hospital={hospital} onClose={() => setShowMap(false)} />}
+      {showMap && <MapModal hospital={hospital} allHospitals={allHospitals} onClose={() => setShowMap(false)} />}
     </div>
   );
 }

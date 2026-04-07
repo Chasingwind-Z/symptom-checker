@@ -225,14 +225,14 @@ export function ReportExport({ result, messages }: Props) {
       </div>
 
       {/* 导出按钮 */}
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col gap-2 w-full">
         <button
           onClick={generatePDF}
           disabled={loading}
-          className="bg-white border border-slate-200 hover:border-blue-300 hover:shadow-sm text-slate-600 rounded-xl px-4 py-2 text-sm flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl px-6 py-3.5 w-full flex items-center justify-center gap-2 text-sm font-medium shadow-sm hover:from-blue-600 hover:to-blue-700 transition-all disabled:opacity-50"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
-          {loading ? '生成中...' : '导出就诊报告'}
+          {loading ? '生成中...' : '📋 生成就诊报告 · 带去医院给医生看'}
         </button>
         {errorMessage && <p className="max-w-xs text-center text-xs text-amber-600">{errorMessage}</p>}
       </div>
