@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
   AlertOctagon,
@@ -20,6 +20,7 @@ import {
 import { HospitalCard } from './HospitalCard';
 import { OfficialSourceComparison } from './OfficialSourceComparison';
 import { ReportExport } from './ReportExport';
+import { VisitSummaryCard } from './VisitSummaryCard';
 import { AftercareTimeline } from './AftercareTimeline';
 import { buildAftercarePlan } from '../lib/aftercarePlan';
 import * as officialSourceHelpers from '../lib/officialSources';
@@ -353,6 +354,7 @@ export function ResultCard({
   const config = LEVEL_CONFIG[result.level];
   const [activeTab, setActiveTab] = useState<TabId>('evidence');
   const [shareCopied, setShareCopied] = useState(false);
+  const [showVisitCard, setShowVisitCard] = useState(false);
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
   const [checked, setChecked] = useState<[boolean, boolean, boolean]>([false, false, false]);
   const { evidenceCards, webSources, webSearchNote, webQuery, evidenceUpdatedAt, officialSourceContext } = useMemo(() => {
@@ -830,6 +832,13 @@ export function ResultCard({
           {checked.every(Boolean) && (
             <p className="text-sm text-emerald-600 font-medium mt-2 text-center">✓ 准备就绪，祝您早日康复 🌿</p>
           )}
+          <button
+            onClick={() => setShowVisitCard(true)}
+            className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-white transition-colors border border-slate-200"
+          >
+            <ClipboardList size={14} />
+            准备就诊（截图给医生）
+          </button>
         </div>
 
         {/* Action suggestion */}
@@ -1406,6 +1415,16 @@ export function ResultCard({
           )}
         </div>
       </div>
+      <AnimatePresence>
+        {showVisitCard && (
+          <VisitSummaryCard
+            result={result}
+            profile={profile}
+            messages={messages}
+            onClose={() => setShowVisitCard(false)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

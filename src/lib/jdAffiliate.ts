@@ -1,5 +1,14 @@
 /** JD (京东) affiliate link utilities for medication purchase referrals. */
 
+/** Maps symptom categories to JD search keywords for broadening product discovery. */
+export const MEDICATION_CATEGORIES: Record<string, string[]> = {
+  '感冒': ['感冒药 OTC', '维生素C', '口罩 医用', '体温计'],
+  '腹泻': ['电解质水', '蒙脱石散', '益生菌'],
+  '过敏': ['氯雷他定', '炉甘石洗剂', '防过敏口罩'],
+  '头痛': ['布洛芬', '对乙酰氨基酚', '冰敷贴'],
+  '肌肉酸痛': ['止痛贴', '云南白药喷雾', '冰敷袋'],
+};
+
 const JD_SEARCH_BASE = 'https://search.jd.com/Search';
 const JD_MOBILE_BASE = 'https://so.m.jd.com/ware/search.action';
 const STORAGE_KEY = 'jd_affiliate_clicks';
