@@ -79,6 +79,12 @@ const LazyEpidemicDashboard = lazy(() =>
   }))
 );
 
+const LazyB2BDashboard = lazy(() =>
+  import('./components/B2BDashboard').then((module) => ({
+    default: module.B2BDashboard,
+  }))
+);
+
 const LazyResultCard = lazy(() =>
   import('./components/ResultCard').then((module) => ({
     default: module.ResultCard,
@@ -157,7 +163,7 @@ export default function App() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousShellStateRef = useRef<{
-    page: 'home' | 'chat' | 'workspace';
+    page: 'home' | 'chat' | 'workspace' | 'map' | 'b2b';
     section: SidebarSection;
   }>({
     page: 'home',
@@ -165,7 +171,7 @@ export default function App() {
   });
   const [reportCount, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map' | 'b2b'>('home');
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [recordSearchQuery, setRecordSearchQuery] = useState('');
@@ -447,6 +453,14 @@ export default function App() {
     };
     setCurrentPage('map');
   }, [currentPage, messages.length, workspaceSection]);
+
+  const handleOpenB2B = useCallback(() => {
+    previousShellStateRef.current = {
+      page: currentPage === 'b2b' ? 'home' : currentPage,
+      section: workspaceSection,
+    };
+    setCurrentPage('b2b');
+  }, [currentPage, workspaceSection]);
 
   const handleOpenAuthDialog = useCallback(() => {
     setIsAuthDialogOpen(true);
@@ -979,7 +993,7 @@ export default function App() {
         : null;
 
   useEffect(() => {
-    document.title = `${currentPage === 'map' ? '健康地图' : pageHeader.title} · 健康助手`;
+    document.title = `${currentPage === 'map' ? '健康地图' : currentPage === 'b2b' ? '企业健康看板' : pageHeader.title} · 健康助手`;
   }, [currentPage, pageHeader.title]);
 
   if (effectivePage === 'map') {
@@ -994,6 +1008,29 @@ export default function App() {
         }
       >
         <LazyEpidemicDashboard
+          onBack={() => {
+            const previousShellState = previousShellStateRef.current;
+            setWorkspaceSection(previousShellState.section);
+            setCurrentPage(previousShellState.page);
+          }}
+          onOpenB2B={handleOpenB2B}
+        />
+      </Suspense>
+    );
+  }
+
+  if (effectivePage === 'b2b') {
+    return (
+      <Suspense
+        fallback={
+          <LazySurfaceFallback
+            title="正在打开企业看板"
+            description="正在加载企业健康看板…"
+            fullHeight
+          />
+        }
+      >
+        <LazyB2BDashboard
           onBack={() => {
             const previousShellState = previousShellStateRef.current;
             setWorkspaceSection(previousShellState.section);

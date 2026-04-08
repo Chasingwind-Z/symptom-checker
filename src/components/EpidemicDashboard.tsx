@@ -34,6 +34,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Legend, 
 
 interface Props {
   onBack: () => void
+  onOpenB2B?: () => void
 }
 
 const getRiskColor = (level: string) =>
@@ -115,7 +116,7 @@ const getMapLoadingNote = (city: string) =>
 const getMapFallbackNote = (city: string) =>
   `${city}地图暂未显示，已保留分区摘要、重点片区和 7 日变化，不影响继续核对趋势。`
 
-export function EpidemicDashboard({ onBack }: Props) {
+export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
   const mapKey = (import.meta.env.VITE_AMAP_JS_KEY as string | undefined)?.trim() ?? ''
   const locationPreference = useMemo<LocationPreference>(
     () => loadExperienceSettings().locationPreference,
@@ -1481,7 +1482,7 @@ export function EpidemicDashboard({ onBack }: Props) {
       <div className="mt-4 text-center">
         <p className="text-[11px] text-slate-400">
           企业/机构如需区域健康数据服务，
-          <button className="text-blue-500 hover:underline">了解合作方案</button>
+          <button onClick={onOpenB2B} className="text-blue-500 hover:underline">了解合作方案</button>
         </p>
       </div>
     </div>
