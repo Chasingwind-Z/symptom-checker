@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Globe,
   MapPin,
+  Phone,
   Pill,
   ShieldCheck,
   ShoppingCart,
@@ -352,7 +353,7 @@ export function ResultCard({
   onToggleMap,
 }: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
-  const [activeTab, setActiveTab] = useState<TabId>('evidence');
+  const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [showVisitCard, setShowVisitCard] = useState(false);
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
@@ -688,6 +689,57 @@ export function ResultCard({
       ? '想继续找 OTC / 附近药房？'
       : '如需补基础用品或复核现用药，可打开用药中心';
   const weatherSummary = useMemo(() => buildWeatherExperienceSummary(weather), [weather]);
+  const primaryCTA = useMemo(() => {
+    switch (result.level) {
+      case 'green':
+        return { label: '买药备着', icon: <ShoppingCart size={16} />, action: 'jd' as const };
+      case 'yellow':
+        return { label: '找附近诊所', icon: <MapPin size={16} />, action: 'hospital' as const };
+      case 'orange':
+        return { label: '今日门诊', icon: <MapPin size={16} />, action: 'hospital' as const };
+      case 'red':
+        return { label: '拨打120', icon: <Phone size={16} />, action: 'call120' as const };
+    }
+  }, [result.level]);
+
+  const secondaryCTA = useMemo(() => {
+    switch (result.level) {
+      case 'green':
+        return { label: '准备就诊', icon: <ClipboardList size={14} />, action: 'visit_card' as const };
+      case 'yellow':
+      case 'orange':
+        return { label: '准备就诊', icon: <ClipboardList size={14} />, action: 'visit_card' as const };
+      case 'red':
+        return { label: '附近急诊', icon: <MapPin size={14} />, action: 'hospital' as const };
+    }
+  }, [result.level]);
+
+  function handleCTAClick(action: string) {
+    switch (action) {
+      case 'jd': {
+        const firstMed = medicationAdvice.find((item) => item.suitable);
+        if (firstMed) {
+          trackMedicationClick({
+            medicationName: firstMed.title,
+            diagnosisLevel: result.level,
+            source: 'result_card_hero_cta',
+          });
+          window.open(buildJDSearchUrl(firstMed.title), '_blank', 'noopener');
+        }
+        break;
+      }
+      case 'hospital':
+        setActiveTab('hospitals');
+        break;
+      case 'call120':
+        window.open('tel:120');
+        break;
+      case 'visit_card':
+        setShowVisitCard(true);
+        break;
+    }
+  }
+
   const officialCityLabel = officialSourceCity?.trim() || profile?.city?.trim() || '';
   const hasOfficialSources = officialSources.length > 0;
   const showWebSourceHighlights =
@@ -756,6 +808,22 @@ export function ResultCard({
             }</h2>
             <p className="text-sm text-slate-600 mt-0.5">{result.reason}</p>
           </div>
+        </div>
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={() => handleCTAClick(primaryCTA.action)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-semibold text-slate-800 shadow-sm hover:shadow-md transition-shadow"
+          >
+            {primaryCTA.icon}
+            {primaryCTA.label}
+          </button>
+          <button
+            onClick={() => handleCTAClick(secondaryCTA.action)}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white/70 py-3 text-sm font-medium text-slate-600 hover:bg-white transition-colors"
+          >
+            {secondaryCTA.icon}
+            {secondaryCTA.label}
+          </button>
         </div>
       </div>
 
@@ -841,19 +909,13 @@ export function ResultCard({
           </button>
         </div>
 
-        {/* Action suggestion */}
-        <div className={`flex items-start gap-2 mb-5 rounded-xl px-4 py-3 ${config.bg}`}>
-          <ArrowRight size={16} className={`mt-0.5 flex-shrink-0 ${config.text}`} />
-          <span className="text-slate-700 font-medium text-sm">{result.action}</span>
-        </div>
-
         {/* ── LAYER 2: Tab Bar ── */}
         <div className="flex gap-1 rounded-xl bg-slate-100 p-1 mb-4">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => setActiveTab(activeTab === tab.id ? null : tab.id)}
               className={
                 activeTab === tab.id
                   ? 'flex items-center gap-1.5 bg-white shadow-sm rounded-lg px-3 py-1.5 text-sm font-medium text-slate-800'
