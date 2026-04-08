@@ -25,6 +25,7 @@ import type { ChatDensityPreference, DesktopSidebarMode, ExperienceSettings, Loc
 import type { LocationData } from '../lib/geolocation'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
+
 import type { MedicalKnowledgeSearchResult } from '../lib/medicalKnowledge'
 import type { ConversationSession, DiagnosisResult } from '../types'
 
@@ -396,6 +397,18 @@ export function WorkspaceView({
               <LazySymptomTimeline onStartConsultation={onStartNewSession} />
             </Suspense>
           </div>
+          {reportRecords.length > 0 && (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+              <p className="text-sm font-semibold text-slate-800 mb-2">📋 报告解读历史</p>
+              {reportRecords.slice(-5).reverse().map(record => (
+                <div key={record.id} className="border-t border-slate-100 py-2 first:border-t-0">
+                  <p className="text-xs font-medium text-slate-700">{record.reportType}</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{record.summary}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{record.analyzedAt}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

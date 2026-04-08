@@ -20,7 +20,7 @@ import {
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
-import { getDistrictRiskData, getActiveCity } from '../lib/epidemicDataEngine'
+import { getDistrictRiskData, getActiveCity, fetchCityAggregation } from '../lib/epidemicDataEngine'
 import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
 import { detectFamilyCrossInfection, type FamilyCrossInfectionAlert } from '../lib/symptomTracking'
 
@@ -276,10 +276,17 @@ export function WelcomeScreen({
   // Community health trend data (loaded once from epidemic data engine)
   const [trendData, setTrendData] = useState<{ symptom: string; heat: number; color: string }[]>([])
   const [trendCity, setTrendCity] = useState('本地')
+  const [todayReportCount, setTodayReportCount] = useState<number | null>(null)
 
   useEffect(() => {
     const cityName = getActiveCity()
     setTrendCity(cityName)
+
+    fetchCityAggregation(cityName || '北京').then(agg => {
+      if (agg) {
+        window.setTimeout(() => setTodayReportCount(agg.totalReports), 0)
+      }
+    })
 
     const districts = getDistrictRiskData(cityName)
     const symptomAgg: Record<string, { count: number; totalScore: number }> = {}
@@ -520,6 +527,11 @@ export function WelcomeScreen({
         <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm">
           <p className="text-xs font-medium text-slate-600">
             📍 {localCityLabel || trendCity} · 今日社区健康动态
+            {todayReportCount != null && todayReportCount > 0 && (
+              <span className="ml-1 text-slate-400">
+                · 今日已有 {todayReportCount} 人参与健康上报
+              </span>
+            )}
           </p>
           <div className="mt-3 space-y-2.5">
             {trendData.map((item) => (

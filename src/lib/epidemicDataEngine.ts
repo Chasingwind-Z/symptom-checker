@@ -1,3 +1,77 @@
+import { getSupabaseClient } from './supabase'
+
+export interface AnonymousReport {
+  city: string
+  district?: string
+  symptoms: string[]
+  level: string
+  age_group?: string
+}
+
+export interface CityAggregation {
+  totalReports: number
+  topSymptoms: { symptom: string; count: number }[]
+  districtBreakdown: { district: string; count: number }[]
+}
+
+export async function submitAnonymousReport(report: AnonymousReport): Promise<boolean> {
+  try {
+    const client = getSupabaseClient()
+    if (!client) return false
+    const { error } = await client
+      .from('anonymous_reports')
+      .insert(report)
+    return !error
+  } catch {
+    return false
+  }
+}
+
+export async function fetchCityAggregation(city: string): Promise<CityAggregation | null> {
+  try {
+    const client = getSupabaseClient()
+    if (!client) return null
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data, error } = await client
+      .from('anonymous_reports')
+      .select('symptoms, district')
+      .eq('city', city)
+      .gte('created_at', sevenDaysAgo)
+
+    if (error || !data) return null
+
+    const totalReports = data.length
+
+    const symptomCounts: Record<string, number> = {}
+    const districtCounts: Record<string, number> = {}
+
+    for (const row of data) {
+      if (row.symptoms) {
+        for (const s of row.symptoms as string[]) {
+          symptomCounts[s] = (symptomCounts[s] || 0) + 1
+        }
+      }
+      if (row.district) {
+        districtCounts[row.district as string] = (districtCounts[row.district as string] || 0) + 1
+      }
+    }
+
+    const topSymptoms = Object.entries(symptomCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([symptom, count]) => ({ symptom, count }))
+
+    const districtBreakdown = Object.entries(districtCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([district, count]) => ({ district, count }))
+
+    return { totalReports, topSymptoms, districtBreakdown }
+  } catch {
+    return null
+  }
+}
+
 export interface SymptomReport {
   id: string
   district: string

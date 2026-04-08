@@ -17,6 +17,7 @@ import { primeMedicalKnowledgeCorpus, searchMedicalKnowledge } from '../lib/medi
 import { requestGeolocation, fetchWeather } from '../lib/geolocation';
 import { loadCloudConversationSessions, persistCaseRecord } from '../lib/healthData';
 import { saveTrackingEntry } from '../lib/symptomTracking';
+import { submitAnonymousReport } from '../lib/epidemicDataEngine';
 import {
   FOLLOW_UP_RESPONSE_OPTIONS,
   getCompletedFollowUpRecords,
@@ -746,6 +747,17 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           if (!isFollowUpReply || !activeFollowUpRecord) {
             queueFollowUpRecord(displayText, result);
           }
+          // Auto-submit anonymous report (fire and forget)
+          submitAnonymousReport({
+            city: locationData?.city || '未知',
+            district: undefined,
+            symptoms: [result.reason.slice(0, 50)],
+            level: result.level,
+            age_group: memoryContext?.profile?.birthYear
+              ? (new Date().getFullYear() - memoryContext.profile.birthYear > 60 ? '60+'
+                : new Date().getFullYear() - memoryContext.profile.birthYear < 18 ? '<18' : '18-60')
+              : undefined,
+          }).catch(() => {/* silent */});
           // Save symptom tracking entry
           try {
             const symptomsList = result.reason ? [result.reason] : [displayText];
