@@ -516,6 +516,7 @@ export function getMedicationGuidance(
     '关节痛',
     '酸痛',
   ]);
+  const hasMusclePain = includesAny(lowerText, ['肌肉酸痛', '酸痛', '肌肉痛', '运动后']);
   const hasUpperRespSymptoms = includesAny(lowerText, [
     '咳嗽',
     '咽痒',
@@ -554,7 +555,7 @@ export function getMedicationGuidance(
   const hasAntihistamineContraindication =
     hasAntihistamineAllergy || usesAntihistamine || (age !== null && age < 2);
 
-  if (hasHighRiskProfile && (diagnosis.level === 'yellow' || hasKidneyRisk || hasLiverRisk || hasBloodThinner)) {
+  if (hasHighRiskProfile && diagnosis.level !== 'green' && (diagnosis.level === 'yellow' || hasKidneyRisk || hasLiverRisk || hasBloodThinner)) {
     addMedicationAdvice(prioritySuggestions, {
       id: 'medication-safety-check',
       title: '先核对基础病与现用药',
@@ -631,6 +632,19 @@ export function getMedicationGuidance(
           ? '鼻塞时尽量先用生理盐水，不要默认叠加含伪麻黄碱的复方感冒药；若气促或吞咽困难，应尽快线下就医。'
           : '若出现持续高热、气促、咳喘加重或咽痛明显吞咽困难，应尽快线下就医。',
       suitable: true,
+    });
+  }
+
+  if (hasCongestion) {
+    addMedicationAdvice(suggestions, {
+      id: 'chlorpheniramine',
+      title: '氯苯那敏（鼻塞 / 流涕方向）',
+      useCase: '适合鼻塞、流涕明显的短期缓解，尤其是感冒早期。',
+      reason: '第一代抗组胺药对缓解鼻塞流涕效果较好，适合短期使用。',
+      caution: hasGlaucomaOrUrinaryRisk
+        ? '青光眼、前列腺增生或排尿困难者慎用；可能引起嗜睡。'
+        : '服后可能犯困，避免驾车或高空作业；不建议连续使用超过 3 天。',
+      suitable: !hasGlaucomaOrUrinaryRisk && !hasAntihistamineContraindication,
     });
   }
 
@@ -795,6 +809,17 @@ export function getMedicationGuidance(
     });
   }
 
+  if (hasMusclePain) {
+    addMedicationAdvice(suggestions, {
+      id: 'topical-pain-patch',
+      title: '外用止痛贴 / 喷雾',
+      useCase: '适合轻微肌肉酸痛、运动后不适的局部缓解。',
+      reason: '外用方式局部作用，全身副作用小，适合作为肌肉酸痛的保守处理。',
+      caution: '若疼痛伴关节明显肿胀、活动受限或外伤后疼痛加重，应线下骨科评估。',
+      suitable: true,
+    });
+  }
+
   if (hasAllergyHistory) {
     addMedicationAdvice(trailingSuggestions, {
       id: 'allergy-flag',
@@ -834,6 +859,33 @@ export function getMedicationGuidance(
       caution: '一旦症状持续不缓解、明显加重或出现新的红旗信号，请及时就医。',
       suitable: true,
     });
+  }
+
+  // Green level: ensure at least 2 suitable OTC items for JD affiliate trigger
+  if (diagnosis.level === 'green') {
+    const currentSuitable = [...prioritySuggestions, ...suggestions, ...trailingSuggestions].filter((s) => s.suitable);
+    if (currentSuitable.length < 2) {
+      if (!suggestions.some((s) => s.id === 'acetaminophen')) {
+        addMedicationAdvice(suggestions, {
+          id: 'acetaminophen',
+          title: '对乙酰氨基酚（居家备药）',
+          useCase: '适合轻微不适时的短期退热、止痛。',
+          reason: '居家观察期间备一些单一成分退热止痛药，更容易核对剂量。',
+          caution: '按说明书短期使用，不超过 2–3 天；若症状持续应就医。',
+          suitable: !hasAcetaminophenContraindication,
+        });
+      }
+      if (!suggestions.some((s) => s.id === 'general-self-care')) {
+        addMedicationAdvice(suggestions, {
+          id: 'general-self-care',
+          title: '家庭观察与单一成分优先',
+          useCase: '居家观察期间以补水、休息为主，按需短期使用单一成分 OTC。',
+          reason: '绿色等级表示可居家处理，合理使用 OTC 药物有助于缓解不适。',
+          caution: '一旦症状持续不缓解、明显加重或出现新的红旗信号，请及时就医。',
+          suitable: true,
+        });
+      }
+    }
   }
 
   return [...prioritySuggestions, ...suggestions, ...trailingSuggestions].slice(0, 5);
