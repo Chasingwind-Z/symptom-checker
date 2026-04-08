@@ -248,6 +248,8 @@ export function ChatBubble({
   const displayContent = isUser ? message.content : stripJsonBlock(message.content);
   const animatedStreamingContent = useAnimatedStreamingText(displayContent, Boolean(!isUser && isStreaming));
   const hasJsonBlock = message.content.includes('```json');
+  // During active consultation (no diagnosis yet), hide decorations on non-diagnosis bubbles
+  const isQuestionPhase = !isUser && !hasJsonBlock && !diagnosisResult;
   const attachmentGallery =
     message.attachments && message.attachments.length > 0 ? (
       <div className="mt-3 space-y-2">
@@ -309,13 +311,13 @@ export function ChatBubble({
       </div>
     ) : null;
   const agentSummary =
-    !isUser && message.agentRoute ? (
+    !isUser && !isQuestionPhase && message.agentRoute ? (
       <div className="mb-2">
         <AgentOrchestrationPanel route={message.agentRoute} compact />
       </div>
     ) : null;
   const toolCallSummary =
-    !isUser && message.toolCalls && message.toolCalls.length > 0 ? (
+    !isUser && !isQuestionPhase && message.toolCalls && message.toolCalls.length > 0 ? (
       <div className="mb-2">
         <ToolCallIndicator toolCalls={message.toolCalls} compact />
       </div>
@@ -458,9 +460,11 @@ export function ChatBubble({
 
           {drugChips && <div className={`pl-9 ${suggestionMarginClass}`}>{drugChips}</div>}
         </div>
+        {!isQuestionPhase && (
         <span className={`block px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
           {formatTime(message.timestamp)}
         </span>
+        )}
       </motion.div>
     );
   }
@@ -508,9 +512,11 @@ export function ChatBubble({
               </div>
             </div>
           </div>
+          {!isQuestionPhase && (
           <span className={`px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
             {formatTime(message.timestamp)}
           </span>
+          )}
         </div>
       </motion.div>
     );
@@ -550,9 +556,11 @@ export function ChatBubble({
           {attachmentGallery}
           {!isUser && drugChips}
         </div>
+        {!(isQuestionPhase) && (
         <span className={`px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
           {formatTime(message.timestamp)}
         </span>
+        )}
       </div>
     </motion.div>
   );
