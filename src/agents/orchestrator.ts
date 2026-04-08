@@ -264,7 +264,7 @@ function buildContextNotes(context: AgentPromptContext): string[] {
 
     if (profileItems.length > 0) {
       notes.push(
-        `【用户健康档案】\n${profileItems.join('；')}。这些信息视为已知，不要重复追问，除非当前分诊必须再次确认。`
+        `【用户健康档案 - 已知信息，严禁重复追问】\n${profileItems.join('；')}。\n⚠️ 以上所有信息视为已确认，问诊中绝对不允许再次询问这些内容（包括年龄、性别、基础疾病、过敏史、现用药等）。如果档案已提供年龄和疾病信息，问诊第3轮应直接跳过。`
       );
     }
   }
