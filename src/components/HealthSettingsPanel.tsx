@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { useState, type ComponentType } from 'react';
 import {
   CheckCircle2,
   LocateFixed,
@@ -216,6 +216,10 @@ export function HealthSettingsPanel({
     settings.officialSourcePreference === DEFAULT_EXPERIENCE_SETTINGS.officialSourcePreference &&
     settings.chatDensity === DEFAULT_EXPERIENCE_SETTINGS.chatDensity;
 
+  const [alertSubscribed, setAlertSubscribed] = useState(() => {
+    return localStorage.getItem('epidemic_alert_subscribed') === 'true';
+  });
+
   const sidebarSummary =
     settings.desktopSidebarMode === 'collapsed'
       ? '桌面端已收起为图标栏，聊天区会获得更宽的横向空间。'
@@ -304,6 +308,29 @@ export function HealthSettingsPanel({
               options={chatDensityOptions}
               onChange={onChatDensityChange}
             />
+
+            <div className="mt-4 rounded-xl border border-slate-200 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">疾病预警订阅</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">本地区疾病趋势异常时提醒</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const next = !alertSubscribed;
+                    setAlertSubscribed(next);
+                    localStorage.setItem('epidemic_alert_subscribed', String(next));
+                  }}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${
+                    alertSubscribed ? 'bg-blue-500' : 'bg-slate-300'
+                  }`}
+                >
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    alertSubscribed ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+            </div>
           </div>
 
           <aside className="space-y-3">

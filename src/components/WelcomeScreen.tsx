@@ -7,6 +7,8 @@ import {
   HeartPulse,
   MapPin,
   ShieldPlus,
+  ShoppingCart,
+  TrendingUp,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -20,7 +22,8 @@ import {
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
-import { getDistrictRiskData, getActiveCity, fetchCityAggregation } from '../lib/epidemicDataEngine'
+import { getDistrictRiskData, getActiveCity, fetchCityAggregation, detectLocalSurgeAlert, type SurgeAlert } from '../lib/epidemicDataEngine'
+import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate'
 import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
 import { detectFamilyCrossInfection, type FamilyCrossInfectionAlert } from '../lib/symptomTracking'
 
@@ -277,6 +280,14 @@ export function WelcomeScreen({
   const [trendData, setTrendData] = useState<{ symptom: string; heat: number; color: string }[]>([])
   const [trendCity, setTrendCity] = useState('本地')
   const [todayReportCount, setTodayReportCount] = useState<number | null>(null)
+  const [surgeAlert, setSurgeAlert] = useState<SurgeAlert | null>(null)
+
+  useEffect(() => {
+    const alert = detectLocalSurgeAlert()
+    if (alert) {
+      window.setTimeout(() => setSurgeAlert(alert), 0)
+    }
+  }, [])
 
   useEffect(() => {
     const cityName = getActiveCity()
@@ -568,6 +579,36 @@ export function WelcomeScreen({
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Seasonal surge alert card */}
+      {surgeAlert && (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3">
+          <div className="flex items-start gap-2">
+            <TrendingUp size={16} className="text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-800">
+                ⚠️ {surgeAlert.symptom} 上升 {surgeAlert.increasePercent}%
+              </p>
+              <p className="text-xs text-amber-700 mt-1">{surgeAlert.alertText}</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {surgeAlert.suggestedMeds.map(med => (
+                  <button
+                    key={med}
+                    onClick={() => {
+                      trackMedicationClick({ medicationName: med, source: 'surge_alert' })
+                      window.open(buildJDSearchUrl(med), '_blank', 'noopener')
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-100 transition-colors"
+                  >
+                    <ShoppingCart size={10} />
+                    备{med}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

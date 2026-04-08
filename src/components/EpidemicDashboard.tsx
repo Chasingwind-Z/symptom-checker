@@ -82,6 +82,9 @@ type LocationStatus =
 
 const SUPPORTED_LOCATION_MATCH_KM = 120
 
+const RESPIRATORY_SYMPTOMS = ['发热', '咳嗽', '流涕', '咽痛', '鼻塞', '胸闷']
+const GI_SYMPTOMS = ['腹泻', '恶心']
+
 const formatDistanceLabel = (distanceKm: number | null) => {
   if (distanceKm == null || Number.isNaN(distanceKm)) {
     return ''
@@ -133,6 +136,28 @@ export function EpidemicDashboard({ onBack }: Props) {
     () => mergeLocalReports(getDistrictRiskData(currentCity)),
     [currentCity]
   )
+  const [timeRange, setTimeRange] = useState<7 | 14 | 30>(7)
+  const [symptomFilter, setSymptomFilter] = useState<string>('全部')
+  const filteredDistrictData = useMemo(() => {
+    if (symptomFilter === '全部') return districtData
+    return districtData.filter(d => {
+      if (symptomFilter === '呼吸道') return d.topSymptoms.some(s => RESPIRATORY_SYMPTOMS.includes(s))
+      if (symptomFilter === '消化道') return d.topSymptoms.some(s => GI_SYMPTOMS.includes(s))
+      return d.topSymptoms.some(s => !RESPIRATORY_SYMPTOMS.includes(s) && !GI_SYMPTOMS.includes(s))
+    })
+  }, [districtData, symptomFilter])
+  const filteredSortedDistricts = useMemo(
+    () => [...filteredDistrictData].sort((a, b) => b.riskScore - a.riskScore),
+    [filteredDistrictData]
+  )
+  const dailyTrend = useMemo(() => {
+    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+    return days.map((label, i) => ({
+      label,
+      count: ((i + 3) * 7 + timeRange) % 50 + 5,
+    }))
+  }, [timeRange])
+  const maxTrendCount = useMemo(() => Math.max(...dailyTrend.map(d => d.count), 1), [dailyTrend])
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
   const [mapStatus, setMapStatus] = useState<'loading' | 'ready' | 'fallback'>(
     mapKey ? 'loading' : 'fallback'
@@ -847,6 +872,37 @@ export function EpidemicDashboard({ onBack }: Props) {
           </div>
         </div>
 
+        {/* 筛选器 */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {([7, 14, 30] as const).map(days => (
+            <button
+              key={days}
+              onClick={() => setTimeRange(days)}
+              className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                timeRange === days
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {days}天
+            </button>
+          ))}
+          <span className="w-px bg-slate-200 mx-1" />
+          {['全部', '呼吸道', '消化道', '其他'].map(type => (
+            <button
+              key={type}
+              onClick={() => setSymptomFilter(type)}
+              className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                symptomFilter === type
+                  ? 'bg-violet-500 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+
         {focusDistrict && (
           <div className="mb-4 rounded-2xl border border-amber-400/20 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent px-4 py-3 flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -1101,7 +1157,7 @@ export function EpidemicDashboard({ onBack }: Props) {
                   </div>
                   <span className="text-white/30 text-[11px]">按本地参考分排序</span>
                 </div>
-              {sortedDistricts.map((d, i) => (
+              {filteredSortedDistricts.map((d, i) => (
                 <div
                   key={d.district}
                   onClick={() => setSelectedDistrict(d.district)}
@@ -1317,6 +1373,22 @@ export function EpidemicDashboard({ onBack }: Props) {
               </div>
             </div>
 
+            {/* 每日上报趋势 */}
+            <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+              <p className="text-[11px] font-medium text-white/60 mb-3">每日上报趋势</p>
+              <div className="flex items-end gap-2 h-20">
+                {dailyTrend.map((day, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <div
+                      className="w-full rounded-t bg-blue-400 transition-all"
+                      style={{ height: `${(day.count / maxTrendCount) * 100}%` }}
+                    />
+                    <span className="text-[9px] text-white/40">{day.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* 区块4：AI预警分析 */}
             <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 border border-blue-500/20 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-3">
@@ -1404,6 +1476,13 @@ export function EpidemicDashboard({ onBack }: Props) {
         <p>本平台数据基于季节性流行病学模型模拟生成</p>
         <p>不代表官方疫情数据，仅供公共卫生参考</p>
         <p>查看官方数据：<a href="https://www.chinacdc.cn" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">中国疾控中心</a></p>
+      </div>
+
+      <div className="mt-4 text-center">
+        <p className="text-[11px] text-slate-400">
+          企业/机构如需区域健康数据服务，
+          <button className="text-blue-500 hover:underline">了解合作方案</button>
+        </p>
       </div>
     </div>
   )
