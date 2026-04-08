@@ -21,6 +21,8 @@ import {
   type LocationPreference,
   type OfficialSourcePreference,
 } from '../lib/experienceSettings';
+import { parseHealthCSV } from '../lib/dataImport';
+import { saveMetric } from '../lib/healthMetrics';
 
 interface HealthSettingsPanelProps {
   settings: ExperienceSettings;
@@ -220,6 +222,8 @@ export function HealthSettingsPanel({
     return localStorage.getItem('epidemic_alert_subscribed') === 'true';
   });
 
+  const [importResult, setImportResult] = useState<string | null>(null);
+
   const sidebarSummary =
     settings.desktopSidebarMode === 'collapsed'
       ? '桌面端已收起为图标栏，聊天区会获得更宽的横向空间。'
@@ -330,6 +334,47 @@ export function HealthSettingsPanel({
                   }`} />
                 </button>
               </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-slate-200 px-4 py-3">
+              <p className="text-sm font-medium text-slate-800 mb-1">导入健康数据</p>
+              <p className="text-[11px] text-slate-500 mb-2">支持华为健康/Apple Health导出的CSV文件</p>
+              <label className="block">
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const text = await file.text();
+                      const metrics = parseHealthCSV(text);
+                      if (metrics.length > 0) {
+                        for (const m of metrics) {
+                          saveMetric({
+                            type: m.type,
+                            valuePrimary: m.valuePrimary,
+                            valueSecondary: m.valueSecondary,
+                            recordedAt: m.recordedAt,
+                          });
+                        }
+                        setImportResult(`成功导入 ${metrics.length} 条记录`);
+                      } else {
+                        setImportResult('未识别到有效数据，请检查CSV格式');
+                      }
+                    } catch {
+                      setImportResult('文件读取失败，请重试');
+                    }
+                  }}
+                />
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 cursor-pointer hover:bg-slate-50">
+                  📁 选择CSV文件
+                </span>
+              </label>
+              {importResult && (
+                <p className="mt-2 text-xs text-emerald-600">{importResult}</p>
+              )}
             </div>
           </div>
 

@@ -13,6 +13,7 @@ import { ConversationHistoryPanel } from './components/ConversationHistoryPanel'
 import { DiagnosisProgress } from './components/DiagnosisProgress';
 import { FollowUpReminder } from './components/FollowUpReminder';
 import { Header } from './components/Header';
+import { OfficialBadge } from './components/OfficialBadge';
 import { OnboardingFlow } from './components/OnboardingFlow';
 import { LazySurfaceFallback } from './components/LazySurfaceFallback';
 import {
@@ -189,6 +190,12 @@ export default function App() {
     () => buildProfileCompletionGuide(workspace.profile).progress,
     [workspace.profile]
   );
+  const partnerBadge = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('partner_badge');
+      return raw ? (JSON.parse(raw) as { name: string }).name : null;
+    } catch { return null; }
+  }, []);
   const isSidebarCollapsed = experienceSettings.desktopSidebarMode === 'collapsed';
   const authActionLabel = workspace.sessionEmail ? '管理账号' : '登录 / 注册';
   const desktopSidebarWidth = isSidebarCollapsed
@@ -1084,6 +1091,7 @@ export default function App() {
       />
 
       <div className="flex min-h-screen flex-1 flex-col">
+        <OfficialBadge partnerName={partnerBadge ?? undefined} />
         <Header
           title={pageHeader.title}
           subtitle={pageHeader.subtitle}

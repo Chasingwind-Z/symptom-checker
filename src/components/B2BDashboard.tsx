@@ -18,9 +18,23 @@ interface B2BDashboardProps {
   onBack: () => void;
 }
 
+function FeatureItem({ text }: { text: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      <p className="text-[11px] text-emerald-700">{text}</p>
+    </div>
+  );
+}
+
 export function B2BDashboard({ onBack }: B2BDashboardProps) {
   const [org, setOrg] = useState<Organization | null>(() => getOrganization());
   const [orgNameInput, setOrgNameInput] = useState('');
+  const [partnerNameInput, setPartnerNameInput] = useState('');
+  const [partnerContactInput, setPartnerContactInput] = useState('');
+  const [partnerSubmitted, setPartnerSubmitted] = useState(() => {
+    return !!localStorage.getItem('partner_application');
+  });
 
   const data = useMemo(() => {
     if (!org) return null;
@@ -76,6 +90,50 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 px-4 py-4 mt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield size={16} className="text-emerald-600" />
+              <p className="text-sm font-semibold text-emerald-800">社区卫生中心合作</p>
+            </div>
+            <p className="text-xs text-emerald-700 leading-relaxed mb-3">
+              面向基层卫生机构提供辖区居民匿名健康趋势数据，支持街道/社区精度，助力公共卫生决策。
+            </p>
+            <div className="space-y-2 mb-3">
+              <FeatureItem text="街道级疾病趋势热力图" />
+              <FeatureItem text="辖区高风险人群占比分析" />
+              <FeatureItem text="季节性疾病预警推送" />
+              <FeatureItem text="官方背书展示增加用户信任" />
+            </div>
+            <div className="rounded-lg bg-white/80 px-3 py-2.5">
+              <p className="text-[11px] text-slate-600 mb-2">合作申请</p>
+              <input
+                value={partnerNameInput}
+                onChange={e => setPartnerNameInput(e.target.value)}
+                placeholder="卫生中心/机构名称"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-emerald-400 focus:outline-none mb-2"
+              />
+              <input
+                value={partnerContactInput}
+                onChange={e => setPartnerContactInput(e.target.value)}
+                placeholder="联系方式（手机/邮箱）"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-emerald-400 focus:outline-none mb-2"
+              />
+              <button
+                onClick={() => {
+                  if (partnerNameInput.trim() && partnerContactInput.trim()) {
+                    localStorage.setItem('partner_application', JSON.stringify({
+                      name: partnerNameInput, contact: partnerContactInput, status: 'pending', appliedAt: new Date().toISOString()
+                    }));
+                    setPartnerSubmitted(true);
+                  }
+                }}
+                className="w-full rounded-lg bg-emerald-600 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+              >
+                {partnerSubmitted ? '✓ 已提交，我们会尽快联系' : '提交合作申请'}
+              </button>
             </div>
           </div>
         </div>
@@ -178,6 +236,51 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
                 <span className="text-xs font-bold text-blue-600">{tier.price}</span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Community Health Center Partnership */}
+        <div className="rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 px-4 py-4 mt-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield size={16} className="text-emerald-600" />
+            <p className="text-sm font-semibold text-emerald-800">社区卫生中心合作</p>
+          </div>
+          <p className="text-xs text-emerald-700 leading-relaxed mb-3">
+            面向基层卫生机构提供辖区居民匿名健康趋势数据，支持街道/社区精度，助力公共卫生决策。
+          </p>
+          <div className="space-y-2 mb-3">
+            <FeatureItem text="街道级疾病趋势热力图" />
+            <FeatureItem text="辖区高风险人群占比分析" />
+            <FeatureItem text="季节性疾病预警推送" />
+            <FeatureItem text="官方背书展示增加用户信任" />
+          </div>
+          <div className="rounded-lg bg-white/80 px-3 py-2.5">
+            <p className="text-[11px] text-slate-600 mb-2">合作申请</p>
+            <input
+              value={partnerNameInput}
+              onChange={e => setPartnerNameInput(e.target.value)}
+              placeholder="卫生中心/机构名称"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-emerald-400 focus:outline-none mb-2"
+            />
+            <input
+              value={partnerContactInput}
+              onChange={e => setPartnerContactInput(e.target.value)}
+              placeholder="联系方式（手机/邮箱）"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs focus:border-emerald-400 focus:outline-none mb-2"
+            />
+            <button
+              onClick={() => {
+                if (partnerNameInput.trim() && partnerContactInput.trim()) {
+                  localStorage.setItem('partner_application', JSON.stringify({
+                    name: partnerNameInput, contact: partnerContactInput, status: 'pending', appliedAt: new Date().toISOString()
+                  }));
+                  setPartnerSubmitted(true);
+                }
+              }}
+              className="w-full rounded-lg bg-emerald-600 py-2 text-xs font-medium text-white hover:bg-emerald-700 transition-colors"
+            >
+              {partnerSubmitted ? '✓ 已提交，我们会尽快联系' : '提交合作申请'}
+            </button>
           </div>
         </div>
       </div>

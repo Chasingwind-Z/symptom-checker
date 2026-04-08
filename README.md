@@ -1,6 +1,6 @@
 # 健康助手 · AI 症状自查与公共卫生预警平台
 
-[![在线体验](https://img.shields.io/badge/🌐_在线体验-立即使用-blue?style=for-the-badge)](https://symptom-checker-fqx3aopvn-chasingwinds-projects.vercel.app/)
+[![在线体验](https://img.shields.io/badge/🌐_在线体验-立即使用-blue?style=for-the-badge)](https://symptom-checker-git-main-chasingwinds-projects.vercel.app/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=white)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Auth+DB-3ECF8E?style=flat&logo=supabase&logoColor=white)](https://supabase.com/)
@@ -12,7 +12,7 @@
 
 ## 🌐 在线体验
 
-**地址：** https://symptom-checker-fqx3aopvn-chasingwinds-projects.vercel.app/
+**地址：** https://symptom-checker-git-main-chasingwinds-projects.vercel.app/
 
 推荐使用 Chrome / Edge / Safari，支持语音输入与 PWA 安装到桌面。
 
