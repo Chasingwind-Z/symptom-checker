@@ -85,7 +85,23 @@ export function ReportExport({ result, messages }: Props) {
 
   const color = LEVEL_COLOR[result.level]
   const now = new Date()
-  const userMessages = messages.filter((m) => m.role === 'user').slice(0, 5)
+  const conversationPairs = messages
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .reduce<{ user: string; assistant: string }[]>((pairs, msg) => {
+      if (msg.role === 'user') {
+        pairs.push({ user: msg.content, assistant: '' })
+      } else if (msg.role === 'assistant' && pairs.length > 0) {
+        const last = pairs[pairs.length - 1]
+        if (!last.assistant) {
+          last.assistant = msg.content
+            .replace(/```json[\s\S]*?```/g, '')
+            .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
+            .trim()
+        }
+      }
+      return pairs
+    }, [])
+    .slice(0, 5)
 
   return (
     <>
@@ -170,38 +186,49 @@ export function ReportExport({ result, messages }: Props) {
           {/* 问诊摘要 */}
           <SectionBlock title="问诊对话摘要" icon="💬" color={color}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {userMessages.map((msg, i) => (
+              {conversationPairs.map((pair, i) => (
                 <div
-                  key={msg.id}
+                  key={i}
                   style={{
                     background: '#fff',
                     border: '1px solid #E2E8F0',
                     borderRadius: '10px',
-                    padding: '10px 14px',
+                    padding: '12px 14px',
                     display: 'flex',
-                    gap: '10px',
-                    alignItems: 'flex-start',
+                    flexDirection: 'column',
+                    gap: '8px',
                   }}
                 >
-                  <div
-                    style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '50%',
-                      background: color,
-                      color: '#fff',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      marginTop: '1px',
-                    }}
-                  >
-                    {i + 1}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <div
+                      style={{
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        background: color,
+                        color: '#fff',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        marginTop: '1px',
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: 1.7, fontWeight: 600 }}>
+                      患者：{pair.user}
+                    </p>
                   </div>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: 1.7 }}>{msg.content}</p>
+                  {pair.assistant && (
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', paddingLeft: '32px' }}>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#6B7280', lineHeight: 1.7 }}>
+                        AI：{pair.assistant.length > 150 ? pair.assistant.slice(0, 150) + '…' : pair.assistant}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

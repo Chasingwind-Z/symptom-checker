@@ -89,7 +89,7 @@ export default function App() {
   const network = useNetworkStatus();
   const pwa = usePwaInstall();
   const [selectedConsultationModeId, setSelectedConsultationModeId] = useState<ConsultationModeId | null>(
-    null
+    () => (localStorage.getItem('selected_guardian_mode') as ConsultationModeId | null)
   );
   const [welcomeDraftValue, setWelcomeDraftValue] = useState('');
   const [welcomeFocusSignal, setWelcomeFocusSignal] = useState(0);
@@ -1322,7 +1322,7 @@ export default function App() {
 
       <FollowUpReminder />
 
-      {showOnboarding && <OnboardingFlow onComplete={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); }} />}
+      {showOnboarding && <OnboardingFlow onComplete={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); const savedMode = localStorage.getItem('selected_guardian_mode') as ConsultationModeId | null; if (savedMode) setSelectedConsultationModeId(savedMode); }} />}
     </div>
     </GuardianThemeProvider>
   );

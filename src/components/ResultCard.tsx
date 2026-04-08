@@ -1316,7 +1316,7 @@ export function ResultCard({
         <div className="border-t border-slate-100 mt-5 pt-4">
           {reportState === 'pending' && (
             <div className="flex flex-col items-center gap-3">
-              <p className="text-slate-500 text-xs text-center">是否愿意匿名上报本次症状？</p>
+              <p className="text-slate-500 text-xs text-center">是否愿意记录本次症状用于本地趋势分析？</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -1326,7 +1326,7 @@ export function ResultCard({
                   }}
                   className="px-4 py-1.5 rounded-full bg-blue-500 text-white text-xs font-medium hover:bg-blue-600 transition-colors"
                 >
-                  愿意上报
+                  愿意记录
                 </button>
                 <button
                   onClick={() => setReportState('declined')}
@@ -1342,9 +1342,9 @@ export function ResultCard({
               <div className="flex items-start gap-3">
                 <CheckCircle size={18} className="text-emerald-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-emerald-800 font-medium text-sm">感谢您的数据贡献</p>
+                  <p className="text-emerald-800 font-medium text-sm">已记录到本地</p>
                   <p className="text-emerald-600 text-xs mt-1 leading-relaxed">
-                    您的症状数据已匿名上报。与其他用户数据汇聚后，将帮助监测社区疾病传播趋势，比医院诊断数据早 5-7 天发现疫情苗头。
+                    症状数据已保存在您的设备上，用于个人健康趋势追踪和本地社区预警参考。数据不会离开您的设备。
                   </p>
                   {onToggleMap && (
                     <button
