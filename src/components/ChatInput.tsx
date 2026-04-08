@@ -11,6 +11,7 @@ import {
 import { ImagePlus, Loader2, Mic, MicOff, Send, ShieldAlert, X } from 'lucide-react';
 import type { ChatImageAttachment, SendMessageInput } from '../types';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
+import { SymptomDescriptionHelper } from './SymptomDescriptionHelper';
 
 export interface ChatInputLayoutMetrics {
   height: number;
@@ -31,9 +32,12 @@ interface ChatInputProps {
   selectedModeSummary?: string;
   onClearSelectedMode?: () => void;
   focusSignal?: number;
+  /** When true, hide image upload and mode selector to reduce visual noise */
+  isConsulting?: boolean;
   /** 'floating' (default) – fixed overlay used in active chat.
    *  'inline' – normal-flow card used on the home/welcome screen. */
   variant?: 'floating' | 'inline';
+  messagesCount?: number;
 }
 
 const MAX_IMAGE_ATTACHMENTS = 3;
@@ -164,6 +168,8 @@ export function ChatInput({
   onClearSelectedMode,
   focusSignal,
   variant = 'floating',
+  isConsulting = false,
+  messagesCount,
 }: ChatInputProps) {
   const isInline = variant === 'inline';
   const [internalValue, setInternalValue] = useState('');
@@ -172,6 +178,7 @@ export function ChatInput({
   const [uploadError, setUploadError] = useState('');
   const [keyboardOffset, setKeyboardOffset] = useState(() => getKeyboardOffset());
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showHelper, setShowHelper] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -456,7 +463,7 @@ export function ChatInput({
               </div>
             )}
 
-            {selectedModeLabel && (
+            {selectedModeLabel && !isConsulting && (
               <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-700">
                 <span className="rounded-full bg-white px-2.5 py-1 font-medium text-blue-700">
                   已选模式：{selectedModeLabel}
@@ -563,6 +570,7 @@ export function ChatInput({
               }`}
             >
               <div className="flex items-end gap-2">
+                {!isConsulting && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -590,6 +598,7 @@ export function ChatInput({
                     </span>
                   )}
                 </button>
+                )}
 
                 <div className="min-w-0 flex-1">
                   <textarea
@@ -676,6 +685,26 @@ export function ChatInput({
             )}
           </div>
         </div>
+
+        {messagesCount === 0 && !showHelper && (
+          <button
+            type="button"
+            onClick={() => setShowHelper(true)}
+            className="text-xs text-blue-500 hover:text-blue-600 mt-1"
+          >
+            不知怎么描述？点这里帮你说 →
+          </button>
+        )}
+
+        {showHelper && (
+          <SymptomDescriptionHelper
+            onSubmit={(text) => {
+              setShowHelper(false);
+              onSend(text);
+            }}
+            onClose={() => setShowHelper(false)}
+          />
+        )}
       </div>
     </div>
   );

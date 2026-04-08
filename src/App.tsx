@@ -196,11 +196,14 @@ export default function App() {
       return raw ? (JSON.parse(raw) as { name: string }).name : null;
     } catch { return null; }
   }, []);
+  const isConsulting = messages.length > 0 && !diagnosisResult;
   const isSidebarCollapsed = experienceSettings.desktopSidebarMode === 'collapsed';
   const authActionLabel = workspace.sessionEmail ? '管理账号' : '登录 / 注册';
-  const desktopSidebarWidth = isSidebarCollapsed
-    ? DESKTOP_SIDEBAR_COLLAPSED_WIDTH
-    : DESKTOP_SIDEBAR_EXPANDED_WIDTH;
+  const desktopSidebarWidth = isConsulting
+    ? 0
+    : isSidebarCollapsed
+      ? DESKTOP_SIDEBAR_COLLAPSED_WIDTH
+      : DESKTOP_SIDEBAR_EXPANDED_WIDTH;
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -1061,34 +1064,36 @@ export default function App() {
           >✕</button>
         </div>
       )}
-      <AppSidebar
-        activeSection={showWorkspace ? workspaceSection : null}
-        searchQuery={recordSearchQuery}
-        sessions={filteredConversationSessions}
-        activeSessionId={activeSessionId}
-        onOpenSession={handleOpenConversation}
-        onDeleteSession={handleDeleteConversation}
-        onStartNewSession={handleResetChat}
-        onSelectSearch={() => handleOpenWorkspaceSection('search')}
-        onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
-        onSelectProfile={() => handleOpenWorkspaceSection('profile')}
-        onSelectHistory={() => handleOpenWorkspaceSection('history')}
-        onSelectRecords={() => handleOpenWorkspaceSection('records')}
-        onSelectMedication={() => handleOpenWorkspaceSection('medication')}
-        onSelectSettings={handleOpenSettings}
-        onOpenMap={handleOpenMap}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={handleToggleSidebarCollapse}
-        onOpenAuth={handleOpenAuthDialog}
-        authActionLabel={authActionLabel}
-        sessionEmail={workspace.sessionEmail}
-        currentCity={localCity}
-        statusLabel={workspace.statusLabel}
-        statusHelperText={workspace.helperText}
-        profileCompletion={profileCompletion}
-        pendingFollowUpCount={pendingFollowUpRecords.length}
-        medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
-      />
+      {!isConsulting && (
+        <AppSidebar
+          activeSection={showWorkspace ? workspaceSection : null}
+          searchQuery={recordSearchQuery}
+          sessions={filteredConversationSessions}
+          activeSessionId={activeSessionId}
+          onOpenSession={handleOpenConversation}
+          onDeleteSession={handleDeleteConversation}
+          onStartNewSession={handleResetChat}
+          onSelectSearch={() => handleOpenWorkspaceSection('search')}
+          onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
+          onSelectProfile={() => handleOpenWorkspaceSection('profile')}
+          onSelectHistory={() => handleOpenWorkspaceSection('history')}
+          onSelectRecords={() => handleOpenWorkspaceSection('records')}
+          onSelectMedication={() => handleOpenWorkspaceSection('medication')}
+          onSelectSettings={handleOpenSettings}
+          onOpenMap={handleOpenMap}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebarCollapse}
+          onOpenAuth={handleOpenAuthDialog}
+          authActionLabel={authActionLabel}
+          sessionEmail={workspace.sessionEmail}
+          currentCity={localCity}
+          statusLabel={workspace.statusLabel}
+          statusHelperText={workspace.helperText}
+          profileCompletion={profileCompletion}
+          pendingFollowUpCount={pendingFollowUpRecords.length}
+          medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
+        />
+      )}
 
       <div className="flex min-h-screen flex-1 flex-col">
         <OfficialBadge partnerName={partnerBadge ?? undefined} />
@@ -1110,7 +1115,7 @@ export default function App() {
           diagnosisRiskLevel={diagnosisResult?.level ?? null}
         />
 
-        {!showWorkspace && (
+        {!showWorkspace && !isConsulting && (
           <InfoBar
             weather={weatherData}
             profileCity={localCity}
@@ -1215,6 +1220,7 @@ export default function App() {
                   selectedModeSummary={selectedConsultationMode?.summary}
                   onClearSelectedMode={handleClearSelectedConsultationMode}
                   focusSignal={welcomeFocusSignal}
+                  messagesCount={messages.length}
                 />
               </div>
             )}
@@ -1381,6 +1387,8 @@ export default function App() {
             selectedModeLabel={selectedConsultationMode?.label}
             selectedModeSummary={selectedConsultationMode?.summary}
             onClearSelectedMode={handleClearSelectedConsultationMode}
+            isConsulting={isConsulting}
+            messagesCount={messages.length}
           />
         )}
       </div>
