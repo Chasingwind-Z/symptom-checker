@@ -35,6 +35,12 @@ const LazyMedicationRecommendationsPanel = lazy(() =>
   }))
 )
 
+const LazyMedicineBoxPanel = lazy(() =>
+  import('./MedicineBoxPanel').then((module) => ({
+    default: module.MedicineBoxPanel,
+  }))
+)
+
 const LazyCloudSyncCard = lazy(() =>
   import('./CloudSyncCard').then((module) => ({
     default: module.CloudSyncCard,
@@ -358,6 +364,7 @@ export function WorkspaceView({
             />
           }
         >
+          <LazyMedicineBoxPanel />
           <LazyMedicationRecommendationsPanel
             profile={profile}
             currentDiagnosis={diagnosisResult}

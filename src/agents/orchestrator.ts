@@ -1,5 +1,6 @@
 import { loadSkills } from '../lib/skillLoader';
 import { getHistoryContextForAI, detectFamilyCrossInfection } from '../lib/symptomTracking';
+import { getMedicineBoxSummary } from '../lib/familyMedicineBox';
 import type { AgentBadge, AgentId, AgentRoute, AgentStep, SymptomInfo } from '../types';
 import { careNavigatorAgent } from './careNavigatorAgent';
 import { evidenceAgent } from './evidenceAgent';
@@ -349,6 +350,13 @@ function buildContextNotes(context: AgentPromptContext): string[] {
   if (crossInfection) {
     notes.push(
       `【家庭交叉感染预警】\n${crossInfection.alertText}\n近期相关症状：${crossInfection.recentSymptoms.join('、')}。\n请在分诊时考虑交叉感染可能性，主动提醒用户注意家庭内隔离措施。`
+    );
+  }
+
+  const medicineBoxSummary = getMedicineBoxSummary();
+  if (medicineBoxSummary) {
+    notes.push(
+      `【家庭药箱】\n家中现有：${medicineBoxSummary}。\n问诊时可主动告知用户家中已有哪些药可以使用，避免重复购买。`
     );
   }
 
