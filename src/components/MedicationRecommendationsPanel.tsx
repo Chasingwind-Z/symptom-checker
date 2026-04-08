@@ -327,9 +327,17 @@ export function MedicationRecommendationsPanel({
       }),
     [currentLocation, medicationSearchSeed, normalizedCity]
   );
+  const medicationInfoSearchKeyword = useMemo(() => {
+    if (preferredRecommendation?.title) return preferredRecommendation.title;
+    const firstSuitableMed = featuredContext?.recommendations.find((r) => r.suitable);
+    if (firstSuitableMed) return firstSuitableMed.title;
+    const firstMed = featuredContext?.recommendations[0];
+    if (firstMed) return firstMed.title;
+    return primaryDepartment ? `${primaryDepartment} 常见用药` : '常见 OTC 药品';
+  }, [featuredContext?.recommendations, preferredRecommendation?.title, primaryDepartment]);
   const medicationInfoUrl = useMemo(
-    () => buildMedicationInfoSearchUrl(preferredRecommendation?.title ?? featuredContext?.title ?? '常见 OTC'),
-    [featuredContext?.title, preferredRecommendation?.title]
+    () => buildMedicationInfoSearchUrl(medicationInfoSearchKeyword),
+    [medicationInfoSearchKeyword]
   );
   const clinicUrl = useMemo(
     () =>
