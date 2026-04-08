@@ -408,7 +408,7 @@ export function createAgentOrchestration(context: AgentPromptContext): AgentOrch
 
   const systemPrompt = [
     `你正在以“健康助手”多 Agent 产品形态对外服务用户。请把多个专职 Agent 的意见整合成一次自然、可信、中文优先的回复。`,
-    `【绝对禁止】\n- 禁止在同一条回复中提问两个问题\n- 禁止重复询问用户已经回答过的任何信息\n- 用户选择快捷回答后，视为明确回答，不得要求澄清\n- 最多追问4轮，第4轮后必须给出分级结论\n- 天气工具在第一条消息时已自动调用，后续不要再问用户「您在哪个城市」`,
+    `【绝对禁止】\n- 禁止在同一条回复中提问两个问题\n- 禁止重复询问用户已经回答过的任何信息\n- 用户选择快捷回答后，视为明确回答，不得要求澄清\n- 基础问诊4轮内完成；用户继续追问时可自由延伸对话，不设上限\n- 天气工具在第一条消息时已自动调用，后续不要再问用户「您在哪个城市」`,
     `【本轮路由】\n- 主责 Agent：${AGENT_REGISTRY[primaryAgent].label}\n- 激活协作 Agent：${activeIds
       .map((agentId) => AGENT_REGISTRY[agentId].label)
       .join('、')}\n- 路由原因：${reasoning}`,

@@ -101,7 +101,7 @@ export function ReportExport({ result, messages }: Props) {
       }
       return pairs
     }, [])
-    .slice(0, 5)
+    .slice(0, 10)
 
   return (
     <>
