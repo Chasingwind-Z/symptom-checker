@@ -426,6 +426,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   const [activeFollowUpId, setActiveFollowUpId] = useState<string | null>(() =>
     getDueFollowUpRecord(readFollowUpRecords())?.id ?? null
   );
+  const [pendingFollowUp, setPendingFollowUp] = useState<{ date: string; note: string } | null>(null);
   const [activeAgentRoute, setActiveAgentRoute] = useState<AgentRoute | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeSessionStorage, setActiveSessionStorage] = useState<ConversationSession['storage'] | null>(
@@ -787,6 +788,20 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
             }
           });
         }
+
+        // Follow-up keyword detection (runs once per finalized message)
+        const FOLLOWUP_KEYWORDS = ['复查', '复诊', '随访', '一周后', '两周后', '三天后', '一个月后', '回来复查', '定期检查'];
+        const hasFollowUp = FOLLOWUP_KEYWORDS.some((kw) => content.includes(kw));
+        if (hasFollowUp) {
+          let daysLater = 7;
+          if (content.includes('三天后') || content.includes('3天后')) daysLater = 3;
+          if (content.includes('两周后') || content.includes('2周后')) daysLater = 14;
+          if (content.includes('一个月后')) daysLater = 30;
+          const scheduledDate = new Date(Date.now() + daysLater * 24 * 60 * 60 * 1000).toISOString();
+          window.setTimeout(() => {
+            setPendingFollowUp({ date: scheduledDate, note: `AI建议${daysLater}天后复查` });
+          }, 0);
+        }
       };
 
       const history: ChatMessage[] = [
@@ -1003,5 +1018,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     deleteConversationSession,
     restoreConversationSession,
     resetChat,
+    pendingFollowUp,
+    setPendingFollowUp,
   };
 }

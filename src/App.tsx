@@ -58,6 +58,7 @@ import {
   buildPersonalizationRankingContext,
   getMedicationGuidance,
 } from './lib/personalization';
+import { saveAppointment } from './lib/followUpRecords';
 import {
   findMatchingCase,
   findMatchingConversation,
@@ -150,6 +151,8 @@ export default function App() {
     loadConversationSession,
     deleteConversationSession,
     resetChat,
+    pendingFollowUp,
+    setPendingFollowUp,
   } = useChat(chatMemoryContext);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -1252,6 +1255,38 @@ export default function App() {
                             style={{ animationDelay: '300ms' }}
                           />
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {pendingFollowUp && (
+                  <div className="mx-4 mb-3 rounded-2xl border-2 border-blue-200 bg-blue-50 px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-blue-800">📅 AI建议设置复诊提醒</p>
+                        <p className="text-xs text-blue-600 mt-1">{pendingFollowUp.note}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            saveAppointment({
+                              scheduledAt: pendingFollowUp.date,
+                              note: pendingFollowUp.note,
+                              originalSessionId: activeSessionId || undefined,
+                            });
+                            setPendingFollowUp(null);
+                          }}
+                          className="rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-600"
+                        >
+                          设置提醒
+                        </button>
+                        <button
+                          onClick={() => setPendingFollowUp(null)}
+                          className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-100"
+                        >
+                          跳过
+                        </button>
                       </div>
                     </div>
                   </div>

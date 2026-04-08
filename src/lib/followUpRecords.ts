@@ -223,3 +223,58 @@ export function getDueFollowUpRecord(records = readFollowUpRecords()) {
   const now = Date.now();
   return records.find((record) => record.status === 'pending' && now >= record.dueAt) ?? null;
 }
+
+// --- Follow-up Appointment Tracking ---
+
+const APPOINTMENTS_KEY = 'follow_up_appointments';
+
+export interface FollowUpAppointment {
+  id: string;
+  scheduledAt: string; // ISO date
+  note: string;
+  status: 'pending' | 'completed' | 'missed';
+  originalSessionId?: string;
+  createdAt: string;
+}
+
+export function saveAppointment(
+  apt: Omit<FollowUpAppointment, 'id' | 'createdAt' | 'status'>
+): FollowUpAppointment {
+  const items = getAppointments();
+  const newApt: FollowUpAppointment = {
+    ...apt,
+    id: `apt_${Math.random().toString(36).slice(2, 9)}`,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
+  items.push(newApt);
+  localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(items));
+  return newApt;
+}
+
+export function getAppointments(): FollowUpAppointment[] {
+  try {
+    const raw = localStorage.getItem(APPOINTMENTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function getDueAppointments(): FollowUpAppointment[] {
+  const all = getAppointments();
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  return all.filter((apt) => {
+    if (apt.status !== 'pending') return false;
+    const scheduled = new Date(apt.scheduledAt).getTime();
+    return scheduled - now < dayMs;
+  });
+}
+
+export function markAppointmentComplete(id: string): void {
+  const items = getAppointments();
+  const apt = items.find((i) => i.id === id);
+  if (apt) apt.status = 'completed';
+  localStorage.setItem(APPOINTMENTS_KEY, JSON.stringify(items));
+}

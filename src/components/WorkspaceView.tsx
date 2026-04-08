@@ -1,5 +1,5 @@
 import { Search, Sparkles } from 'lucide-react'
-import { Suspense, lazy, useMemo } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import type { SidebarSection } from './AppSidebar'
 import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 import { HealthSettingsPanel } from './HealthSettingsPanel'
@@ -26,6 +26,8 @@ import type { LocationData } from '../lib/geolocation'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
 import { getReportRecords } from '../lib/healthData'
+import { shouldGenerateWeeklyReport, generateWeeklyReport, markWeeklyReportGenerated, type WeeklyReportData } from '../lib/weeklyReport'
+import { WeeklyReportCard } from './WeeklyReportCard'
 import type { MedicalKnowledgeSearchResult } from '../lib/medicalKnowledge'
 import type { ConversationSession, DiagnosisResult } from '../types'
 
@@ -150,8 +152,23 @@ export function WorkspaceView({
   recordsCenterSummaries,
 }: WorkspaceViewProps) {
   const reportRecords = useMemo(() => getReportRecords(), []);
+  const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData | null>(null);
+
+  useEffect(() => {
+    if (shouldGenerateWeeklyReport() && recentCases.length > 0) {
+      const report = generateWeeklyReport(recentCases);
+      window.setTimeout(() => setWeeklyReport(report), 0);
+      markWeeklyReportGenerated();
+    }
+  }, [recentCases]);
+
   return (
     <div className="space-y-4 py-5">
+      {weeklyReport && (
+        <div className="mb-4">
+          <WeeklyReportCard report={weeklyReport} onClose={() => setWeeklyReport(null)} />
+        </div>
+      )}
       <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
         {(Object.keys(WORKSPACE_TAB_LABELS) as SidebarSection[]).map((section) => (
           <button
