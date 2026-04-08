@@ -1,13 +1,30 @@
 import { motion } from 'framer-motion';
-import { User, Cross, Clock, BarChart2, HelpCircle, ClipboardList, Image as ImageIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { User, Cross, Clock, BarChart2, HelpCircle, ClipboardList, Image as ImageIcon, ShoppingCart } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import type { ChatDensityPreference } from '../lib/experienceSettings';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import { useGuardianTheme } from '../hooks/useGuardianTheme';
+import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { ToolCallIndicator } from './ToolCallIndicator';
+
+const DRUG_KEYWORDS_FOR_JD: Record<string, string> = {
+  '对乙酰氨基酚': '对乙酰氨基酚 OTC',
+  '布洛芬': '布洛芬 OTC',
+  '氯雷他定': '氯雷他定 抗过敏',
+  '蒙脱石散': '蒙脱石散',
+  '口服补液盐': '口服补液盐 电解质',
+  '维生素C': '维生素C',
+  '炉甘石': '炉甘石洗剂',
+  '感冒灵': '感冒灵颗粒',
+  '连花清瘟': '连花清瘟',
+  '藿香正气': '藿香正气水',
+  '止痛贴': '止痛贴 外用',
+  '退烧药': '退烧药 OTC',
+  '感冒药': '感冒药 OTC',
+};
 
 interface ChatBubbleProps {
   message: Message;
@@ -312,6 +329,40 @@ export function ChatBubble({
     (isQuestion(message.content) || hasSuggestions);
   const hasAssistantCopy = !isUser && animatedStreamingContent.length > 0;
 
+  const detectedDrugs = useMemo(() => {
+    if (message.role !== 'assistant') return [];
+    const content = message.content;
+    const matches: { name: string; searchKey: string }[] = [];
+    for (const [drug, searchKey] of Object.entries(DRUG_KEYWORDS_FOR_JD)) {
+      if (content.includes(drug)) {
+        matches.push({ name: drug, searchKey });
+      }
+    }
+    return matches.slice(0, 3);
+  }, [message.content, message.role]);
+
+  const drugChips = detectedDrugs.length > 0 ? (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      <span className="text-[10px] text-slate-400 mr-1 self-center">相关药品：</span>
+      {detectedDrugs.map((drug) => (
+        <button
+          key={drug.name}
+          onClick={() => {
+            trackMedicationClick({
+              medicationName: drug.name,
+              source: 'chat_bubble',
+            });
+            window.open(buildJDSearchUrl(drug.searchKey), '_blank', 'noopener');
+          }}
+          className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 hover:bg-emerald-100 transition-colors"
+        >
+          <ShoppingCart size={11} />
+          {drug.name}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   const handleQuickReply = (suggestion: string) => {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(10);
@@ -351,6 +402,7 @@ export function ChatBubble({
               {toolCallSummary}
               <AssistantMarkdown content={displayContent} />
               {attachmentGallery}
+              {drugChips}
             </div>
           </div>
         </div>
@@ -403,6 +455,8 @@ export function ChatBubble({
               ))}
             </div>
           )}
+
+          {drugChips && <div className={`pl-9 ${suggestionMarginClass}`}>{drugChips}</div>}
         </div>
         <span className={`block px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
           {formatTime(message.timestamp)}
@@ -494,6 +548,7 @@ export function ChatBubble({
           {!isUser && toolCallSummary}
           {isUser ? displayContent : <AssistantMarkdown content={displayContent} />}
           {attachmentGallery}
+          {!isUser && drugChips}
         </div>
         <span className={`px-1 text-xs text-slate-400 ${timestampMarginClass}`}>
           {formatTime(message.timestamp)}
