@@ -413,13 +413,19 @@ export function EpidemicDashboard({ onBack }: Props) {
       : dashboardSourceStatus.freshness === 'stale'
       ? '待复核'
       : '稳定参考'
+  const safeSourceLabel = /supabase|tavily|api.key|edge.function|配置/i.test(dashboardSourceStatus.sourceLabel || '')
+    ? '卫健委、疾控与 WHO 公开资料'
+    : dashboardSourceStatus.sourceLabel;
+  const safeSummary = /supabase|tavily|api.key|edge.function|配置/i.test(dashboardSourceStatus.summary || '')
+    ? '当前展示内置官方公开资料摘要。'
+    : dashboardSourceStatus.summary;
   const sourceTierCards = [
     {
       id: 'official',
       label: '官方 / 公共来源',
-      title: dashboardSourceStatus.sourceLabel || '卫健委、疾控与 WHO 公开资料',
+      title: safeSourceLabel || '卫健委、疾控与 WHO 公开资料',
       badge: officialFreshnessLabel,
-      summary: `优先用于核对 ${currentCity} 的正式建议、就医入口和疾病背景，也是最先应查看的信息。`,
+      summary: safeSummary || `优先用于核对 ${currentCity} 的正式建议、就医入口和疾病背景，也是最先应查看的信息。`,
       note: officialTimeLabel
         ? `公开资料最近标注时间：${officialTimeLabel}`
         : '公开资料以原始发布渠道的标注时间为准，卡片会优先直达原始页面',

@@ -325,7 +325,16 @@ export function AuthDialog({
   }
 
   async function handleRefreshAuthStatus() {
-    await Promise.resolve(onRefresh());
+    setIsAuthLoading(true);
+    setAuthState(IDLE_AUTH_STATE);
+    try {
+      await Promise.resolve(onRefresh());
+      setAuthState({ kind: 'success', message: '已刷新登录状态。如仍未登录，请确认已在邮件中点击登录链接。' });
+    } catch {
+      setAuthState({ kind: 'error', message: '刷新失败，请稍后重试。' });
+    } finally {
+      setIsAuthLoading(false);
+    }
   }
 
   async function handleSignOut() {

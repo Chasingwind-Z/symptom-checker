@@ -54,6 +54,17 @@ const DEFAULT_MAX_ITEMS = 3;
 const DEFAULT_SOURCE_LABEL = '官方公开资料对照';
 const gatewayAvailable = hasGatewayRoute('official-source-fetch');
 
+const INTERNAL_LABEL_RE = /supabase|tavily|api.key|edge.function|配置/i;
+function sanitiseSourceLabel(raw: string): string {
+  return INTERNAL_LABEL_RE.test(raw) ? DEFAULT_SOURCE_LABEL : raw;
+}
+function sanitiseSummary(raw: string): string {
+  if (INTERNAL_LABEL_RE.test(raw)) {
+    return '当前改为展示内置官方公开资料摘要。';
+  }
+  return raw;
+}
+
 const SUPPORTED_CITY_ALIASES: Record<string, string[]> = {
   苏州: ['苏州', '苏州市'],
   北京: ['北京', '北京市'],
@@ -698,11 +709,11 @@ function readPersistedBundle(contextKey: string): OfficialSourceBundle | null {
                 ),
           sourceLabel:
             typeof parsed.syncStatus?.sourceLabel === 'string'
-              ? parsed.syncStatus.sourceLabel
+              ? sanitiseSourceLabel(parsed.syncStatus.sourceLabel)
               : DEFAULT_SOURCE_LABEL,
           summary:
             typeof parsed.syncStatus?.summary === 'string'
-              ? parsed.syncStatus.summary
+              ? sanitiseSummary(parsed.syncStatus.summary)
               : '显示最近一次已核对的官方公开资料摘要。',
            note:
              typeof parsed.syncStatus?.note === 'string'
@@ -807,7 +818,7 @@ function toOfficialSourceRecord(value: unknown, index: number): OfficialSourceRe
     title,
     sourceLabel:
       typeof value.sourceLabel === 'string' && value.sourceLabel.trim()
-        ? value.sourceLabel.trim()
+        ? sanitiseSourceLabel(value.sourceLabel.trim())
         : typeof value.host === 'string' && value.host.trim()
         ? value.host.trim()
         : '官方公开来源',
@@ -933,9 +944,9 @@ function normalizeGatewayBundle(
 
   const summary =
     typeof payloadStatus?.summary === 'string' && payloadStatus.summary.trim()
-      ? payloadStatus.summary
+      ? sanitiseSummary(payloadStatus.summary)
       : typeof payload.message === 'string' && payload.message.trim()
-      ? payload.message
+      ? sanitiseSummary(payload.message)
       : fallbackActive
       ? '当前暂未获取到新的公开资料，先保留已核对的官方资料卡。'
       : `已同步 ${records.length} 条官方公开资料摘要。`;
@@ -959,9 +970,9 @@ function normalizeGatewayBundle(
           : deriveFreshness(lastSyncTime || latestRecordTime, fallbackActive),
       sourceLabel:
         typeof payloadStatus?.sourceLabel === 'string' && payloadStatus.sourceLabel.trim()
-          ? payloadStatus.sourceLabel
+          ? sanitiseSourceLabel(payloadStatus.sourceLabel)
           : typeof payload.sourceLabel === 'string' && payload.sourceLabel.trim()
-          ? payload.sourceLabel
+          ? sanitiseSourceLabel(payload.sourceLabel)
           : fallbackBundle.syncStatus.sourceLabel,
       summary,
       note,
