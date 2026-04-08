@@ -1,5 +1,5 @@
 import { Search, Sparkles } from 'lucide-react'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import type { SidebarSection } from './AppSidebar'
 import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 import { HealthSettingsPanel } from './HealthSettingsPanel'
@@ -25,7 +25,7 @@ import type { ChatDensityPreference, DesktopSidebarMode, ExperienceSettings, Loc
 import type { LocationData } from '../lib/geolocation'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
-
+import { getReportRecords } from '../lib/healthData'
 import type { MedicalKnowledgeSearchResult } from '../lib/medicalKnowledge'
 import type { ConversationSession, DiagnosisResult } from '../types'
 
@@ -143,6 +143,7 @@ export function WorkspaceView({
   recordsCenterFollowUps,
   recordsCenterSummaries,
 }: WorkspaceViewProps) {
+  const reportRecords = useMemo(() => getReportRecords(), []);
   return (
     <div className="space-y-4 py-5">
       <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
