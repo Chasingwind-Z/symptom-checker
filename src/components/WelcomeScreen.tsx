@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronRight,
   HeartPulse,
   MapPin,
   ShieldPlus,
@@ -17,6 +18,7 @@ import {
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
+import { getDistrictRiskData, getActiveCity } from '../lib/epidemicDataEngine'
 import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
 
 interface ScenarioChip {
@@ -30,6 +32,7 @@ interface WelcomeScreenProps {
   selectedModeId?: ConsultationModeId | null
   onSelectMode: (modeId: ConsultationModeId) => void
   onToggleMap: () => void
+  onOpenEpidemicDashboard?: () => void
   sessionEmail?: string | null
   profile?: ProfileDraft | null
   weather?: WeatherData | null
@@ -209,45 +212,30 @@ function wasUpdatedWithinOneDay(value: string) {
   return Date.now() - updatedAt.getTime() <= 24 * 60 * 60 * 1000
 }
 
-function getTimeGreeting(hour: number): string {
-  if (hour >= 6 && hour < 12) return '早上好，身体有什么不舒服吗？'
-  if (hour >= 12 && hour < 18) return '下午好，今天感觉怎么样？'
-  if (hour >= 18 && hour < 24) return '晚上好，有什么需要帮助的吗？'
-  return '深夜了，有什么不舒服吗？'
-}
-
 const GUARDIAN_MODES = [
   {
     id: 'self' as const,
     emoji: '👤',
-    label: '本人',
-    description: '为自己问诊',
-    iconColor: 'text-blue-500',
-    defaultClass: 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/30',
+    label: '我自己',
+    description: '成年人自查',
   },
   {
     id: 'child' as const,
     emoji: '👶',
-    label: '儿童守护',
-    description: '孩子14岁以下',
-    iconColor: 'text-green-500',
-    defaultClass: 'border-slate-200 bg-white hover:border-green-200 hover:bg-green-50/30',
+    label: '孩子',
+    description: '14岁以下',
   },
   {
     id: 'elderly' as const,
-    emoji: '👴',
-    label: '老人守护',
-    description: '家中60岁以上老人',
-    iconColor: 'text-orange-500',
-    defaultClass: 'border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/30',
+    emoji: '🧓',
+    label: '家里老人',
+    description: '60岁以上',
   },
   {
     id: 'chronic' as const,
     emoji: '💊',
-    label: '慢病守护',
-    description: '有基础疾病或长期用药',
-    iconColor: 'text-purple-500',
-    defaultClass: 'border-slate-200 bg-white hover:border-purple-200 hover:bg-purple-50/30',
+    label: '慢病患者',
+    description: '有基础疾病',
   },
 ] as const
 
@@ -258,6 +246,7 @@ export function WelcomeScreen({
   onSelectMode,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onToggleMap: _onToggleMap,
+  onOpenEpidemicDashboard,
   sessionEmail,
   profile,
   weather,
@@ -270,11 +259,44 @@ export function WelcomeScreen({
   onSelectHouseholdProfile,
   onManageProfiles,
 }: WelcomeScreenProps) {
-  const [hour, setHour] = useState(12)
+  const [showExtras, setShowExtras] = useState(false)
+
+  // Community health trend data (loaded once from epidemic data engine)
+  const [trendData, setTrendData] = useState<{ symptom: string; heat: number; color: string }[]>([])
+  const [trendCity, setTrendCity] = useState('本地')
+
   useEffect(() => {
-    window.setTimeout(() => setHour(new Date().getHours()), 0)
+    const cityName = getActiveCity()
+    setTrendCity(cityName)
+
+    const districts = getDistrictRiskData(cityName)
+    const symptomAgg: Record<string, { count: number; totalScore: number }> = {}
+
+    for (const d of districts) {
+      for (const s of d.topSymptoms) {
+        if (!symptomAgg[s]) symptomAgg[s] = { count: 0, totalScore: 0 }
+        symptomAgg[s].count++
+        symptomAgg[s].totalScore += d.riskScore
+      }
+    }
+
+    const sorted = Object.entries(symptomAgg)
+      .map(([symptom, { count, totalScore }]) => ({
+        symptom,
+        rawHeat: (totalScore / count) * (count / districts.length),
+      }))
+      .sort((a, b) => b.rawHeat - a.rawHeat)
+      .slice(0, 3)
+
+    const maxRaw = sorted[0]?.rawHeat ?? 1
+    const trends = sorted.map(({ symptom, rawHeat }) => {
+      const heat = Math.min(99, Math.max(10, Math.round((rawHeat / maxRaw) * 65 + 20)))
+      const color = heat >= 60 ? 'red' : heat >= 40 ? 'amber' : 'emerald'
+      return { symptom, heat, color }
+    })
+
+    setTrendData(trends)
   }, [])
-  const greeting = getTimeGreeting(hour)
 
   const personalizedScenarios = buildPersonalizedScenarios({
     profile,
@@ -318,197 +340,203 @@ export function WelcomeScreen({
 
   return (
     <div className="space-y-4">
-        <HouseholdProfileSwitcher
-          currentProfile={profile ?? {
-            displayName: '',
-            city: '中国大陆',
-            birthYear: null,
-            gender: '',
-            medicalNotes: '',
-            chronicConditions: '',
-            allergies: '',
-            currentMedications: '',
-            careFocus: '',
-            profileMode: 'custom',
-          }}
-          householdProfiles={householdProfiles}
-          isSwitchingId={switchingHouseholdProfileId}
-          onSwitchProfile={onSelectHouseholdProfile}
-          onManageProfiles={onManageProfiles}
-        />
+      {/* Compact header */}
+      <div className="px-1 pt-2">
+        <h1 className="text-xl font-bold text-slate-800">健康助手</h1>
+        <p className="mt-1 text-sm text-slate-500">今天在照顾谁？</p>
+      </div>
 
-        {showReengagement && latestSession && (
-          <button
-            type="button"
-            onClick={() => onOpenConversation(latestSession.id)}
-            className="w-full rounded-3xl border border-amber-100 bg-amber-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-amber-100/70"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900">
-                  {pendingFollowUpCount > 0 ? `还有 ${pendingFollowUpCount} 项跟进未处理` : '上次问诊还有内容未完成'}
-                </p>
-                <p className="mt-1 truncate text-xs text-slate-600">
-                  {truncateText(getRecentSessionReference(latestSession) || latestSession.title, 24)}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">点击继续，可接着之前的上下文提问。</p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-amber-700">
-                继续上次
-                <ArrowRight size={13} />
-              </span>
+      {/* Guardian Mode Cards — HERO position, 2×2 grid */}
+      <div className="grid grid-cols-2 gap-3 mt-6">
+        {GUARDIAN_MODES.map((mode) => {
+          const isSelected = selectedModeId === mode.id
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => onSelectMode(mode.id)}
+              className={`rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                isSelected
+                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+              }`}
+            >
+              <div className="text-2xl mb-2">{mode.emoji}</div>
+              <p className="text-sm font-semibold text-slate-800">{mode.label}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{mode.description}</p>
+            </button>
+          )
+        })}
+      </div>
+      {selectedMode && (
+        <p className="text-xs leading-relaxed text-slate-500 px-1">
+          {selectedMode.summary}
+        </p>
+      )}
+
+      {/* Household profile switcher */}
+      <HouseholdProfileSwitcher
+        currentProfile={profile ?? {
+          displayName: '',
+          city: '中国大陆',
+          birthYear: null,
+          gender: '',
+          medicalNotes: '',
+          chronicConditions: '',
+          allergies: '',
+          currentMedications: '',
+          careFocus: '',
+          profileMode: 'custom',
+        }}
+        householdProfiles={householdProfiles}
+        isSwitchingId={switchingHouseholdProfileId}
+        onSwitchProfile={onSelectHouseholdProfile}
+        onManageProfiles={onManageProfiles}
+      />
+
+      {/* Re-engagement card */}
+      {showReengagement && latestSession && (
+        <button
+          type="button"
+          onClick={() => onOpenConversation(latestSession.id)}
+          className="w-full rounded-3xl border border-amber-100 bg-amber-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-amber-100/70"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">
+                {pendingFollowUpCount > 0 ? `还有 ${pendingFollowUpCount} 项跟进未处理` : '上次问诊还有内容未完成'}
+              </p>
+              <p className="mt-1 truncate text-xs text-slate-600">
+                {truncateText(getRecentSessionReference(latestSession) || latestSession.title, 24)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">点击继续，可接着之前的上下文提问。</p>
             </div>
-          </button>
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-amber-700">
+              继续上次
+              <ArrowRight size={13} />
+            </span>
+          </div>
+        </button>
+      )}
+
+      {/* Cloud sync card */}
+      {!showReengagement && sessionEmail && latestCloudSession && (
+        <button
+          type="button"
+          onClick={() => onOpenConversation(latestCloudSession.id)}
+          className="w-full rounded-3xl border border-blue-100 bg-blue-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">已同步 {cloudSessions.length} 段问诊，可跨设备继续</p>
+              <p className="mt-1 truncate text-xs text-slate-600">
+                {truncateText(getRecentSessionReference(latestCloudSession) || latestCloudSession.title, 24)}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">适合直接回到上次线程继续补充，不必从头再说。</p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-700">
+              继续查看
+              <ArrowRight size={13} />
+            </span>
+          </div>
+        </button>
+      )}
+
+      {/* Status + input prompt area */}
+      <div className="rounded-3xl border border-slate-200 bg-white/95 px-5 pb-5 pt-4 shadow-sm">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+          <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+          {sessionEmail
+            ? `已登录 · ${maskedSessionEmail}${cloudSessions.length > 0 ? ` · ${cloudSessions.length} 段问诊可继续` : ''}`
+            : '未登录 · 仅本设备保存'}
+        </div>
+
+        {/* eslint-disable-next-line no-constant-binary-expression */}
+        {false && (
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
+          {[
+            '先判断今天需不需要线下处理',
+            '年龄、慢病和用药会自动带入',
+            '登录后可跨设备继续上次问诊',
+          ].map((item) => (
+            <span key={item} className="text-xs text-slate-500">
+              <span className="mr-1 font-semibold text-emerald-500">✓</span>
+              {item}
+            </span>
+          ))}
+        </div>
         )}
 
-        {!showReengagement && sessionEmail && latestCloudSession && (
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+          <span>直接在下方输入症状，或先点一个起步词条。</span>
           <button
             type="button"
-            onClick={() => onOpenConversation(latestCloudSession.id)}
-            className="w-full rounded-3xl border border-blue-100 bg-blue-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
+            onClick={onStartConsultation}
+            className="inline-flex items-center gap-1 font-medium text-blue-600 transition-colors hover:text-blue-700"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900">已同步 {cloudSessions.length} 段问诊，可跨设备继续</p>
-                <p className="mt-1 truncate text-xs text-slate-600">
-                  {truncateText(getRecentSessionReference(latestCloudSession) || latestCloudSession.title, 24)}
-                </p>
-                <p className="mt-1 text-xs text-slate-500">适合直接回到上次线程继续补充，不必从头再说。</p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-700">
-                继续查看
-                <ArrowRight size={13} />
-              </span>
-            </div>
+            <CheckCircle2 size={14} />
+            直接输入症状
           </button>
-        )}
+        </div>
+      </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white/95 px-5 pb-5 pt-4 shadow-sm">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-            <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-            {sessionEmail
-              ? `已登录 · ${maskedSessionEmail}${cloudSessions.length > 0 ? ` · ${cloudSessions.length} 段问诊可继续` : ''}`
-              : '未登录 · 仅本设备保存'}
-          </div>
-          <h1 className="text-xl font-medium text-slate-700">
-            {greeting}
-          </h1>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {GUARDIAN_MODES.map((mode) => {
-              const isSelected = selectedModeId === mode.id
-              return (
-                <button
-                  key={mode.id}
-                  type="button"
-                  onClick={() => onSelectMode(mode.id)}
-                  className={`rounded-xl border px-3 py-3 text-left transition-all ${
-                    isSelected
-                      ? 'border-blue-400 bg-blue-50/50 shadow-sm'
-                      : mode.defaultClass
-                  }`}
-                >
-                  <span className={`text-2xl leading-none ${mode.iconColor}`}>{mode.emoji}</span>
-                  <p className="mt-1.5 text-sm font-medium text-slate-800">{mode.label}</p>
-                  <p className="mt-0.5 text-xs text-slate-400">{mode.description}</p>
-                </button>
-              )
-            })}
-          </div>
-          {selectedMode && (
-            <p className="mt-2 text-xs leading-relaxed text-slate-500">
-              {selectedMode.summary}
-            </p>
-          )}
-
-          {/* eslint-disable-next-line no-constant-binary-expression */}
-          {false && (
-          <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
-            {[
-              '先判断今天需不需要线下处理',
-              '年龄、慢病和用药会自动带入',
-              '登录后可跨设备继续上次问诊',
-            ].map((item) => (
-              <span key={item} className="text-xs text-slate-500">
-                <span className="mr-1 font-semibold text-emerald-500">✓</span>
-                {item}
-              </span>
+      {/* Community health trend card */}
+      {trendData.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm">
+          <p className="text-xs font-medium text-slate-600">
+            📍 {localCityLabel || trendCity} · 今日社区健康动态
+          </p>
+          <div className="mt-3 space-y-2.5">
+            {trendData.map((item) => (
+              <div key={item.symptom} className="flex items-center gap-2.5 text-xs">
+                <span>
+                  {item.color === 'red' ? '🔴' : item.color === 'amber' ? '🟡' : '🟢'}
+                </span>
+                <span className="w-16 shrink-0 text-slate-700">{item.symptom}</span>
+                <div className="h-2 flex-1 rounded-full bg-slate-100">
+                  <div
+                    className={`h-2 rounded-full ${
+                      item.color === 'red'
+                        ? 'bg-red-500'
+                        : item.color === 'amber'
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${item.heat}%` }}
+                  />
+                </div>
+                <span className="w-10 shrink-0 text-right text-slate-400">热度 {item.heat}</span>
+              </div>
             ))}
           </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-            <span>直接在下方输入症状，或先点一个起步词条。</span>
-            <button
-              type="button"
-              onClick={onStartConsultation}
-              className="inline-flex items-center gap-1 font-medium text-blue-600 transition-colors hover:text-blue-700"
-            >
-              <CheckCircle2 size={14} />
-              直接输入症状
-            </button>
-          </div>
-        </div>
-
-        {/* Weather card removed — already shown in top WeatherBar */}
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-          {/* Focus path cards hidden for cleaner first impression */}
-          {/* eslint-disable-next-line no-constant-binary-expression */}
-          {false && (
-          <section className="rounded-3xl border border-slate-200 bg-white/95 px-4 py-4 shadow-sm">
-            <div className="max-w-2xl">
-              <p className="text-sm font-semibold text-slate-900">今天先解决什么</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                先走这 3 条高频主路径之一，词条会先写进输入框，你确认后再发。
-              </p>
-            </div>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {focusPathCards.map((item) => {
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onApplyStarterText(item.sendText)}
-                    className={`rounded-2xl border px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${item.toneClass}`}
-                  >
-                    <div className="inline-flex rounded-xl bg-white/90 p-2 text-slate-700 shadow-sm">
-                      <Icon size={16} />
-                    </div>
-                    <p className="mt-3 text-sm font-semibold text-slate-900">{item.title}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.description}</p>
-                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
-                      预填问题
-                      <ArrowRight size={12} />
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-          )}
-        </div>
-
-        {latestSession && (
-          <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <p className="min-w-0 truncate text-sm text-slate-600">
-                继续上次问诊：{truncateText(getRecentSessionReference(latestSession) || latestSession.title, 15)}
-              </p>
+          {onOpenEpidemicDashboard && (
+            <div className="mt-3 text-right">
               <button
                 type="button"
-                onClick={() => onOpenConversation(latestSession.id)}
-                className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+                onClick={onOpenEpidemicDashboard}
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 transition-colors hover:text-blue-700"
               >
-                继续 →
+                查看完整预警大屏
+                <ArrowRight size={12} />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        <div className="grid grid-cols-1 gap-3">
-          <div className="space-y-2">
-            {/* Personalized scenario description hidden for cleaner first impression */}
+      {/* Collapsible section for chips and recent sessions — default collapsed */}
+      <div className="mt-2">
+        <button
+          type="button"
+          onClick={() => setShowExtras(!showExtras)}
+          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700"
+        >
+          <ChevronRight size={14} className={`transition-transform ${showExtras ? 'rotate-90' : ''}`} />
+          常见问题与最近记录
+        </button>
+        {showExtras && (
+          <div className="mt-3 space-y-4">
+            {/* Scenario chips */}
             <div className="flex flex-wrap gap-2">
               {scenarioChips.map((item) => (
                 <button
@@ -520,11 +548,29 @@ export function WelcomeScreen({
                 </button>
               ))}
             </div>
-          </div>
 
-          {recentConversationChips.length > 0 && (
-            <div className="flex flex-wrap gap-2 lg:hidden">
-              <span className="w-full text-xs text-slate-400">最近问诊</span>
+            {/* Continue last session */}
+            {latestSession && (
+              <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 truncate text-sm text-slate-600">
+                    继续上次问诊：{truncateText(getRecentSessionReference(latestSession) || latestSession.title, 15)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenConversation(latestSession.id)}
+                    className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-blue-600 transition-colors hover:text-blue-700"
+                  >
+                    继续 →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Recent conversation chips */}
+            {recentConversationChips.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                <span className="w-full text-xs text-slate-400">最近问诊</span>
                 {recentConversationChips.map((session) => (
                   <button
                     key={session.id}
@@ -535,9 +581,52 @@ export function WelcomeScreen({
                     {truncateText(getRecentSessionReference(session) || session.title, 16)}
                   </button>
                 ))}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Focus path cards — hidden for cleaner first impression (preserved) */}
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        {/* eslint-disable-next-line no-constant-binary-expression */}
+        {false && (
+        <section className="rounded-3xl border border-slate-200 bg-white/95 px-4 py-4 shadow-sm">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-slate-900">今天先解决什么</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              先走这 3 条高频主路径之一，词条会先写进输入框，你确认后再发。
+            </p>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {focusPathCards.map((item) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onApplyStarterText(item.sendText)}
+                  className={`rounded-2xl border px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${item.toneClass}`}
+                >
+                  <div className="inline-flex rounded-xl bg-white/90 p-2 text-slate-700 shadow-sm">
+                    <Icon size={16} />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">{item.title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.description}</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                    预填问题
+                    <ArrowRight size={12} />
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+        )}
+      </div>
+
+      {/* Bottom padding for mobile nav */}
+      <div className="h-20" />
     </div>
   )
 }

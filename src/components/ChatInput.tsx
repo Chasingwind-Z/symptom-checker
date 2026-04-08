@@ -256,9 +256,9 @@ export function ChatInput({
     };
   }, [updateKeyboardOffset]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     notifyLayoutChange();
-  }, [notifyLayoutChange, attachmentCount, isListening, isLoading, uploadError, value]);
+  }, [notifyLayoutChange, attachmentCount, isListening, isLoading, uploadError, value, selectedModeLabel]);
 
   useEffect(() => {
     if (!onLayoutChange || !containerRef.current || typeof ResizeObserver === 'undefined') {

@@ -186,9 +186,22 @@ export default function App() {
     ? DESKTOP_SIDEBAR_COLLAPSED_WIDTH
     : DESKTOP_SIDEBAR_EXPANDED_WIDTH;
 
+  // Scroll to bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent]);
+  }, [messages]);
+
+  // RAF loop keeps the view pinned to bottom while AI is streaming
+  useEffect(() => {
+    if (!streamingContent) return;
+    let rafId: number;
+    const scrollLoop = () => {
+      bottomRef.current?.scrollIntoView({ behavior: 'auto' });
+      rafId = requestAnimationFrame(scrollLoop);
+    };
+    rafId = requestAnimationFrame(scrollLoop);
+    return () => cancelAnimationFrame(rafId);
+  }, [streamingContent]);
 
   useEffect(() => {
     saveExperienceSettings(experienceSettings);
@@ -811,7 +824,7 @@ export default function App() {
   // for the mobile bottom nav bar (56 px) on small screens.
   const chatScrollPaddingBottom = showWorkspace || showWelcome
     ? `max(40px, calc(${MOBILE_BOTTOM_NAV_HEIGHT}px + env(safe-area-inset-bottom) + 8px))`
-    : `${Math.max(148, chatInputLayout.height + chatInputLayout.keyboardOffset + 20)}px`;
+    : `${Math.max(148, chatInputLayout.height + chatInputLayout.keyboardOffset + 36)}px`;
 
   useEffect(() => {
     if (!chatInputLayout.isFocused || messages.length === 0 || showWorkspace) {
@@ -1130,6 +1143,7 @@ export default function App() {
                   selectedModeId={selectedConsultationModeId}
                   onSelectMode={handleSelectConsultationMode}
                   onToggleMap={handleOpenMap}
+                  onOpenEpidemicDashboard={handleOpenMap}
                   sessionEmail={workspace.sessionEmail}
                   profile={workspace.profile}
                   weather={weatherData}
@@ -1320,7 +1334,7 @@ export default function App() {
         onRefresh={workspace.refresh}
       />
 
-      <FollowUpReminder />
+      <FollowUpReminder onStartConsultation={handleResetChat} />
 
       {showOnboarding && <OnboardingFlow onComplete={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); const savedMode = localStorage.getItem('selected_guardian_mode') as ConsultationModeId | null; if (savedMode) setSelectedConsultationModeId(savedMode); }} />}
     </div>

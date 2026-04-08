@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
   AlertOctagon,
   AlertTriangle,
   CheckCircle,
+  ClipboardList,
   Clock,
   CloudSun,
   DatabaseZap,
@@ -18,7 +19,6 @@ import {
 } from 'lucide-react';
 import { HospitalCard } from './HospitalCard';
 import { OfficialSourceComparison } from './OfficialSourceComparison';
-import { RiskGauge } from './RiskGauge';
 import { ReportExport } from './ReportExport';
 import { AftercareTimeline } from './AftercareTimeline';
 import { buildAftercarePlan } from '../lib/aftercarePlan';
@@ -95,6 +95,15 @@ const RISK_LABELS: Record<RiskLevel, string> = {
   orange: '较高风险',
   red: '紧急',
 };
+
+const TABS = [
+  { id: 'evidence', label: '证据', icon: <ShieldCheck size={14} /> },
+  { id: 'medication', label: '用药', icon: <Pill size={14} /> },
+  { id: 'hospitals', label: '医院', icon: <MapPin size={14} /> },
+  { id: 'report', label: '报告', icon: <ClipboardList size={14} /> },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
 
 const TOOL_EVIDENCE_META: Record<
   string,
@@ -342,6 +351,7 @@ export function ResultCard({
   onToggleMap,
 }: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
+  const [activeTab, setActiveTab] = useState<TabId>('evidence');
   const [shareCopied, setShareCopied] = useState(false);
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
   const [checked, setChecked] = useState<[boolean, boolean, boolean]>([false, false, false]);
@@ -680,38 +690,6 @@ export function ResultCard({
   const hasOfficialSources = officialSources.length > 0;
   const showWebSourceHighlights =
     officialSourcePreference !== 'brief' && (webSources.length > 0 || Boolean(webSearchNote));
-  const summaryCards = useMemo(
-    () => [
-      {
-        eyebrow: '严不严重',
-        title: config.title,
-        description: `${RISK_LABELS[result.level]} · ${trimText(result.reason, 54)}`,
-      },
-      {
-        eyebrow: '现在先做',
-        title: ACTION_ITEMS[result.level][0],
-        description: `${ACTION_ITEMS[result.level][1]}；${ACTION_ITEMS[result.level][2]}`,
-      },
-      {
-        eyebrow: '去哪看 / 买',
-        title:
-          result.level === 'red'
-            ? '急诊优先'
-            : result.level === 'orange'
-              ? '今日门诊'
-              : result.level === 'yellow'
-                ? '48 小时内门诊 / 备药'
-                : '先观察，可随时找药房',
-        description:
-          result.level === 'red'
-            ? '优先急诊或 120，不建议把注意力放在购药上。'
-            : medicationPreviewTitles.length > 0
-              ? `可先核对 ${medicationPreviewTitles.join('、')}`
-              : hospitalSectionMeta,
-      },
-    ],
-    [config.title, hospitalSectionMeta, medicationPreviewTitles, result.level, result.reason]
-  );
   const officialSourceSection = hasOfficialSources ? (
     <div className="mb-5">
       <OfficialSourceComparison
@@ -753,6 +731,8 @@ export function ResultCard({
         config.pulse ? 'animate-[pulse_2.5s_ease-in-out_infinite]' : ''
       }`}
     >
+      {/* ── LAYER 1: Always Visible ── */}
+
       {/* Top gradient header */}
       <div className={`px-6 py-5 ${
         result.level === 'green' ? 'bg-gradient-to-r from-emerald-50 to-emerald-100' :
@@ -777,7 +757,7 @@ export function ResultCard({
         </div>
       </div>
 
-      {/* Guardian mode banner */}
+      {/* Guardian mode banners */}
       {consultationModeId === 'child' && (
         <div className="bg-blue-50 border-b border-blue-100 px-6 py-2.5 flex items-center gap-2">
           <span className="text-sm">👶</span>
@@ -798,28 +778,9 @@ export function ResultCard({
       )}
 
       <div className="p-6">
-        {/* Risk Gauge */}
-        <div className="flex justify-center mt-6 mb-2 w-full max-w-xs mx-auto">
-          <RiskGauge level={result.level} />
-        </div>
-
-        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-          {summaryCards.map((item) => (
-            <div key={item.eyebrow} className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-              <p className="text-[11px] text-slate-500">{item.eyebrow}</p>
-              <p className="mt-2 text-sm font-semibold text-slate-900">{item.title}</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{item.description}</p>
-            </div>
-          ))}
-        </div>
-
-        <AftercareTimeline plan={aftercarePlan} />
-
-        {/* Action checklist */}
+        {/* Action checklist — Layer 1 */}
         <div className={`rounded-xl px-4 py-3 mb-4 ${config.bg}`}>
           <p className={`text-xs font-semibold mb-2 ${config.text}`}>行动清单</p>
-
-          {/* Guardian mode extra actions */}
           {consultationModeId === 'child' && (
             <p className="text-xs text-blue-700 bg-blue-100/60 rounded-lg px-3 py-1.5 mb-2">
               👶 就医时携带儿童医保卡和疫苗接种本
@@ -871,251 +832,68 @@ export function ResultCard({
           )}
         </div>
 
-        {weather && (
-          <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800">本地天气与出门提醒</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{weatherSummary.headline}</p>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600">{weatherSummary.description}</p>
-              </div>
-              {onToggleMap && (
-                <button
-                  type="button"
-                  onClick={onToggleMap}
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-white"
-                >
-                  <MapPin size={13} />
-                  查看附近资源
-                </button>
-              )}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {weatherSummary.tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[11px] text-slate-600"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(hasMedicationSummary || onToggleMap) && (
-          <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800">马上去做</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                  {result.level === 'red'
-                    ? '当前应优先线下急诊 / 急救，不建议把注意力放在购药上。'
-                    : hasMedicationSummary
-                      ? '把买药、说明书核对和回问诊复核的入口放在一起，先完成最紧要的一步。'
-                      : '可先查看附近门诊 / 医疗资源；若后续补充了更多信息，也会自动刷新支持建议。'}
-                </p>
-              </div>
-              {medicationPreviewTitles.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {medicationPreviewTitles.map((title) => (
-                    <span
-                      key={title}
-                      className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700"
-                    >
-                      {title}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {hasMedicationSummary && onOpenMedicationHub && result.level !== 'red' && (
-                <button
-                  type="button"
-                  onClick={onOpenMedicationHub}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-700"
-                >
-                  <Pill size={14} />
-                  打开买药 / 复核入口
-                  <ArrowRight size={13} />
-                </button>
-              )}
-              {onToggleMap && (
-                <button
-                  type="button"
-                  onClick={onToggleMap}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                >
-                  <MapPin size={14} />
-                  {result.level === 'red'
-                    ? '查看急诊 / 医院入口'
-                    : result.level === 'orange'
-                      ? '去找今日就医入口'
-                      : '去找附近门诊 / 药房'}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Level badge + title */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`rounded-xl p-2 ${config.bg} ${config.text}`}>
-            {config.icon}
-          </div>
-          <div>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${config.badgeBg} ${config.badgeText}`}>
-              {{ green: '低风险', yellow: '中风险', orange: '较高风险', red: '紧急' }[result.level]}
-            </span>
-            <h2 className={`text-xl font-bold mt-0.5 ${config.text}`}>{config.title}</h2>
-          </div>
-        </div>
-
-        {/* Reason */}
-        <p className="text-slate-600 text-sm mb-4 leading-relaxed">{result.reason}</p>
-
-        {officialSourcePreference === 'official-first' && officialSourceSection}
-
-        {/* Evidence cards */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 mb-5">
-          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">为什么这样建议</p>
-              <p className="text-[11px] text-slate-500 mt-1">
-                结论结合分诊规则、相关资料、危险信号和公开来源综合整理
-              </p>
-            </div>
-            <span className="text-[11px] text-slate-400">
-              {evidenceUpdatedAt ? `刚刚更新 · ${evidenceUpdatedAt}` : '本次问诊即时生成'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            {evidenceCards.map((card) => (
-              <div key={card.id} className={`rounded-xl border px-3 py-3 ${card.tint}`}>
-                <div className="flex items-center gap-2">
-                  {card.icon}
-                  <span className="text-xs font-semibold">{card.title}</span>
-                </div>
-                {card.summary && (
-                  <p className="text-xs leading-relaxed mt-2 text-slate-700">{card.summary}</p>
-                )}
-                <ul className="mt-2 space-y-1.5">
-                  {card.details.map((detail) => (
-                    <li key={detail} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
-                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-                      <span>{detail}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[11px] mt-2 text-slate-500">来源：{card.source}</p>
-              </div>
-            ))}
-          </div>
-
-          {showWebSourceHighlights && (
-            <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Globe size={14} className="text-emerald-600" />
-                    <span className="text-xs font-semibold text-slate-800">外部公开资料摘录</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    若已触发联网检索，会在此展示外部来源摘要
-                  </p>
-                </div>
-                <span className="text-[11px] text-slate-400">
-                  {buildSourceLabel(
-                    messages
-                      .flatMap((message) => message.toolCalls ?? [])
-                      .filter((toolCall) => toolCall.name === 'search_web')
-                      .slice(-1)[0],
-                    TOOL_EVIDENCE_META.search_web.source
-                  )}
-                </span>
-              </div>
-
-              {webQuery && (
-                <p className="text-[11px] text-slate-500 mt-2">检索关键词：{webQuery}</p>
-              )}
-
-              {webSearchNote && (
-                <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                  {webSearchNote}
-                </div>
-              )}
-
-              {webSources.length > 0 && (
-                <div className="mt-2 flex flex-col gap-2">
-                  {webSources.map((source) => {
-                    const content = (
-                      <>
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-medium text-slate-700">
-                              {trimText(source.title, 58)}
-                            </p>
-                            {source.snippet && (
-                              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                {source.snippet}
-                              </p>
-                            )}
-                          </div>
-                          {source.url && (
-                            <ExternalLink
-                              size={14}
-                              className="text-slate-400 flex-shrink-0 mt-0.5"
-                            />
-                          )}
-                        </div>
-                        <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                            {source.host}
-                          </span>
-                          <span>仅作背景参考，不替代医生诊断</span>
-                        </div>
-                      </>
-                    );
-
-                    return source.url ? (
-                      <a
-                        key={`${source.host}-${source.title}`}
-                        href={source.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block rounded-xl border border-slate-200 px-3 py-2 transition-colors hover:border-emerald-200 hover:bg-emerald-50/40"
-                      >
-                        {content}
-                      </a>
-                    ) : (
-                      <div
-                        key={`${source.host}-${source.title}`}
-                        className="rounded-xl border border-slate-200 px-3 py-2"
-                      >
-                        {content}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {officialSourcePreference !== 'official-first' && officialSourceSection}
-
-        {/* Action */}
+        {/* Action suggestion */}
         <div className={`flex items-start gap-2 mb-5 rounded-xl px-4 py-3 ${config.bg}`}>
           <ArrowRight size={16} className={`mt-0.5 flex-shrink-0 ${config.text}`} />
           <span className="text-slate-700 font-medium text-sm">{result.action}</span>
         </div>
 
-        {(personalizedInsights.length > 0 || hasMedicationSummary) && (
-          <div className="mb-5 space-y-3">
-            <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
+        {/* ── LAYER 2: Tab Bar ── */}
+        <div className="flex gap-1 rounded-xl bg-slate-100 p-1 mb-4">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={
+                activeTab === tab.id
+                  ? 'flex items-center gap-1.5 bg-white shadow-sm rounded-lg px-3 py-1.5 text-sm font-medium text-slate-800'
+                  : 'flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-500 hover:text-slate-700'
+              }
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab: 证据 (Evidence) ── */}
+        {activeTab === 'evidence' && (
+          <div className="space-y-5">
+            {/* Weather health tip */}
+            {weather && (
+              <div className="rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">本地天气与出门提醒</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{weatherSummary.headline}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-600">{weatherSummary.description}</p>
+                  </div>
+                  {onToggleMap && (
+                    <button
+                      type="button"
+                      onClick={onToggleMap}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-sky-700 transition-colors hover:bg-white"
+                    >
+                      <MapPin size={13} />
+                      查看附近资源
+                    </button>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {weatherSummary.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[11px] text-slate-600"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Personalized insights */}
             {personalizedInsights.length > 0 && (
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -1154,100 +932,238 @@ export function ResultCard({
               </div>
             )}
 
-            {hasMedicationSummary && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Pill size={15} className="text-violet-700 mt-0.5" />
+            {/* Official source comparison */}
+            {officialSourcePreference === 'official-first' && officialSourceSection}
+
+            {/* Judgment basis panel */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">为什么这样建议</p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    结论结合分诊规则、相关资料、危险信号和公开来源综合整理
+                  </p>
+                </div>
+                <span className="text-[11px] text-slate-400">
+                  {evidenceUpdatedAt ? `刚刚更新 · ${evidenceUpdatedAt}` : '本次问诊即时生成'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                {evidenceCards.map((card) => (
+                  <div key={card.id} className={`rounded-xl border px-3 py-3 ${card.tint}`}>
+                    <div className="flex items-center gap-2">
+                      {card.icon}
+                      <span className="text-xs font-semibold">{card.title}</span>
+                    </div>
+                    {card.summary && (
+                      <p className="text-xs leading-relaxed mt-2 text-slate-700">{card.summary}</p>
+                    )}
+                    <ul className="mt-2 space-y-1.5">
+                      {card.details.map((detail) => (
+                        <li key={detail} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+                          <span>{detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-[11px] mt-2 text-slate-500">来源：{card.source}</p>
+                  </div>
+                ))}
+              </div>
+
+              {showWebSourceHighlights && (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
                     <div>
-                      <p className="text-sm font-semibold text-slate-800">用药支持摘要</p>
-                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                        仅保留更值得优先核对的 1–2 个方向，帮助快速区分相对匹配项与谨慎项。
+                      <div className="flex items-center gap-2">
+                        <Globe size={14} className="text-emerald-600" />
+                        <span className="text-xs font-semibold text-slate-800">外部公开资料摘录</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        若已触发联网检索，会在此展示外部来源摘要
                       </p>
                     </div>
+                    <span className="text-[11px] text-slate-400">
+                      {buildSourceLabel(
+                        messages
+                          .flatMap((message) => message.toolCalls ?? [])
+                          .filter((toolCall) => toolCall.name === 'search_web')
+                          .slice(-1)[0],
+                        TOOL_EVIDENCE_META.search_web.source
+                      )}
+                    </span>
                   </div>
-                  <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-500">
-                    仅作支持参考
-                  </span>
-                </div>
-                {hasMedicationProfileContext && (
-                  <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-[11px] text-violet-700 leading-relaxed">
-                    已结合年龄、慢病、过敏史和现用药做过筛选，以下仅保留更贴近当前档案的方向。
-                  </div>
-                )}
-                <div className="mt-3 space-y-2.5">
-                  {medicationSummarySections.map((section) => (
-                    <div
-                      key={section.key}
-                      className={`rounded-xl border px-3 py-3 ${section.containerClass}`}
-                    >
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${section.badgeClass}`}
-                        >
-                          {section.title}
-                        </span>
-                        <p className="text-[11px] text-slate-500">{section.hint}</p>
-                      </div>
-                      <div className="mt-2 space-y-2">
-                        {section.items.map((item, index) => (
-                          <div
-                            key={item.id}
-                            className={index > 0 ? 'border-t border-white/70 pt-2' : undefined}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium text-slate-800">{item.title}</p>
-                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                                  {trimText(item.useCase, 46)}
+
+                  {webQuery && (
+                    <p className="text-[11px] text-slate-500 mt-2">检索关键词：{webQuery}</p>
+                  )}
+
+                  {webSearchNote && (
+                    <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                      {webSearchNote}
+                    </div>
+                  )}
+
+                  {webSources.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-2">
+                      {webSources.map((source) => {
+                        const content = (
+                          <>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-slate-700">
+                                  {trimText(source.title, 58)}
                                 </p>
-                                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                                  提醒：{trimText(item.caution, 58)}
-                                </p>
+                                {source.snippet && (
+                                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                    {source.snippet}
+                                  </p>
+                                )}
                               </div>
-                              {item.suitable && (
-                                <button
-                                  type="button"
-                                  className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors mt-0.5"
-                                  onClick={() => {
-                                    trackMedicationClick({
-                                      medicationName: item.title,
-                                      diagnosisLevel: result.level,
-                                      source: 'result_card_summary',
-                                    });
-                                    window.open(buildJDSearchUrl(item.title), '_blank', 'noopener');
-                                  }}
-                                >
-                                  <ShoppingCart size={11} />
-                                  京东购买
-                                </button>
+                              {source.url && (
+                                <ExternalLink
+                                  size={14}
+                                  className="text-slate-400 flex-shrink-0 mt-0.5"
+                                />
                               )}
                             </div>
+                            <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+                                {source.host}
+                              </span>
+                              <span>仅作背景参考，不替代医生诊断</span>
+                            </div>
+                          </>
+                        );
+
+                        return source.url ? (
+                          <a
+                            key={`${source.host}-${source.title}`}
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block rounded-xl border border-slate-200 px-3 py-2 transition-colors hover:border-emerald-200 hover:bg-emerald-50/40"
+                          >
+                            {content}
+                          </a>
+                        ) : (
+                          <div
+                            key={`${source.host}-${source.title}`}
+                            className="rounded-xl border border-slate-200 px-3 py-2"
+                          >
+                            {content}
                           </div>
-                        ))}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {officialSourcePreference !== 'official-first' && officialSourceSection}
+          </div>
+        )}
+
+        {/* ── Tab: 用药 (Medication) ── */}
+        {activeTab === 'medication' && (
+          <div className="space-y-5">
+            {hasMedicationSummary ? (
+              <>
+                {/* Medication summary */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Pill size={15} className="text-violet-700 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">用药支持摘要</p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          仅保留更值得优先核对的 1–2 个方向，帮助快速区分相对匹配项与谨慎项。
+                        </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-                <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
-                  仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
-                </p>
-              </div>
-            )}
-            </div>
-            {hasMedicationSummary && onOpenMedicationHub && (
-              <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/80 px-4 py-4">
-                <div className="flex items-start gap-4 flex-wrap">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <Pill size={16} className="text-blue-600 shrink-0" />
-                      <p className="text-sm font-semibold text-slate-800">{medicationHubCtaTitle}</p>
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-500">
+                      仅作支持参考
+                    </span>
+                  </div>
+                  {hasMedicationProfileContext && (
+                    <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-[11px] text-violet-700 leading-relaxed">
+                      已结合年龄、慢病、过敏史和现用药做过筛选，以下仅保留更贴近当前档案的方向。
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-600">
-                      打开用药建议中心后，可继续看附近药房、搜推荐方向、查说明书，或回对话继续核对药盒 / 报告。
-                    </p>
+                  )}
+                  <div className="mt-3 space-y-2.5">
+                    {medicationSummarySections.map((section) => (
+                      <div
+                        key={section.key}
+                        className={`rounded-xl border px-3 py-3 ${section.containerClass}`}
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${section.badgeClass}`}
+                          >
+                            {section.title}
+                          </span>
+                          <p className="text-[11px] text-slate-500">{section.hint}</p>
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {section.items.map((item, index) => (
+                            <div
+                              key={item.id}
+                              className={index > 0 ? 'border-t border-white/70 pt-2' : undefined}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                    {trimText(item.useCase, 46)}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                    提醒：{trimText(item.caution, 58)}
+                                  </p>
+                                </div>
+                                {item.suitable && (
+                                  <button
+                                    type="button"
+                                    className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors mt-0.5"
+                                    onClick={() => {
+                                      trackMedicationClick({
+                                        medicationName: item.title,
+                                        diagnosisLevel: result.level,
+                                        source: 'result_card_summary',
+                                      });
+                                      window.open(buildJDSearchUrl(item.title), '_blank', 'noopener');
+                                    }}
+                                  >
+                                    <ShoppingCart size={11} />
+                                    京东购买
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+                    仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
+                  </p>
+                </div>
+
+                {/* Quick medication actions */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">马上去做</p>
+                      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                        {result.level === 'red'
+                          ? '当前应优先线下急诊 / 急救，不建议把注意力放在购药上。'
+                          : '把买药、说明书核对和回问诊复核的入口放在一起，先完成最紧要的一步。'}
+                      </p>
+                    </div>
                     {medicationPreviewTitles.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5">
                         {medicationPreviewTitles.map((title) => (
                           <span
                             key={title}
@@ -1258,99 +1174,189 @@ export function ResultCard({
                         ))}
                       </div>
                     )}
-                    {latestImageAttachmentCount > 0 && (
-                      <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                        {AI_VISION_ENABLED
-                          ? `本次已上传并发送了 ${latestImageAttachmentCount} 张图片给视觉模型；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`
-                          : `本次已上传 ${latestImageAttachmentCount} 张图片（以文字上下文辅助分析）；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`}
-                      </p>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {onOpenMedicationHub && result.level !== 'red' && (
+                      <button
+                        type="button"
+                        onClick={onOpenMedicationHub}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-700"
+                      >
+                        <Pill size={14} />
+                        打开买药 / 复核入口
+                        <ArrowRight size={13} />
+                      </button>
+                    )}
+                    {onToggleMap && (
+                      <button
+                        type="button"
+                        onClick={onToggleMap}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                      >
+                        <MapPin size={14} />
+                        {result.level === 'red'
+                          ? '查看急诊 / 医院入口'
+                          : result.level === 'orange'
+                            ? '去找今日就医入口'
+                            : '去找附近门诊 / 药房'}
+                      </button>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={onOpenMedicationHub}
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                  >
-                    查看用药建议
-                    <ArrowRight size={15} />
-                  </button>
                 </div>
-                <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
-                  仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
-                </p>
+
+                {/* Medication hub CTA */}
+                {onOpenMedicationHub && (
+                  <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/80 px-4 py-4">
+                    <div className="flex items-start gap-4 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Pill size={16} className="text-blue-600 shrink-0" />
+                          <p className="text-sm font-semibold text-slate-800">{medicationHubCtaTitle}</p>
+                        </div>
+                        <p className="text-xs leading-relaxed text-slate-600">
+                          打开用药建议中心后，可继续看附近药房、搜推荐方向、查说明书，或回对话继续核对药盒 / 报告。
+                        </p>
+                        {medicationPreviewTitles.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {medicationPreviewTitles.map((title) => (
+                              <span
+                                key={title}
+                                className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700"
+                              >
+                                {title}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {latestImageAttachmentCount > 0 && (
+                          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                            {AI_VISION_ENABLED
+                              ? `本次已上传并发送了 ${latestImageAttachmentCount} 张图片给视觉模型；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`
+                              : `本次已上传 ${latestImageAttachmentCount} 张图片（以文字上下文辅助分析）；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={onOpenMedicationHub}
+                        className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                      >
+                        查看用药建议
+                        <ArrowRight size={15} />
+                      </button>
+                    </div>
+                    <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
+                      仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+                <Pill size={20} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-sm text-slate-500">暂无用药建议</p>
+                <p className="text-[11px] text-slate-400 mt-1">补充个人档案或更多症状后，可能生成更多方向。</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Departments */}
-        {result.departments.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-5">
-            {result.departments.map((dept) => (
-              <span
-                key={dept}
-                className="bg-slate-100 border border-slate-200 rounded-full px-3 py-1 text-xs text-slate-600 font-medium"
+        {/* ── Tab: 医院 (Hospitals) ── */}
+        {activeTab === 'hospitals' && (
+          <div className="space-y-5">
+            {result.departments.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {result.departments.map((dept) => (
+                  <span
+                    key={dept}
+                    className="bg-slate-100 border border-slate-200 rounded-full px-3 py-1 text-xs text-slate-600 font-medium"
+                  >
+                    {dept}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {hospitals.length > 0 && (
+              <div className="border-t border-slate-100 pt-4">
+                <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                  <h3 className="text-slate-700 font-semibold text-sm flex items-center gap-1.5">
+                    <span className={`w-1 h-4 rounded-full ${config.bar} inline-block`} />
+                    {hospitalSectionTitle}
+                  </h3>
+                  <span className="text-[11px] text-slate-400">{hospitalSectionMeta}</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {hospitals.map((hospital) => (
+                    <HospitalCard key={hospital.id} hospital={hospital} allHospitals={hospitals} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {onToggleMap && (
+              <button
+                type="button"
+                onClick={onToggleMap}
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
-                {dept}
-              </span>
-            ))}
+                <MapPin size={15} />
+                在地图上查看全部医院
+              </button>
+            )}
+
+            {hospitals.length === 0 && !onToggleMap && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+                <MapPin size={20} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-sm text-slate-500">暂无附近医院信息</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Hospitals */}
-        {hospitals.length > 0 && (
-          <div className="border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-              <h3 className="text-slate-700 font-semibold text-sm flex items-center gap-1.5">
-                <span className={`w-1 h-4 rounded-full ${config.bar} inline-block`} />
-                {hospitalSectionTitle}
-              </h3>
-              <span className="text-[11px] text-slate-400">{hospitalSectionMeta}</span>
-            </div>
-            <div className="flex flex-col gap-3">
-              {hospitals.map((hospital) => (
-                <HospitalCard key={hospital.id} hospital={hospital} allHospitals={hospitals} />
-              ))}
+        {/* ── Tab: 报告 (Report) ── */}
+        {activeTab === 'report' && (
+          <div className="space-y-5">
+            <AftercareTimeline plan={aftercarePlan} />
+
+            <div>
+              <ReportExport
+                result={result}
+                messages={messages}
+                medicationRecommendations={medicationAdvice}
+              />
+              <button
+                onClick={() => {
+                  const levelEmoji: Record<string, string> = { green: '🟢低风险', yellow: '🟡中风险', orange: '🟠较高风险', red: '🔴紧急' };
+                  const summaryText = [
+                    '【健康助手 · AI问诊报告】',
+                    `风险等级: ${levelEmoji[result.level] ?? result.level}`,
+                    `判断依据: ${result.reason}`,
+                    `行动建议: ${result.action}`,
+                    `推荐科室: ${result.departments.join('、')}`,
+                    '⚠️ 本建议仅供参考，不构成医疗诊断',
+                  ].join('\n');
+                  const shareUrl = `${window.location.origin}?share=1&level=${result.level}&reason=${encodeURIComponent(result.reason.slice(0, 50))}`;
+                  if (navigator.share) {
+                    navigator.share({ title: '健康助手问诊结果', text: summaryText, url: shareUrl });
+                  } else {
+                    navigator.clipboard.writeText(summaryText).then(() => {
+                      setShareCopied(true);
+                      setTimeout(() => setShareCopied(false), 2000);
+                    });
+                  }
+                }}
+                className="w-full mt-2 flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <span>↗</span> {shareCopied ? '已复制到剪贴板' : '分享给家人看'}
+              </button>
             </div>
           </div>
         )}
 
-        {/* Export */}
-        <div className="mt-5">
-          <ReportExport
-            result={result}
-            messages={messages}
-            medicationRecommendations={medicationAdvice}
-          />
-          <button
-            onClick={() => {
-              const levelEmoji: Record<string, string> = { green: '🟢低风险', yellow: '🟡中风险', orange: '🟠较高风险', red: '🔴紧急' };
-              const summaryText = [
-                '【健康助手 · AI问诊报告】',
-                `风险等级: ${levelEmoji[result.level] ?? result.level}`,
-                `判断依据: ${result.reason}`,
-                `行动建议: ${result.action}`,
-                `推荐科室: ${result.departments.join('、')}`,
-                '⚠️ 本建议仅供参考，不构成医疗诊断',
-              ].join('\n');
-              const shareUrl = `${window.location.origin}?share=1&level=${result.level}&reason=${encodeURIComponent(result.reason.slice(0, 50))}`;
-              if (navigator.share) {
-                navigator.share({ title: '健康助手问诊结果', text: summaryText, url: shareUrl });
-              } else {
-                navigator.clipboard.writeText(summaryText).then(() => {
-                  setShareCopied(true);
-                  setTimeout(() => setShareCopied(false), 2000);
-                });
-              }
-            }}
-            className="w-full mt-2 flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            <span>↗</span> {shareCopied ? '已复制到剪贴板' : '分享给家人看'}
-          </button>
-        </div>
-
-        {/* Disclaimer */}
-        <p className="text-slate-400 text-xs text-center mt-3 leading-relaxed">{result.disclaimer}</p>
+        {/* Disclaimer — always visible */}
+        <p className="text-slate-400 text-xs text-center mt-5 leading-relaxed">{result.disclaimer}</p>
 
         {/* Anonymous report prompt */}
         <div className="border-t border-slate-100 mt-5 pt-4">

@@ -9,7 +9,11 @@ function formatDaysAgo(timestamp: number): string {
   return `${days}天前`
 }
 
-export function FollowUpReminder() {
+interface Props {
+  onStartConsultation?: () => void
+}
+
+export function FollowUpReminder({ onStartConsultation }: Props) {
   const [entry, setEntry] = useState<SymptomTrackingEntry | null>(null)
   const [visible, setVisible] = useState(false)
   const [dismissed, setDismissed] = useState(false)
@@ -84,9 +88,19 @@ export function FollowUpReminder() {
 
         {/* Body */}
         {worseMessage ? (
-          <p className="text-sm text-red-600 font-medium py-2">
-            建议您重新问诊或就医
-          </p>
+          <div className="py-2">
+            <p className="text-sm text-red-600 font-medium">
+              建议您重新问诊或就医
+            </p>
+            {onStartConsultation && (
+              <button
+                onClick={onStartConsultation}
+                className="mt-2 rounded-full bg-red-500 px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600"
+              >
+                重新问诊
+              </button>
+            )}
+          </div>
         ) : (
           <>
             <p className="text-sm text-gray-600 mb-3">
