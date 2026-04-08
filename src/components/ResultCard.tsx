@@ -13,6 +13,7 @@ import {
   MapPin,
   Pill,
   ShieldCheck,
+  ShoppingCart,
   UserRoundSearch,
 } from 'lucide-react';
 import { HospitalCard } from './HospitalCard';
@@ -30,6 +31,7 @@ import {
   hasMedicationProfileContext as hasMedicationProfileContextData,
 } from '../lib/personalization';
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience';
+import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
 import type { OfficialSourcePreference } from '../lib/experienceSettings';
 import type { MedicationAdvice } from '../lib/personalization';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
@@ -1193,13 +1195,34 @@ export function ResultCard({
                             key={item.id}
                             className={index > 0 ? 'border-t border-white/70 pt-2' : undefined}
                           >
-                            <p className="text-sm font-medium text-slate-800">{item.title}</p>
-                            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                              {trimText(item.useCase, 46)}
-                            </p>
-                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                              提醒：{trimText(item.caution, 58)}
-                            </p>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                  {trimText(item.useCase, 46)}
+                                </p>
+                                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                  提醒：{trimText(item.caution, 58)}
+                                </p>
+                              </div>
+                              {item.suitable && (
+                                <button
+                                  type="button"
+                                  className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors mt-0.5"
+                                  onClick={() => {
+                                    trackMedicationClick({
+                                      medicationName: item.title,
+                                      diagnosisLevel: result.level,
+                                      source: 'result_card_summary',
+                                    });
+                                    window.open(buildJDSearchUrl(item.title), '_blank', 'noopener');
+                                  }}
+                                >
+                                  <ShoppingCart size={11} />
+                                  京东购买
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
