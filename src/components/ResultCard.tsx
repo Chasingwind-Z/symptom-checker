@@ -353,6 +353,16 @@ export function ResultCard({
   onToggleMap,
 }: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
+  const hospitalTabLabel: Record<RiskLevel, string> = {
+    green: '就近社区诊所',
+    yellow: '推荐门诊',
+    orange: '三甲医院',
+    red: '急诊通道',
+  };
+  const tieredHospitals = useMemo(
+    () => filterHospitalsByRisk(hospitals, result.level),
+    [hospitals, result.level],
+  );
   const [activeTab, setActiveTab] = useState<TabId | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [showVisitCard, setShowVisitCard] = useState(false);
