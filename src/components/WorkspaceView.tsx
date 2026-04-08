@@ -28,6 +28,7 @@ import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
 import { getReportRecords } from '../lib/healthData'
 import { shouldGenerateWeeklyReport, generateWeeklyReport, markWeeklyReportGenerated, type WeeklyReportData } from '../lib/weeklyReport'
 import { WeeklyReportCard } from './WeeklyReportCard'
+import { HealthMetricsTracker } from './HealthMetricsTracker'
 import type { MedicalKnowledgeSearchResult } from '../lib/medicalKnowledge'
 import type { ConversationSession, DiagnosisResult } from '../types'
 
@@ -421,6 +422,10 @@ export function WorkspaceView({
             >
               <LazySymptomTimeline onStartConsultation={onStartNewSession} />
             </Suspense>
+          </div>
+          <div className="mt-4">
+            <p className="text-xs font-semibold text-slate-500 mb-2 px-1">健康指标追踪</p>
+            <HealthMetricsTracker />
           </div>
           {reportRecords.length > 0 && (
             <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">

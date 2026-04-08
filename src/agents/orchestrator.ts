@@ -1,6 +1,7 @@
 import { loadSkills } from '../lib/skillLoader';
 import { getHistoryContextForAI, detectFamilyCrossInfection } from '../lib/symptomTracking';
 import { getMedicineBoxSummary } from '../lib/familyMedicineBox';
+import { getMetricsSummaryForAI } from '../lib/healthMetrics';
 import type { AgentBadge, AgentId, AgentRoute, AgentStep, SymptomInfo } from '../types';
 import { careNavigatorAgent } from './careNavigatorAgent';
 import { evidenceAgent } from './evidenceAgent';
@@ -357,6 +358,13 @@ function buildContextNotes(context: AgentPromptContext): string[] {
   if (medicineBoxSummary) {
     notes.push(
       `【家庭药箱】\n家中现有：${medicineBoxSummary}。\n问诊时可主动告知用户家中已有哪些药可以使用，避免重复购买。`
+    );
+  }
+
+  const metricsSummary = getMetricsSummaryForAI();
+  if (metricsSummary) {
+    notes.push(
+      `【用户健康指标记录】\n${metricsSummary}\n注意：这些是用户自测数据，如有异常趋势请在分诊中提及，并建议就医进一步检查。`
     );
   }
 
