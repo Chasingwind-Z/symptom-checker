@@ -764,3 +764,31 @@ export function subscribeHealthWorkspace(callback: () => void) {
   window.addEventListener(WORKSPACE_UPDATED_EVENT, callback);
   return () => window.removeEventListener(WORKSPACE_UPDATED_EVENT, callback);
 }
+
+const REPORT_RECORDS_KEY = 'health_report_records';
+
+export interface ReportRecord {
+  id: string;
+  analyzedAt: string;
+  reportType: string;
+  summary: string;
+  abnormalItems: string[];
+}
+
+export function saveReportRecord(record: ReportRecord): void {
+  try {
+    const raw = localStorage.getItem(REPORT_RECORDS_KEY);
+    const records: ReportRecord[] = raw ? JSON.parse(raw) : [];
+    records.push(record);
+    localStorage.setItem(REPORT_RECORDS_KEY, JSON.stringify(records.slice(-50)));
+  } catch { /* ignore storage errors */ }
+}
+
+export function getReportRecords(): ReportRecord[] {
+  try {
+    const raw = localStorage.getItem(REPORT_RECORDS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}

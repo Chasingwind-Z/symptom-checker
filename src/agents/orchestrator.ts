@@ -1,5 +1,5 @@
 import { loadSkills } from '../lib/skillLoader';
-import { getHistoryContextForAI } from '../lib/symptomTracking';
+import { getHistoryContextForAI, detectFamilyCrossInfection } from '../lib/symptomTracking';
 import type { AgentBadge, AgentId, AgentRoute, AgentStep, SymptomInfo } from '../types';
 import { careNavigatorAgent } from './careNavigatorAgent';
 import { evidenceAgent } from './evidenceAgent';
@@ -245,6 +245,12 @@ function buildContextNotes(context: AgentPromptContext): string[] {
         )
         .join('\n')}`
     );
+
+    const reportKeywords = ['报告', '化验', '检查', '体检', '血常规', '尿常规', '肝功能', '肾功能', '血糖', '血脂', 'CT', 'B超', '心电图'];
+    const isLikelyReport = reportKeywords.some(kw => context.userText.includes(kw));
+    if (isLikelyReport) {
+      notes.push(`【报告解读模式已激活】\n用户上传了疑似医学检查报告的图片，请按照体检报告解读格式输出结构化分析。优先识别异常指标并用通俗语言解释，不做确定性诊断。`);
+    }
   }
 
   if (additionalSkills) {
@@ -336,6 +342,13 @@ function buildContextNotes(context: AgentPromptContext): string[] {
 
     notes.push(
       `【医学知识混合检索结果】${populationHint}\n${snippets}\n这些内容来自本地结构化医学指引；当前以关键词扩展 + chunk 混合召回为主，可直接融入解释与建议。`
+    );
+  }
+
+  const crossInfection = detectFamilyCrossInfection();
+  if (crossInfection) {
+    notes.push(
+      `【家庭交叉感染预警】\n${crossInfection.alertText}\n近期相关症状：${crossInfection.recentSymptoms.join('、')}。\n请在分诊时考虑交叉感染可能性，主动提醒用户注意家庭内隔离措施。`
     );
   }
 

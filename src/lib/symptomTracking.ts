@@ -2,6 +2,16 @@ import type { SymptomTrackingEntry } from '../types'
 
 const STORAGE_KEY = 'symptom_timeline'
 
+const RESPIRATORY_KEYWORDS = ['咳嗽', '发烧', '发热', '感冒', '流涕', '鼻塞', '咽痛', '喉咙', '呼吸', '肺']
+const DIGESTIVE_KEYWORDS = ['腹泻', '拉肚子', '恶心', '呕吐', '腹痛', '肚子', '胃', '消化']
+
+export interface FamilyCrossInfectionAlert {
+  category: string
+  memberCount: number
+  recentSymptoms: string[]
+  alertText: string
+}
+
 function generateId(): string {
   return `st_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
@@ -81,6 +91,48 @@ export function getPendingFollowUp(): SymptomTrackingEntry | null {
   return entries.find(
     (e) => e.followUpStatus === 'pending' && now - e.timestamp >= FOLLOW_UP_DELAY
   ) ?? null
+}
+
+function matchesKeywords(entry: SymptomTrackingEntry, keywords: string[]): boolean {
+  const text = [...entry.symptoms, entry.notes ?? ''].join(' ')
+  return keywords.some((kw) => text.includes(kw))
+}
+
+export function detectFamilyCrossInfection(): FamilyCrossInfectionAlert | null {
+  try {
+    const entries = loadEntries()
+    if (entries.length < 2) return null
+
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+    const recent = entries.filter((e) => e.timestamp > sevenDaysAgo)
+    if (recent.length < 2) return null
+
+    const respiratoryEntries = recent.filter((e) => matchesKeywords(e, RESPIRATORY_KEYWORDS))
+    if (respiratoryEntries.length >= 2) {
+      const symptoms = [...new Set(respiratoryEntries.flatMap((e) => e.symptoms))].slice(0, 3)
+      return {
+        category: '呼吸道',
+        memberCount: respiratoryEntries.length,
+        recentSymptoms: symptoms,
+        alertText: `近7天内有${respiratoryEntries.length}次呼吸道相关症状记录，可能存在交叉感染风险，建议注意通风和隔离措施。`,
+      }
+    }
+
+    const digestiveEntries = recent.filter((e) => matchesKeywords(e, DIGESTIVE_KEYWORDS))
+    if (digestiveEntries.length >= 2) {
+      const symptoms = [...new Set(digestiveEntries.flatMap((e) => e.symptoms))].slice(0, 3)
+      return {
+        category: '消化道',
+        memberCount: digestiveEntries.length,
+        recentSymptoms: symptoms,
+        alertText: `近7天内有${digestiveEntries.length}次消化道相关症状记录，可能存在交叉感染风险，建议注意饮食卫生和手部清洁。`,
+      }
+    }
+
+    return null
+  } catch {
+    return null
+  }
 }
 
 function formatTimeAgo(timestamp: number): string {

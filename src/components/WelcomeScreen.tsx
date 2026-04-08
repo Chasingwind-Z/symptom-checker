@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import {
+  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   ChevronRight,
   HeartPulse,
   MapPin,
   ShieldPlus,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
@@ -20,6 +22,7 @@ import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
 import { getDistrictRiskData, getActiveCity } from '../lib/epidemicDataEngine'
 import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
+import { detectFamilyCrossInfection, type FamilyCrossInfectionAlert } from '../lib/symptomTracking'
 
 interface ScenarioChip {
   label: string
@@ -260,6 +263,15 @@ export function WelcomeScreen({
   onManageProfiles,
 }: WelcomeScreenProps) {
   const [showExtras, setShowExtras] = useState(false)
+  const [crossInfectionAlert, setCrossInfectionAlert] = useState<FamilyCrossInfectionAlert | null>(null)
+  const [alertDismissed, setAlertDismissed] = useState(false)
+
+  useEffect(() => {
+    const alert = detectFamilyCrossInfection()
+    if (alert) {
+      window.setTimeout(() => setCrossInfectionAlert(alert), 0)
+    }
+  }, [])
 
   // Community health trend data (loaded once from epidemic data engine)
   const [trendData, setTrendData] = useState<{ symptom: string; heat: number; color: string }[]>([])
@@ -340,6 +352,29 @@ export function WelcomeScreen({
 
   return (
     <div className="space-y-4">
+      {/* Cross-infection alert banner */}
+      {crossInfectionAlert && !alertDismissed && (
+        <div className="mb-4 rounded-2xl border-2 border-orange-200 bg-orange-50 px-4 py-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="text-orange-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-orange-800">家庭健康提醒</p>
+                <p className="text-xs text-orange-700 mt-1 leading-relaxed">
+                  {crossInfectionAlert.alertText}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setAlertDismissed(true)}
+              className="text-orange-400 hover:text-orange-600 shrink-0"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Compact header */}
       <div className="px-1 pt-2">
         <h1 className="text-xl font-bold text-slate-800">健康助手</h1>
