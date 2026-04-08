@@ -340,6 +340,7 @@ export function ResultCard({
   onToggleMap,
 }: ResultCardProps) {
   const config = LEVEL_CONFIG[result.level];
+  const [shareCopied, setShareCopied] = useState(false);
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
   const [checked, setChecked] = useState<[boolean, boolean, boolean]>([false, false, false]);
   const { evidenceCards, webSources, webSearchNote, webQuery, evidenceUpdatedAt, officialSourceContext } = useMemo(() => {
@@ -753,7 +754,7 @@ export function ResultCard({
       {/* Top gradient header */}
       <div className={`px-6 py-5 ${
         result.level === 'green' ? 'bg-gradient-to-r from-emerald-50 to-emerald-100' :
-        result.level === 'yellow' ? 'bg-gradient-to-r from-yellow-50 to-amber-100' :
+        result.level === 'yellow' ? 'bg-gradient-to-r from-amber-50 to-amber-100' :
         result.level === 'orange' ? 'bg-gradient-to-r from-orange-50 to-orange-100' :
         'bg-gradient-to-r from-red-50 to-red-100'
       }`}>
@@ -1293,19 +1294,35 @@ export function ResultCard({
 
         {/* Export */}
         <div className="mt-5">
-          <ReportExport result={result} messages={messages} />
+          <ReportExport
+            result={result}
+            messages={messages}
+            medicationRecommendations={medicationAdvice}
+          />
           <button
             onClick={() => {
+              const levelEmoji: Record<string, string> = { green: '🟢低风险', yellow: '🟡中风险', orange: '🟠较高风险', red: '🔴紧急' };
+              const summaryText = [
+                '【健康助手 · AI问诊报告】',
+                `风险等级: ${levelEmoji[result.level] ?? result.level}`,
+                `判断依据: ${result.reason}`,
+                `行动建议: ${result.action}`,
+                `推荐科室: ${result.departments.join('、')}`,
+                '⚠️ 本建议仅供参考，不构成医疗诊断',
+              ].join('\n');
               const shareUrl = `${window.location.origin}?share=1&level=${result.level}&reason=${encodeURIComponent(result.reason.slice(0, 50))}`;
               if (navigator.share) {
-                navigator.share({ title: '健康助手问诊结果', text: `AI 评估：${result.reason}`, url: shareUrl });
+                navigator.share({ title: '健康助手问诊结果', text: summaryText, url: shareUrl });
               } else {
-                navigator.clipboard.writeText(shareUrl);
+                navigator.clipboard.writeText(summaryText).then(() => {
+                  setShareCopied(true);
+                  setTimeout(() => setShareCopied(false), 2000);
+                });
               }
             }}
             className="w-full mt-2 flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
           >
-            <span>↗</span> 分享给家人看
+            <span>↗</span> {shareCopied ? '已复制到剪贴板' : '分享给家人看'}
           </button>
         </div>
 

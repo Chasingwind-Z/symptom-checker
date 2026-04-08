@@ -341,7 +341,7 @@ export function WelcomeScreen({
           <button
             type="button"
             onClick={() => onOpenConversation(latestSession.id)}
-            className="w-full rounded-3xl border border-amber-100 bg-amber-50/90 px-4 py-4 text-left shadow-sm transition-colors hover:bg-amber-100/70"
+            className="w-full rounded-3xl border border-amber-100 bg-amber-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-amber-100/70"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -365,7 +365,7 @@ export function WelcomeScreen({
           <button
             type="button"
             onClick={() => onOpenConversation(latestCloudSession.id)}
-            className="w-full rounded-3xl border border-blue-100 bg-blue-50/80 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
+            className="w-full rounded-3xl border border-blue-100 bg-blue-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">

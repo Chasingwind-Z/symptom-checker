@@ -429,8 +429,8 @@ export function ChatInput({
         <div
           className={
             isInline
-              ? 'overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-sm'
-              : 'overflow-hidden rounded-[30px] border border-slate-200/80 bg-white/95 shadow-[0_-16px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl'
+              ? 'overflow-hidden rounded-3xl border border-slate-200 bg-white/95 shadow-sm'
+              : 'overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-lg backdrop-blur-xl'
           }
         >
           {!isInline && <div className="h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />}
@@ -478,7 +478,7 @@ export function ChatInput({
             )}
 
             {attachmentCount > 0 && (
-              <div className="mb-3 rounded-[22px] border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white px-3 py-3 shadow-sm">
+              <div className="mb-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-white px-3 py-3 shadow-sm">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -554,11 +554,11 @@ export function ChatInput({
             )}
 
             <div
-              className={`rounded-[26px] border px-2.5 py-2.5 transition-all duration-200 ${
+              className={`rounded-3xl border px-2.5 py-2.5 transition-all duration-200 ${
                 isInputFocused
                   ? isInline
                     ? 'border-blue-300 bg-white shadow-sm'
-                    : 'border-blue-300 bg-white shadow-[0_10px_30px_rgba(59,130,246,0.14)]'
+                    : 'border-blue-300 bg-white shadow-lg'
                   : 'border-slate-200 bg-slate-50/90 shadow-sm'
               }`}
             >
@@ -651,7 +651,7 @@ export function ChatInput({
                   disabled={!canSend}
                   aria-label="发送消息"
                   title="发送消息"
-                  className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-[0_10px_20px_rgba(59,130,246,0.28)] transition-all hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                  className="inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-500 text-white shadow-lg transition-all hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
                 >
                   {isLoading ? (
                     <Loader2 size={18} className="animate-spin" />

@@ -396,7 +396,7 @@ export function ChatBubble({
                   transition={{ duration: 0.2, delay: i * 0.04 }}
                   whileHover={{ y: -1, scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`cursor-pointer rounded-full border border-blue-200/90 bg-gradient-to-b from-white to-blue-50 font-medium text-blue-700 shadow-[0_1px_2px_rgba(37,99,235,0.08)] transition-[border-color,box-shadow,background-color] hover:border-blue-300 hover:from-blue-50 hover:to-blue-100 hover:shadow-[0_6px_18px_rgba(59,130,246,0.16)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 ${suggestionButtonClass}`}
+                  className={`cursor-pointer rounded-full border border-blue-200/90 bg-gradient-to-b from-white to-blue-50 font-medium text-blue-700 shadow-sm transition-[border-color,box-shadow,background-color] hover:border-blue-300 hover:from-blue-50 hover:to-blue-100 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:ring-offset-2 ${suggestionButtonClass}`}
                 >
                   {suggestion}
                 </motion.button>
@@ -425,7 +425,7 @@ export function ChatBubble({
         </div>
         <div className="max-w-[80%] flex flex-col items-start">
           <div
-            className={`break-words rounded-2xl rounded-tl-sm border border-blue-100 bg-gradient-to-b from-white to-blue-50/60 text-slate-700 shadow-[0_8px_24px_rgba(59,130,246,0.08)] ${bubblePaddingClass} ${bubbleTextClass}`}
+            className={`break-words rounded-2xl rounded-tl-sm border border-blue-100 border-l-4 border-l-blue-300 bg-gradient-to-b from-white to-blue-50/60 text-slate-700 shadow-md ${bubblePaddingClass} ${bubbleTextClass}`}
           >
             {agentSummary}
             {toolCallSummary}

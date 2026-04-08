@@ -2,9 +2,23 @@ import { useRef, useState } from 'react'
 import { FileDown, Loader2 } from 'lucide-react'
 import type { DiagnosisResult, Message } from '../types'
 
+interface MedicationRecommendationItem {
+  title: string
+  useCase: string
+  caution: string
+  suitable: boolean
+}
+
+interface DrugInteractionWarningItem {
+  interaction: { severity: string; warning: string }
+  triggeredBy: { current: string; recommended: string }
+}
+
 interface Props {
   result: DiagnosisResult
   messages: Message[]
+  medicationRecommendations?: MedicationRecommendationItem[]
+  drugInteractionWarnings?: DrugInteractionWarningItem[]
 }
 
 const LEVEL_LABEL: Record<string, string> = {
@@ -35,7 +49,7 @@ const LEVEL_ICON: Record<string, string> = {
   red: '🚨',
 }
 
-export function ReportExport({ result, messages }: Props) {
+export function ReportExport({ result, messages, medicationRecommendations, drugInteractionWarnings }: Props) {
   const reportRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -101,7 +115,7 @@ export function ReportExport({ result, messages }: Props) {
       }
       return pairs
     }, [])
-    .slice(0, 10)
+    .slice(0, 25)
 
   return (
     <>
@@ -233,6 +247,61 @@ export function ReportExport({ result, messages }: Props) {
               ))}
             </div>
           </SectionBlock>
+
+          {/* 用药参考 */}
+          {medicationRecommendations && medicationRecommendations.length > 0 && (
+            <SectionBlock title="💊 用药参考（仅供 OTC 参考，不替代处方）" icon="" color={color}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {medicationRecommendations.map((med, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: med.suitable ? '#F0FDF4' : '#FFFBEB',
+                      border: `1px solid ${med.suitable ? '#BBF7D0' : '#FDE68A'}`,
+                      borderRadius: '10px',
+                      padding: '12px 14px',
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B', marginBottom: '6px' }}>
+                      {!med.suitable && '⚠️ '}{med.title}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.7, marginBottom: '4px' }}>
+                      适用场景：{med.useCase}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#92400E', lineHeight: 1.7 }}>
+                      注意事项：{med.caution}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionBlock>
+          )}
+
+          {/* 用药安全提示 */}
+          {drugInteractionWarnings && drugInteractionWarnings.length > 0 && (
+            <SectionBlock title="⚠️ 用药安全提示" icon="" color={color}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {drugInteractionWarnings.map((w, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: w.interaction.severity === 'high' ? '#FEF2F2' : '#FFFBEB',
+                      border: `1px solid ${w.interaction.severity === 'high' ? '#FECACA' : '#FDE68A'}`,
+                      borderRadius: '10px',
+                      padding: '12px 14px',
+                    }}
+                  >
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: w.interaction.severity === 'high' ? '#DC2626' : '#92400E', marginBottom: '6px' }}>
+                      {w.triggeredBy.current} + {w.triggeredBy.recommended}
+                    </div>
+                    <div style={{ fontSize: '12px', color: w.interaction.severity === 'high' ? '#DC2626' : '#78350F', lineHeight: 1.7 }}>
+                      {w.interaction.warning}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionBlock>
+          )}
 
           {/* Footer */}
           <div

@@ -8,10 +8,12 @@ import {
   Pill,
   Search,
   ShieldCheck,
+  ShoppingCart,
   Sparkles,
   Stethoscope,
 } from 'lucide-react';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
+import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
 import { buildMedicationHubContexts } from '../lib/medicationHub';
 import { checkMedicationSafety } from '../lib/medicationSafety';
 import {
@@ -623,6 +625,23 @@ export function MedicationRecommendationsPanel({
                         {recommendation.useCase}
                       </p>
                     </div>
+                    {recommendation.suitable && (
+                      <button
+                        type="button"
+                        className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+                        onClick={() => {
+                          trackMedicationClick({
+                            medicationName: recommendation.title,
+                            diagnosisLevel: featuredContext.riskLevel,
+                            source: 'featured_recommendation',
+                          });
+                          window.open(buildJDSearchUrl(recommendation.title), '_blank', 'noopener');
+                        }}
+                      >
+                        <ShoppingCart size={13} />
+                        去京东购买
+                      </button>
+                    )}
                   </div>
 
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -690,7 +709,7 @@ export function MedicationRecommendationsPanel({
                         <p className="mt-2 text-xs leading-relaxed text-slate-600">{context.summary}</p>
                       )}
 
-                      <div className="mt-3">
+                      <div className="mt-3 flex items-center gap-2">
                         <ActionButton
                           compact
                           label={
@@ -707,6 +726,23 @@ export function MedicationRecommendationsPanel({
                           }
                           tone={context.conversationId ? 'secondary' : 'primary'}
                         />
+                        {primaryRecommendation?.suitable && (
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+                            onClick={() => {
+                              trackMedicationClick({
+                                medicationName: primaryRecommendation.title,
+                                diagnosisLevel: context.riskLevel,
+                                source: 'context_shelf',
+                              });
+                              window.open(buildJDSearchUrl(primaryRecommendation.title), '_blank', 'noopener');
+                            }}
+                          >
+                            <ShoppingCart size={11} />
+                            京东购买
+                          </button>
+                        )}
                       </div>
                     </article>
                   );
