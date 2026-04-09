@@ -1,6 +1,7 @@
 import { useState, Suspense, lazy } from 'react';
 import { Cross, MapPin, Phone, Star, Clock, Navigation } from 'lucide-react';
-import type { Hospital } from '../types';
+import type { Hospital, HospitalTier } from '../types';
+import { getHospitalTier } from '../lib/mockHospitals';
 
 const LazyMapModal = lazy(() =>
   import('./MapModal').then((module) => ({
@@ -27,6 +28,13 @@ const TYPE_STYLES: Record<Hospital['type'], string> = {
   '二甲医院': 'bg-blue-50 text-blue-600 border border-blue-200',
   '社区诊所': 'bg-emerald-50 text-emerald-600 border border-emerald-200',
   '专科医院': 'bg-purple-50 text-purple-600 border border-purple-200',
+};
+
+const TIER_CONFIG: Record<HospitalTier, { label: string; className: string }> = {
+  community: { label: '社区诊所', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
+  secondary: { label: '二级医院', className: 'bg-blue-50 text-blue-700 border border-blue-200' },
+  tertiary: { label: '三甲医院', className: 'bg-orange-50 text-orange-700 border border-orange-200' },
+  emergency: { label: '急诊24h', className: 'bg-red-50 text-red-700 border border-red-200' },
 };
 
 function QuickAction({ label, icon, href, onClick, primary = false, disabled = false }: QuickActionProps) {
@@ -69,6 +77,8 @@ function QuickAction({ label, icon, href, onClick, primary = false, disabled = f
 
 export function HospitalCard({ hospital, allHospitals }: HospitalCardProps) {
   const [showMap, setShowMap] = useState(false);
+  const tier = getHospitalTier(hospital.name);
+  const tierInfo = TIER_CONFIG[tier];
   const hasPhone = hospital.phone.trim().length > 0 && !hospital.phone.includes('暂无');
   const phoneHref = hasPhone ? `tel:${hospital.phone.replace(/\s+/g, '')}` : undefined;
   const navUrl = `https://uri.amap.com/navigation?to=${encodeURIComponent(
@@ -88,6 +98,9 @@ export function HospitalCard({ hospital, allHospitals }: HospitalCardProps) {
         <span className="text-slate-800 font-semibold text-sm flex-1 break-words">{hospital.name}</span>
         <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${TYPE_STYLES[hospital.type]}`}>
           {hospital.type}
+        </span>
+        <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${tierInfo.className}`}>
+          {tierInfo.label}
         </span>
         <div className="flex items-center gap-0.5 flex-shrink-0">
           <Star size={12} className="text-yellow-400 fill-yellow-400" />

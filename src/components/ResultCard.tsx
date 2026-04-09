@@ -19,6 +19,7 @@ import {
   UserRoundSearch,
 } from 'lucide-react';
 import { HospitalCard } from './HospitalCard';
+import { filterHospitalsByRisk } from '../lib/mockHospitals';
 import { OfficialSourceComparison } from './OfficialSourceComparison';
 import { ReportExport } from './ReportExport';
 import { VisitSummaryCard } from './VisitSummaryCard';
@@ -933,7 +934,7 @@ export function ResultCard({
               }
             >
               {tab.icon}
-              {tab.label}
+              {tab.id === 'hospitals' ? hospitalTabLabel[result.level] : tab.label}
             </button>
           ))}
         </div>
@@ -1359,7 +1360,7 @@ export function ResultCard({
               </div>
             )}
 
-            {hospitals.length > 0 && (
+            {tieredHospitals.length > 0 && (
               <div className="border-t border-slate-100 pt-4">
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                   <h3 className="text-slate-700 font-semibold text-sm flex items-center gap-1.5">
@@ -1369,8 +1370,8 @@ export function ResultCard({
                   <span className="text-[11px] text-slate-400">{hospitalSectionMeta}</span>
                 </div>
                 <div className="flex flex-col gap-3">
-                  {hospitals.map((hospital) => (
-                    <HospitalCard key={hospital.id} hospital={hospital} allHospitals={hospitals} />
+                  {tieredHospitals.map((hospital) => (
+                    <HospitalCard key={hospital.id} hospital={hospital} allHospitals={tieredHospitals} />
                   ))}
                 </div>
               </div>
@@ -1387,7 +1388,7 @@ export function ResultCard({
               </button>
             )}
 
-            {hospitals.length === 0 && !onToggleMap && (
+            {tieredHospitals.length === 0 && !onToggleMap && (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
                 <MapPin size={20} className="mx-auto text-slate-300 mb-2" />
                 <p className="text-sm text-slate-500">暂无附近医院信息</p>

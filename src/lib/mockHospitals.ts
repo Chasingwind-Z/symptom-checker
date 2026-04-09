@@ -1,5 +1,26 @@
 import type { Hospital, RiskLevel } from '../types';
 
+type HospitalTier = 'community' | 'secondary' | 'tertiary' | 'emergency';
+
+export function getHospitalTier(name: string): HospitalTier {
+  if (/急诊中心|120|急救/.test(name)) return 'emergency';
+  if (/社区|诊所|服务中心|卫生站|卫生院/.test(name)) return 'community';
+  if (/三甲|大学|附属|协和|301|中日友好|人民医院|中心医院|儿童医院|心血管/.test(name)) return 'tertiary';
+  return 'secondary';
+}
+
+export function filterHospitalsByRisk(hospitals: Hospital[], level: RiskLevel): Hospital[] {
+  const tierMap: Record<RiskLevel, HospitalTier[]> = {
+    green: ['community', 'secondary'],
+    yellow: ['secondary', 'tertiary'],
+    orange: ['tertiary', 'emergency'],
+    red: ['emergency', 'tertiary'],
+  };
+  const allowedTiers = tierMap[level];
+  const filtered = hospitals.filter((h) => allowedTiers.includes(getHospitalTier(h.name)));
+  return filtered.length > 0 ? filtered : hospitals;
+}
+
 export const hospitals: Hospital[] = [
   // 三甲医院 (3)
   {
