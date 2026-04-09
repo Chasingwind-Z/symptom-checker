@@ -348,6 +348,20 @@ function buildContextNotes(context: AgentPromptContext): string[] {
     );
   }
 
+  // Read recent checkins for AI context
+  try {
+    const raw = localStorage.getItem('daily_checkins');
+    if (raw) {
+      const checkins = JSON.parse(raw) as Array<{ energy: number; sleepHours: number; hasDiscomfort: boolean; date: string }>;
+      const recent = checkins.slice(-3);
+      const lowEnergy = recent.filter(c => c.energy <= 2).length;
+      const poorSleep = recent.filter(c => c.sleepHours < 6).length;
+      if (lowEnergy >= 2 || poorSleep >= 2) {
+        notes.push(`【健康打卡异常】近期精力偏低${lowEnergy}次/睡眠不足${poorSleep}次，问诊时请关注疲劳/睡眠相关问题。`);
+      }
+    }
+  } catch {}
+
   const crossInfection = detectFamilyCrossInfection();
   if (crossInfection) {
     notes.push(

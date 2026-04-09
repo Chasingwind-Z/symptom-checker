@@ -25,6 +25,7 @@ import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
 import { getDistrictRiskData, getActiveCity, fetchCityAggregation, detectLocalSurgeAlert, type SurgeAlert } from '../lib/epidemicDataEngine'
 import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate'
 import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
+import { DailyCheckin } from './DailyCheckin'
 import { detectFamilyCrossInfection, type FamilyCrossInfectionAlert } from '../lib/symptomTracking'
 
 interface ScenarioChip {
@@ -446,6 +447,11 @@ export function WelcomeScreen({
         onSwitchProfile={onSelectHouseholdProfile}
         onManageProfiles={onManageProfiles}
       />
+
+      {/* Daily health check-in */}
+      <div className="mt-4">
+        <DailyCheckin />
+      </div>
 
       {/* Re-engagement card */}
       {showReengagement && latestSession && (
