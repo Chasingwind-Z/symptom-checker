@@ -566,75 +566,6 @@ export function CloudSyncCard({
     ? '资料与最近问诊会优先尝试跨设备同步'
     : '资料保存在当前浏览器';
 
-  const overviewCards = [
-    {
-      icon: Activity,
-      label: '档案准备度',
-      value: `${completionGuide.progress}%`,
-      description:
-        completionGuide.nextFocus[0] ?? '基础资料已较完整，适合减少重复追问并长期保存。',
-      toneClass: 'border-cyan-100 bg-cyan-50/70',
-    },
-    {
-      icon: HeartPulse,
-      label: '近期健康动态',
-      value: recentCases.length > 0 ? `${recentCases.length} 条` : '暂无',
-      description: latestCase
-        ? `最近更新：${formatDateTimeLabel(latestCase.createdAt)}`
-        : '完成一次问诊后，这里会自动累计摘要和时间线。',
-      toneClass: 'border-slate-100 bg-slate-50/80',
-    },
-    {
-      icon: AlertCircle,
-      label: '优先关注',
-      value: priorityCount > 0 ? `${priorityCount} 次较高风险` : latestCase ? latestRisk.label : '暂无',
-      description:
-        openCaseCount > 0
-          ? `${openCaseCount} 条记录仍可继续补充症状变化。`
-          : latestCase
-            ? '最近一条记录已形成摘要，可直接回看或继续咨询。'
-            : '目前还没有需要重点跟进的记录。',
-      toneClass:
-        priorityCount > 0 ? 'border-rose-100 bg-rose-50/70' : 'border-amber-100 bg-amber-50/70',
-    },
-    {
-      icon: Stethoscope,
-      label: '最近常看科室',
-      value: dominantDepartment ?? '待生成',
-      description: dominantDepartment
-        ? '根据最近问诊自动聚合，便于更快找到线下入口。'
-        : '有更多问诊后，这里会显示常出现的科室方向。',
-      toneClass: 'border-violet-100 bg-violet-50/60',
-    },
-  ];
-
-  const accessPlans = [
-    {
-      id: 'guest',
-      title: '游客即用',
-      badge: isSignedIn ? '仍可使用' : '当前方案',
-      description: '无需登录，适合快速开始症状自查。',
-      toneClass: isSignedIn ? 'border-slate-200 bg-white' : 'border-slate-300 bg-slate-50',
-      features: ['当前浏览器保存档案与历史', '适合先体验和导入场景模板'],
-    },
-    {
-      id: 'sync',
-      title: '账号同步',
-      badge: isSignedIn ? '当前方案' : '推荐开启',
-      description: '邮箱登录后更适合长期保存与跨设备继续。',
-      toneClass: 'border-cyan-100 bg-cyan-50/60',
-      features: ['档案与最近问诊可跨设备继续', '适合报告导出后长期沉淀'],
-    },
-    {
-      id: 'family',
-      title: '家庭守护',
-      badge: 'Wave 14-lite',
-      description: '先提供真实可用的入口，不做虚假权益承诺。',
-      toneClass: 'border-violet-100 bg-violet-50/60',
-      features: ['本设备家庭档案管理已可用', '多成员云端协作仍在后续版本收口'],
-    },
-  ];
-
   return (
     <section className="rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 shadow-sm sm:p-5">
       <div className="space-y-4">
@@ -664,9 +595,9 @@ export function CloudSyncCard({
 
               <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-semibold text-slate-900">个人健康看板</h2>
-                  <p className="mt-2 text-sm font-medium text-slate-700">{statusLabel}</p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{helperText}</p>
+                  <h2 className="text-xl font-semibold text-slate-900">个人档案{currentProfileLabel !== '未命名档案' ? ` · ${currentProfileLabel}` : ''}</h2>
+                  <p className="mt-1 text-sm text-slate-600">{profileOneLiner}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">{statusLabel} — {helperText}</p>
                 </div>
 
                 <div className="min-w-[180px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -746,93 +677,10 @@ export function CloudSyncCard({
             </div>
           )}
 
-          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {overviewCards.map((item) => (
-              <OverviewMetricCard key={item.label} {...item} />
-            ))}
-          </div>
         </section>
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
           <div className="space-y-4">
-            <SectionCard
-              title="档案完善指引"
-              description="优先补齐这些关键字段，后续问诊、记录检索和分享都会更贴近真实场景。"
-              action={
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  {completionGuide.completedCount}/{completionGuide.totalCount} 已完成
-                </span>
-              }
-            >
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium text-slate-500">当前完成度</p>
-                  <p className="mt-1 text-2xl font-semibold text-slate-900">
-                    {completionGuide.progress}%
-                  </p>
-                </div>
-                <div className="text-right text-xs text-slate-500">
-                  {completionGuide.nextFocus.length > 0
-                    ? `下一步：${completionGuide.nextFocus[0]}`
-                    : '基础档案已较完整'}
-                </div>
-              </div>
-
-              <div className="mt-3 h-2 rounded-full bg-slate-100">
-                <div
-                  className="h-2 rounded-full bg-cyan-500 transition-all"
-                  style={{ width: `${Math.max(completionGuide.progress, 6)}%` }}
-                />
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                {completionGuide.checklist.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`rounded-2xl border p-3 ${
-                      item.completed
-                        ? 'border-emerald-100 bg-emerald-50/70'
-                        : 'border-slate-200 bg-slate-50/70'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {item.completed ? (
-                        <CheckCircle2 size={16} className="mt-0.5 text-emerald-600" />
-                      ) : (
-                        <Clock3 size={16} className="mt-0.5 text-slate-400" />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">{item.label}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                          {item.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3">
-                <p className="text-xs font-medium text-slate-600">当前建议优先补齐</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {completionGuide.nextFocus.length > 0 ? (
-                    completionGuide.nextFocus.map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-medium text-cyan-700"
-                      >
-                        {item}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-medium text-emerald-700">
-                      档案已适合长期保存和继续问诊
-                    </span>
-                  )}
-                </div>
-              </div>
-            </SectionCard>
-
             <SectionCard
               title="近期健康动态"
               description="把最近问诊按时间线整理出来，方便你快速回顾主诉、风险和下一步动作。"
@@ -1111,6 +959,33 @@ export function CloudSyncCard({
                       {isSaving ? '保存中…' : '保存当前档案'}
                     </button>
                   </div>
+
+                  {!isSignedIn && onApplyDemoPersona && (
+                    <div className="border-t border-slate-100 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplates((prev) => !prev)}
+                        className="text-xs text-slate-500 hover:text-cyan-700 transition-colors"
+                      >
+                        {showTemplates ? '收起模板 ↑' : '快速填充模板数据 →'}
+                      </button>
+                      {showTemplates && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {demoPersonas.map((persona) => (
+                            <button
+                              key={persona.id}
+                              type="button"
+                              disabled={Boolean(isApplyingPersona)}
+                              onClick={() => void handleApplyPersona(persona.id)}
+                              className="rounded-lg border border-violet-100 bg-violet-50/60 px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isApplyingPersona === persona.id ? '载入中…' : persona.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </SectionCard>
@@ -1215,53 +1090,6 @@ export function CloudSyncCard({
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-
-              {!isSignedIn && onApplyDemoPersona && (
-                <div className="mt-4 border-t border-slate-100 pt-4">
-                  <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                    <Sparkles size={14} className="text-violet-600" />
-                    快速导入照护模板
-                  </div>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    适合先搭一个儿童 / 长辈 / 通勤族档案，再改成自己的真实情况后保存。
-                  </p>
-
-                  <div className="mt-3 space-y-2">
-                    {demoPersonas.map((persona) => (
-                      <div
-                        key={persona.id}
-                        className="rounded-2xl border border-violet-100 bg-violet-50/60 p-3"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-slate-900">{persona.label}</p>
-                            <p className="mt-1 text-xs text-slate-500">{persona.subtitle}</p>
-                          </div>
-                          <button
-                            type="button"
-                            disabled={Boolean(isApplyingPersona)}
-                            onClick={() => void handleApplyPersona(persona.id)}
-                            className="inline-flex items-center gap-1 rounded-xl bg-white px-3 py-1.5 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {isApplyingPersona === persona.id ? '载入中…' : '快速载入'}
-                          </button>
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {persona.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded-full bg-white px-2 py-1 text-xs font-medium text-violet-700"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
 
@@ -1377,38 +1205,6 @@ export function CloudSyncCard({
                   href={nearbyClinicUrl}
                   toneClass="border-violet-100 bg-violet-50/50 hover:border-violet-200 hover:bg-violet-50"
                 />
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              title="使用方案对比"
-              description="把当前真实可用的能力说清楚，不做虚假会员、价格和商单承诺。"
-            >
-              <div className="space-y-3">
-                {accessPlans.map((plan) => (
-                  <div key={plan.id} className={`rounded-2xl border p-3 ${plan.toneClass}`}>
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900">{plan.title}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                          {plan.description}
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-white/70 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                        {plan.badge}
-                      </span>
-                    </div>
-
-                    <ul className="mt-3 space-y-1.5">
-                      {plan.features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-2 text-xs leading-relaxed text-slate-600">
-                          <CheckCircle2 size={13} className="mt-0.5 text-slate-400" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
               </div>
             </SectionCard>
           </div>
