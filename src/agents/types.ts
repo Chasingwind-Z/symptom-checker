@@ -6,6 +6,7 @@ import type {
   ChatImageAttachment,
   DiagnosisResult,
   Message,
+  Population,
   SymptomInfo,
 } from '../types';
 
@@ -23,6 +24,7 @@ export interface AgentMemoryContext {
     subtitle?: string;
     promptNote: string;
   } | null;
+  population?: Population;
   recentCases?: Array<{
     chiefComplaint: string;
     triageLevel: DiagnosisResult['level'] | 'pending';

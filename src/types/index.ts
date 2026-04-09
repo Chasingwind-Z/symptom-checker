@@ -1,4 +1,5 @@
 export type RiskLevel = 'green' | 'yellow' | 'orange' | 'red';
+export type Population = 'self' | 'pediatric' | 'geriatric' | 'chronic';
 export type HospitalTier = 'community' | 'secondary' | 'tertiary' | 'emergency';
 export type AgentId =
   | 'orchestrator'

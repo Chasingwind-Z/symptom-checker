@@ -34,6 +34,7 @@ import { usePwaInstall } from './hooks/usePwaInstall';
 import { deleteCaseHistoryItem } from './lib/healthData';
 import {
   getConsultationModePreset,
+  MODE_TO_POPULATION,
   type ConsultationModeId,
 } from './lib/consultationModes';
 import { getRecommendedHospitals } from './lib/mockHospitals';
@@ -125,9 +126,10 @@ export default function App() {
             promptNote: selectedConsultationMode.promptNote,
           }
         : null,
+      population: MODE_TO_POPULATION[selectedConsultationModeId ?? 'self'] || 'self',
       recentCases: workspace.recentCases,
     }),
-    [selectedConsultationMode, workspace.profile, workspace.recentCases]
+    [selectedConsultationMode, selectedConsultationModeId, workspace.profile, workspace.recentCases]
   );
   const {
     messages,

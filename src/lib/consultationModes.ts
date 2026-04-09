@@ -1,4 +1,13 @@
+import type { Population } from '../types'
+
 export type ConsultationModeId = 'self' | 'child' | 'elderly' | 'chronic'
+
+export const MODE_TO_POPULATION: Record<ConsultationModeId, Population> = {
+  self: 'self',
+  child: 'pediatric',
+  elderly: 'geriatric',
+  chronic: 'chronic',
+}
 
 export interface ConsultationModePreset {
   id: ConsultationModeId

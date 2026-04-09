@@ -217,27 +217,34 @@ const GUARDIAN_MODES = [
     id: 'self' as const,
     emoji: '👤',
     label: '我自己',
-    description: '自己不舒服，快速自查',
+    subtitle: '标准问诊',
   },
   {
     id: 'child' as const,
     emoji: '👶',
     label: '孩子',
-    description: '孩子发烧/不舒服，帮我判断',
+    subtitle: '儿科优先',
   },
   {
     id: 'elderly' as const,
     emoji: '🧓',
     label: '家里老人',
-    description: '老人有异常，该不该送医院',
+    subtitle: '高风险优先',
   },
   {
     id: 'chronic' as const,
     emoji: '💊',
     label: '慢病家属',
-    description: '长期用药的家人，今天有变化',
+    subtitle: '基础病叠加',
   },
 ] as const
+
+const GUARDIAN_HOVER_TIPS: Record<string, string> = {
+  self: '头疼脑热、皮肤问题、肠胃不适...',
+  child: '0-14岁孩子发烧、咳嗽、肚子疼、皮疹...',
+  elderly: '60岁以上老人胸闷、头晕、摔倒后评估...',
+  chronic: '高血压、糖尿病、心脏病等长期用药管理...',
+}
 
 export function WelcomeScreen({
   onStartConsultation,
@@ -329,7 +336,7 @@ export function WelcomeScreen({
       </div>
 
       {/* Guardian Mode Cards — HERO position, 2×2 grid */}
-      <div className="grid grid-cols-2 gap-3 mt-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
         {GUARDIAN_MODES.map((mode) => {
           const isSelected = selectedModeId === mode.id
           return (
@@ -337,15 +344,18 @@ export function WelcomeScreen({
               key={mode.id}
               type="button"
               onClick={() => onSelectMode(mode.id)}
-              className={`rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+              className={`group relative rounded-2xl border-2 px-4 py-4 text-left transition-all ${
                 isSelected
                   ? 'border-blue-500 bg-blue-50 shadow-md'
-                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                  : 'border-slate-200 bg-white hover:border-blue-200 hover:shadow-sm'
               }`}
             >
               <div className="text-2xl mb-2">{mode.emoji}</div>
               <p className="text-sm font-semibold text-slate-800">{mode.label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{mode.description}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{mode.subtitle}</p>
+              <p className="text-xs text-blue-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {GUARDIAN_HOVER_TIPS[mode.id] || ''}
+              </p>
             </button>
           )
         })}
