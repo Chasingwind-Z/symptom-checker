@@ -430,6 +430,29 @@ export function WelcomeScreen({
         </p>
       )}
 
+      {/* Scenario quick-entry chips — shown only when no mode selected */}
+      {!selectedModeId && (
+        <div className="flex flex-wrap gap-2 mt-4">
+          {([
+            { label: '🚨 紧急情况', mode: null as ConsultationModeId | null, text: '紧急情况，请帮我判断' },
+            { label: '👶 孩子发烧', mode: 'child' as ConsultationModeId, text: '孩子发烧了' },
+            { label: '🧓 老人胸闷', mode: 'elderly' as ConsultationModeId, text: '老人说胸闷' },
+            { label: '💊 慢病用药', mode: 'chronic' as ConsultationModeId, text: '长期用药的家人今天有变化' },
+          ]).map(chip => (
+            <button
+              key={chip.label}
+              onClick={() => {
+                if (chip.mode) onSelectMode(chip.mode);
+                onApplyStarterText(chip.text);
+              }}
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Daily health check-in */}
       <div className="mt-4">
         <DailyCheckin />
