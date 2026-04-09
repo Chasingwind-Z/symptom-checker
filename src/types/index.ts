@@ -41,6 +41,13 @@ export interface Message {
   suggestions?: string[];
   toolCalls?: ToolCall[];
   agentRoute?: AgentRoute;
+  ragCitations?: Array<{
+    title: string;
+    sourceType: string;
+    sourceRef: string;
+    sourceDate?: string;
+    reviewStatus: string;
+  }>;
 }
 
 export interface ChatImageAttachment {

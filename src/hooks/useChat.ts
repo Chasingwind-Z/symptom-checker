@@ -18,6 +18,7 @@ import { requestGeolocation, fetchWeather } from '../lib/geolocation';
 import { loadCloudConversationSessions, persistCaseRecord } from '../lib/healthData';
 import { saveTrackingEntry } from '../lib/symptomTracking';
 import { submitAnonymousReport } from '../lib/epidemicDataEngine';
+import { retrieveKnowledge } from '../services/rag/retrieve';
 import {
   FOLLOW_UP_RESPONSE_OPTIONS,
   getCompletedFollowUpRecords,
@@ -437,6 +438,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   );
   const [cloudConversationSessions, setCloudConversationSessions] = useState<ConversationSession[]>([]);
   const keepFollowUpPromptMessageRef = useRef(false);
+  const latestRagCitations = useRef<Array<{ title: string; sourceType: string; sourceRef: string; sourceDate?: string; reviewStatus: string }>>([]);
   const conversationSessions = useMemo(
     () => mergeConversationSessions(localConversationSessions, cloudConversationSessions),
     [cloudConversationSessions, localConversationSessions]
@@ -689,6 +691,33 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
         const knowledgeSearch = await searchMedicalKnowledge(displayText, { limit: 6 });
         const kbResults = knowledgeSearch.symptomMatches.slice(0, 2);
+
+        // RAG retrieval (gracefully degradable)
+        let ragResults: { chunks: Array<{ title: string; content: string; sourceType: string; sourceRef: string; reviewStatus: string }>; empty: boolean } | undefined;
+        try {
+          const ragPopulation = memoryContext?.population || 'self';
+          const ragResult = await retrieveKnowledge(displayText, ragPopulation);
+          ragResults = {
+            chunks: ragResult.chunks.map(c => ({
+              title: c.title,
+              content: c.content,
+              sourceType: c.sourceType,
+              sourceRef: c.sourceRef,
+              reviewStatus: c.reviewStatus,
+            })),
+            empty: ragResult.empty,
+          };
+          latestRagCitations.current = ragResult.chunks.map(c => ({
+            title: c.title,
+            sourceType: c.sourceType,
+            sourceRef: c.sourceRef,
+            sourceDate: c.sourceDate || undefined,
+            reviewStatus: c.reviewStatus,
+          }));
+        } catch {
+          latestRagCitations.current = [];
+        }
+
         const orchestration = createAgentOrchestration({
           userText: displayText,
           messages,
@@ -699,6 +728,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           knowledgeSearch,
           pendingFollowUpSummary: activeFollowUpRecord?.summary ?? null,
           memoryContext,
+          ragResults,
         });
         const scopedTools = getAgentToolsByNames(orchestration.allowedToolNames);
 
@@ -732,6 +762,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           suggestions,
           toolCalls: Array.from(toolCallMap.values()).filter((item) => item.status !== 'running'),
           agentRoute: orchestration.route,
+          ragCitations: latestRagCitations.current.length > 0 ? latestRagCitations.current : undefined,
         };
 
         setMessages((prev) => {

@@ -383,6 +383,16 @@ function buildContextNotes(context: AgentPromptContext): string[] {
     );
   }
 
+  if (context.ragResults && !context.ragResults.empty) {
+    const ragContext = context.ragResults.chunks.map((chunk, i) =>
+      `[来源${i + 1}] ${chunk.title} (${chunk.sourceType}${chunk.reviewStatus === 'pending_medical_review' ? ', 待审核' : ''})\n${chunk.content}`
+    ).join('\n\n');
+
+    notes.push(`【知识库检索结果】\n${ragContext}\n\n请基于以上知识库内容回答，如需引用请标注来源编号[来源N]。`);
+  } else if (context.ragResults?.empty) {
+    notes.push(`【知识库提示】知识库未覆盖用户当前问题，请基于你的医学知识谨慎回答，并明确告知用户"知识库未覆盖此问题，以下回答仅供参考"。`);
+  }
+
   const metricsSummary = getMetricsSummaryForAI();
   if (metricsSummary) {
     notes.push(

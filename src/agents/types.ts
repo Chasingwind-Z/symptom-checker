@@ -44,6 +44,16 @@ export interface AgentPromptContext {
   knowledgeSearch?: MedicalKnowledgeSearchResult | null;
   pendingFollowUpSummary?: string | null;
   memoryContext?: AgentMemoryContext | null;
+  ragResults?: {
+    chunks: Array<{
+      title: string;
+      content: string;
+      sourceType: string;
+      sourceRef: string;
+      reviewStatus: string;
+    }>;
+    empty: boolean;
+  };
 }
 
 export interface SpecialistAgentDefinition {

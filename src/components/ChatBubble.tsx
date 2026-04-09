@@ -10,6 +10,7 @@ import { readLocalProfileDraft } from '../lib/healthData';
 import { checkNewDrugVsProfile } from '../lib/medicationSafety';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
+import { CitationCard } from './CitationCard';
 import { ToolCallIndicator } from './ToolCallIndicator';
 
 const DRUG_KEYWORDS_FOR_JD: Record<string, string> = {
@@ -470,6 +471,14 @@ export function ChatBubble({
               {toolCallSummary}
               <AssistantMarkdown content={displayContent} />
               {attachmentGallery}
+              {message.ragCitations && message.ragCitations.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  <p className="text-xs text-slate-400">📚 参考来源</p>
+                  {message.ragCitations.map((citation, i) => (
+                    <CitationCard key={i} {...citation} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -590,6 +599,14 @@ export function ChatBubble({
           {isUser ? displayContent : <AssistantMarkdown content={displayContent} />}
           {attachmentGallery}
           {!isUser && drugChips}
+          {!isUser && message.ragCitations && message.ragCitations.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              <p className="text-xs text-slate-400">📚 参考来源</p>
+              {message.ragCitations.map((citation, i) => (
+                <CitationCard key={i} {...citation} />
+              ))}
+            </div>
+          )}
         </div>
         {!(isQuestionPhase) && (
         <span className={`px-1 text-xs text-slate-400 ${timestampMarginClass}`}>

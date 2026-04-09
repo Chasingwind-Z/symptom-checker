@@ -17,19 +17,124 @@ export interface RetrievalResult {
   query: string;
   population: Population;
   empty: boolean;
+  fallbackUsed: boolean;
 }
 
-// Stub for now — will be connected to Supabase RPC in P2-W3
+const POPULATION_TO_AUDIENCE: Record<string, string[]> = {
+  self: ['通用'],
+  pediatric: ['儿童', '通用'],
+  geriatric: ['老年人', '通用'],
+  chronic: ['慢病患者', '通用'],
+};
+
+function localKeywordSearch(_query: string, _population: Population): KnowledgeChunk[] {
+  try {
+    // Simple keyword matching fallback — returns empty for now,
+    // will be enhanced when seed data is available in Supabase
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 export async function retrieveKnowledge(
   query: string,
   population: Population,
 ): Promise<RetrievalResult> {
-  // TODO: Generate embedding + call match_knowledge_chunks RPC
-  // For now, return empty result (safe fallback)
+  const allowedAudiences = POPULATION_TO_AUDIENCE[population] ?? ['通用'];
+
+  // Try Supabase RPC first (lexical + optional vector search)
+  try {
+    const { getSupabaseClient } = await import('../../lib/supabase');
+    const supabase = getSupabaseClient();
+    if (!supabase) throw new Error('no client');
+
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      'match_medical_knowledge_chunks',
+      { query_text: query, match_count: 8 },
+    );
+
+    if (!rpcError && rpcData && rpcData.length > 0) {
+      // Fetch parent document metadata so we can filter by audience/population
+      const docIds = [...new Set(rpcData.map((r: { document_id: string }) => r.document_id))];
+      const { data: docs } = await supabase
+        .from('medical_knowledge_documents')
+        .select('id, title, audience, source_label, source_url, updated_at')
+        .in('id', docIds);
+
+      const docMap = new Map(
+        (docs ?? []).map((d: Record<string, unknown>) => [d.id as string, d]),
+      );
+
+      const chunks: KnowledgeChunk[] = rpcData
+        .map((r: Record<string, unknown>) => {
+          const doc = docMap.get(r.document_id as string) as Record<string, unknown> | undefined;
+          if (!doc) return null;
+          // Population filter: only allow matching audiences
+          if (!allowedAudiences.includes(doc.audience as string)) return null;
+          return {
+            id: r.chunk_id as string,
+            title: (doc.title as string) ?? '',
+            content: r.content as string,
+            population: doc.audience as string,
+            sourceType: (doc.source_label as string) ?? 'curated',
+            sourceRef: (doc.source_url as string) ?? '',
+            sourceDate: (doc.updated_at as string) ?? '',
+            reviewStatus: 'pending_medical_review',
+            similarity: (r.vector_score as number) ?? (r.lexical_rank as number) ?? 0.8,
+          } satisfies KnowledgeChunk;
+        })
+        .filter((c: KnowledgeChunk | null): c is KnowledgeChunk => c !== null)
+        .slice(0, 5);
+
+      if (chunks.length > 0) {
+        return { chunks, query, population, empty: false, fallbackUsed: false };
+      }
+    }
+
+    // Fallback: direct text search on chunks joined with documents
+    const queryTerms = query.split(/\s+/).filter(w => w.length > 1).slice(0, 3).join(' & ');
+    if (queryTerms) {
+      const { data: chunkRows, error: chunkErr } = await supabase
+        .from('medical_knowledge_chunks')
+        .select(`
+          id, content, heading, document_id,
+          medical_knowledge_documents!inner(id, title, audience, source_label, source_url, updated_at)
+        `)
+        .textSearch('content', queryTerms, { type: 'plain' })
+        .in('medical_knowledge_documents.audience', allowedAudiences)
+        .limit(5);
+
+      if (!chunkErr && chunkRows && chunkRows.length > 0) {
+        const chunks: KnowledgeChunk[] = chunkRows.map((row: Record<string, unknown>) => {
+          const doc = row.medical_knowledge_documents as Record<string, unknown> | undefined;
+          return {
+            id: row.id as string,
+            title: (doc?.title as string) ?? (row.heading as string) ?? '',
+            content: row.content as string,
+            population: (doc?.audience as string) ?? '通用',
+            sourceType: (doc?.source_label as string) ?? 'curated',
+            sourceRef: (doc?.source_url as string) ?? '',
+            sourceDate: (doc?.updated_at as string) ?? '',
+            reviewStatus: 'pending_medical_review',
+            similarity: 0.7,
+          };
+        });
+
+        return { chunks, query, population, empty: false, fallbackUsed: false };
+      }
+    }
+  } catch {
+    // Supabase unavailable, fall through to local fallback
+  }
+
+  // Local fallback
+  const localResults = localKeywordSearch(query, population);
   return {
-    chunks: [],
+    chunks: localResults,
     query,
     population,
-    empty: true,
+    empty: localResults.length === 0,
+    fallbackUsed: true,
   };
 }
