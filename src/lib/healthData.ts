@@ -254,8 +254,16 @@ function writeLocalJson<T>(storageKey: string, value: T) {
 }
 
 function toPreview(text: string, fallback: string) {
-  const normalized = text.replace(/\s+/g, ' ').trim();
-  return normalized.slice(0, 48) || fallback;
+  const stripped = text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/\{"suggestions":\s*\[[\s\S]*?\]\}/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return stripped.slice(0, 48) || fallback;
 }
 
 function normalizeTriageLevel(value: DiagnosisResult['level'] | null | undefined): CaseHistoryItem['triageLevel'] {

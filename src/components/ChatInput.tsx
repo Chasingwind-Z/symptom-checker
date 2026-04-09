@@ -8,7 +8,7 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from 'react';
-import { ImagePlus, Loader2, Mic, MicOff, Send, ShieldAlert, X } from 'lucide-react';
+import { ImagePlus, Loader2, Mic, MicOff, Send, X } from 'lucide-react';
 import type { ChatImageAttachment, SendMessageInput } from '../types';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import { SymptomDescriptionHelper } from './SymptomDescriptionHelper';
@@ -136,7 +136,7 @@ function buildHelperText(attachmentCount: number): string {
   if (attachmentCount === 0) {
     return AI_VISION_ENABLED
       ? '支持文字、语音和最多 3 张图片；药盒、检查单图片会优先尝试识别可见文字。'
-      : '支持文字、语音与图片，AI 综合分析';
+      : '支持文字与语音输入，可附图辅助描述。';
   }
 
   return AI_VISION_ENABLED
@@ -179,6 +179,7 @@ export function ChatInput({
   const [keyboardOffset, setKeyboardOffset] = useState(() => getKeyboardOffset());
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [showHelper, setShowHelper] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -672,15 +673,28 @@ export function ChatInput({
             </div>
 
             {!isInline && (
-              <div className="mt-2 flex items-start gap-2 rounded-2xl bg-slate-50/90 px-3 py-2.5 text-xs text-slate-500">
-                <ShieldAlert size={12} className="mt-0.5 flex-shrink-0 text-amber-500" />
-                <p className="leading-relaxed">
-                  可上传最多 3 张皮疹、伤口、化验单或药盒照片（3 张限制是为了控制单轮提示词长度）。
-                  {AI_VISION_ENABLED
-                    ? ' 当前视觉模型已启用，图片像素会直接发送给 AI，可先参考图片里可见的异常或文字，再结合你的描述做谨慎分诊。'
-                    : ' 当前 AI 环境不具备图片像素识别能力，图片不会被模型"看到"——仅文件名与类型以文字形式告知助手，用于引导你补充描述。'}
-                  不会仅凭图片下诊断，完整图片预览主要保留在当前会话中。
+              <div className="flex items-center justify-center gap-1.5 mt-1">
+                <p className="text-xs text-slate-400 text-center">
+                  仅供参考，不构成诊断
+                  {AI_VISION_ENABLED && (
+                    <>
+                      {' · '}
+                      <button
+                        type="button"
+                        onClick={() => setShowDisclaimer(d => !d)}
+                        className="text-blue-500 hover:underline text-xs"
+                      >
+                        图片说明 ⓘ
+                      </button>
+                    </>
+                  )}
                 </p>
+              </div>
+            )}
+            {showDisclaimer && !isInline && (
+              <div className="mt-1 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500 leading-relaxed">
+                可上传最多3张图片用于辅助描述，不会仅凭图片下诊断。
+                {AI_VISION_ENABLED ? ' 当前视觉模型已启用。' : ' 当前环境图片以文字形式辅助描述。'}
               </div>
             )}
           </div>

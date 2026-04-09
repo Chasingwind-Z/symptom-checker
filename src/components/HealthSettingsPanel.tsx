@@ -3,7 +3,6 @@ import {
   Bell,
   BellOff,
   Settings2,
-  UserRound,
 } from 'lucide-react';
 import { parseHealthCSV } from '../lib/dataImport';
 import { saveMetric } from '../lib/healthMetrics';
@@ -15,15 +14,9 @@ interface HealthSettingsPanelProps {
   sessionEmail?: string | null;
 }
 
-export function HealthSettingsPanel({
-  currentCity,
-  conversationCount,
-  pendingFollowUpCount,
-  sessionEmail,
-}: HealthSettingsPanelProps) {
-  const normalizedCity = currentCity?.trim();
-  const hasCurrentCity = Boolean(normalizedCity && normalizedCity !== '中国大陆');
-  const isSignedIn = Boolean(sessionEmail);
+export function HealthSettingsPanel(
+  _props: HealthSettingsPanelProps,
+) {
 
   const [alertSubscribed, setAlertSubscribed] = useState(() => {
     return localStorage.getItem('epidemic_alert_subscribed') === 'true';
@@ -49,8 +42,7 @@ export function HealthSettingsPanel({
           </p>
         </div>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
-          <div className="grid gap-4">
+        <div className="mt-4 grid gap-4">
             <div className="rounded-xl border border-slate-200 px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -142,47 +134,6 @@ export function HealthSettingsPanel({
                 <p className="mt-2 text-xs text-emerald-600">{importResult}</p>
               )}
             </div>
-          </div>
-
-          <aside className="space-y-3">
-            <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-cyan-50 via-white to-blue-50 px-4 py-4">
-              <p className="text-xs font-medium tracking-[0.08em] text-slate-500">当前账号与数据</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-2xl border border-white/80 bg-white/90 px-3 py-3">
-                  <p className="text-sm font-semibold text-slate-900">{conversationCount} 段历史会话</p>
-                  <p className="mt-1 text-[13px] text-slate-500">
-                    {pendingFollowUpCount > 0
-                      ? `还有 ${pendingFollowUpCount} 项待跟进，可结合侧栏和记录中心继续处理。`
-                      : '当前没有待跟进项目，可按自己的节奏继续问诊。'}
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/80 bg-white/90 px-3 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-xl bg-slate-100 p-2 text-slate-600">
-                      <UserRound size={15} />
-                    </div>
-                    <p className="text-sm font-medium text-slate-800">
-                      {isSignedIn ? '已连接云端账号' : '本地模式'}
-                    </p>
-                  </div>
-                  <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                    {isSignedIn
-                      ? '偏好设置保存在本机浏览器，问诊记录仍按现有同步方式继续管理。'
-                      : '这些偏好同样会保存在本机，后续登录后也不会覆盖你已有的问诊内容。'}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
-                      {hasCurrentCity ? `档案城市 · ${normalizedCity}` : '尚未填写档案城市'}
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
-                      即时生效
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </aside>
         </div>
       </section>
     </div>

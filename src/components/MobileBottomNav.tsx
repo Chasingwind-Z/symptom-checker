@@ -77,20 +77,20 @@ export function MobileBottomNav({
       style={{ paddingBottom: 'env(safe-area-inset-bottom)', height: `${MOBILE_BOTTOM_NAV_HEIGHT}px` }}
     >
       <TabButton
-        label="\u95ee\u8bca"
+        label="问诊"
         icon={MessageSquare}
         isActive={activePrimaryTab === 'chat'}
         onClick={onSelectChat}
       />
       <TabButton
-        label="\u8bb0\u5f55"
+        label="记录"
         icon={ClipboardList}
         isActive={activePrimaryTab === 'records'}
         badge={recordsBadge}
         onClick={onSelectRecords}
       />
       <TabButton
-        label="\u6211\u7684"
+        label="我的"
         icon={User}
         isActive={activePrimaryTab === 'profile'}
         badge={profileBadge}

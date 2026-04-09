@@ -115,7 +115,6 @@ export function AppSidebar({
   onToggleCollapse,
   accountLabel,
   statusLabel,
-  statusHelperText,
   profileCompletion,
   pendingFollowUpCount,
   onOpenAuth,
@@ -239,9 +238,7 @@ export function AppSidebar({
             <div className="min-w-0">
               <p className="truncate text-[13px] font-medium text-slate-900">{statusLabel}</p>
               <p className="mt-0.5 truncate text-xs text-slate-500">{resolvedAccountLabel}</p>
-              {statusHelperText && (
-                <p className="mt-1 text-xs leading-relaxed text-slate-400">{statusHelperText}</p>
-              )}
+
             </div>
             {onOpenAuth && authActionLabel && (
               <button
