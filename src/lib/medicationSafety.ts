@@ -312,6 +312,10 @@ export function checkMedicationSafety(
   return results
 }
 
+export function checkNewDrugVsProfile(newDrug: string, currentMeds: string[]): SafetyCheckResult[] {
+  return checkMedicationSafety([newDrug], currentMeds);
+}
+
 export function formatSafetyWarningsForAI(results: SafetyCheckResult[]): string {
   if (results.length === 0) return ''
   const lines = results.map(

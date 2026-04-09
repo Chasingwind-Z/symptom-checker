@@ -1,7 +1,7 @@
 import { loadSkills } from '../lib/skillLoader';
 import { getHistoryContextForAI, detectFamilyCrossInfection } from '../lib/symptomTracking';
 import { getMedicineBoxSummary } from '../lib/familyMedicineBox';
-import { getMetricsSummaryForAI } from '../lib/healthMetrics';
+import { getMetricsSummaryForAI, getMetricsTrendSummary } from '../lib/healthMetrics';
 import { SEASONAL_SYMPTOM_PATTERNS } from '../lib/symptomKB';
 import type { AgentBadge, AgentId, AgentRoute, AgentStep, SymptomInfo } from '../types';
 import { careNavigatorAgent } from './careNavigatorAgent';
@@ -306,6 +306,13 @@ function buildContextNotes(context: AgentPromptContext): string[] {
         consultationMode.subtitle ? `（${consultationMode.subtitle}）` : ''
       }。${consultationMode.promptNote}\n注意：如果用户只是选择了模式但还没给出具体症状，不要假设已经知道病情，先请对方描述这次最主要的不适。${extra}`
     );
+
+    if (consultationMode.id === 'chronic') {
+      const trend = getMetricsTrendSummary();
+      if (trend) {
+        notes.push(`【用户近期健康指标趋势】\n${trend}\n请在问诊时结合这些数据，当症状可能与指标变化相关时主动提及。`);
+      }
+    }
   }
 
   if (recentCases.length > 0) {

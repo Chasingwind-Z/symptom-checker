@@ -44,6 +44,15 @@ export function HealthMetricsTracker() {
     setInputSecondary('');
   }, [activeTab, inputPrimary, inputSecondary, mealContext]);
 
+  const trendText = useMemo(() => {
+    if (entries.length < 3) return '';
+    const avg = Math.round(entries.reduce((s, e) => s + e.valuePrimary, 0) / entries.length);
+    const diff = entries[entries.length - 1].valuePrimary - entries[0].valuePrimary;
+    const unit = activeTab === 'blood_pressure' ? 'mmHg' : activeTab === 'blood_sugar' ? 'mmol/L' : 'bpm';
+    const direction = diff > 5 ? '↑ 有上升趋势' : diff < -5 ? '↓ 有下降趋势' : '→ 较平稳';
+    return `近${entries.length}次均值 ${avg}${unit}，${direction}`;
+  }, [entries, activeTab]);
+
   const refRange = activeTab === 'blood_pressure'
     ? '正常: <140/90'
     : activeTab === 'blood_sugar'
@@ -134,6 +143,12 @@ export function HealthMetricsTracker() {
         </div>
       ) : (
         <p className="text-xs text-slate-400 text-center py-4">暂无记录，开始记录第一条</p>
+      )}
+
+      {entries.length >= 3 && (
+        <p className="text-xs text-slate-500 mt-2">
+          {trendText || '继续记录以获取趋势分析'}
+        </p>
       )}
     </div>
   );

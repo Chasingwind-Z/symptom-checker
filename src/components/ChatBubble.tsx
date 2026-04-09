@@ -6,6 +6,8 @@ import type { ChatDensityPreference } from '../lib/experienceSettings';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import { useGuardianTheme } from '../hooks/useGuardianTheme';
 import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
+import { readLocalProfileDraft } from '../lib/healthData';
+import { checkNewDrugVsProfile } from '../lib/medicationSafety';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { ToolCallIndicator } from './ToolCallIndicator';
@@ -346,6 +348,19 @@ export function ChatBubble({
     return matches.slice(0, 3);
   }, [message.content, message.role]);
 
+  const drugSafetyMap = useMemo(() => {
+    const profileMeds = (readLocalProfileDraft().currentMedications || '').split(/[,，、\s]+/).filter(Boolean);
+    if (profileMeds.length === 0 || detectedDrugs.length === 0) return {};
+    const map: Record<string, 'safe' | 'warning' | 'danger'> = {};
+    for (const drug of detectedDrugs) {
+      const results = checkNewDrugVsProfile(drug.name, profileMeds);
+      if (results.some(r => r.interaction.severity === 'high')) map[drug.name] = 'danger';
+      else if (results.length > 0) map[drug.name] = 'warning';
+      else map[drug.name] = 'safe';
+    }
+    return map;
+  }, [detectedDrugs]);
+
   const drugChips = detectedDrugs.length > 0 ? (
     <div className="flex flex-wrap gap-1.5 mt-2">
       <span className="text-xs text-slate-400 mr-1 self-center">相关药品：</span>
@@ -363,6 +378,8 @@ export function ChatBubble({
         >
           <ShoppingCart size={11} />
           {drug.name}
+          {drugSafetyMap[drug.name] === 'danger' && <span className="text-red-500 ml-0.5">✗</span>}
+          {drugSafetyMap[drug.name] === 'warning' && <span className="text-amber-500 ml-0.5">⚠</span>}
         </button>
       ))}
     </div>

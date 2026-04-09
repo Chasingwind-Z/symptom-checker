@@ -85,6 +85,24 @@ export interface MetricAlert {
   severity: 'warning' | 'danger';
 }
 
+
+export function getMetricsTrendSummary(): string {
+  const bp = getRecentMetrics('blood_pressure', 7);
+  const sugar = getRecentMetrics('blood_sugar', 7);
+  const lines: string[] = [];
+
+  if (bp.length >= 3) {
+    const avgSystolic = Math.round(bp.reduce((s, m) => s + m.valuePrimary, 0) / bp.length);
+    const trend = bp[bp.length - 1].valuePrimary - bp[0].valuePrimary;
+    lines.push(`近${bp.length}次血压均值${avgSystolic}mmHg，${trend > 10 ? '有上升趋势' : trend < -10 ? '有下降趋势' : '较平稳'}`);
+  }
+  if (sugar.length >= 2) {
+    const avg = (sugar.reduce((s, m) => s + m.valuePrimary, 0) / sugar.length).toFixed(1);
+    lines.push(`近${sugar.length}次血糖均值${avg}mmol/L`);
+  }
+  return lines.join('；') || '';
+}
+
 export function checkMetricAlerts(): MetricAlert[] {
   const alerts: MetricAlert[] = [];
 
