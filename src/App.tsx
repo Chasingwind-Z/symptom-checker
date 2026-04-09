@@ -20,7 +20,6 @@ import { LazySurfaceFallback } from './components/LazySurfaceFallback';
 import {
   type RecordsCenterSummaryItem,
 } from './components/RecordsCenterPanel';
-import type { ConnectedWebSearchState } from './components/SearchIntelligencePanel';
 import { ShellStatusBanner } from './components/ShellStatusBanner';
 import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { MobileBottomNav, MOBILE_BOTTOM_NAV_HEIGHT } from './components/MobileBottomNav';
@@ -32,33 +31,23 @@ import { useChat } from './hooks/useChat';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { usePwaInstall } from './hooks/usePwaInstall';
-import { searchWebSources } from './lib/agentTools';
 import { deleteCaseHistoryItem } from './lib/healthData';
 import {
   getConsultationModePreset,
   type ConsultationModeId,
 } from './lib/consultationModes';
 import { getRecommendedHospitals } from './lib/mockHospitals';
-import { searchMedicalKnowledge } from './lib/medicalKnowledge';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
 import {
   buildProfileCompletionGuide,
   type HouseholdProfileRecord,
 } from './lib/healthWorkspaceInsights';
 import {
-  DEFAULT_EXPERIENCE_SETTINGS,
   loadExperienceSettings,
   saveExperienceSettings,
-  type ChatDensityPreference,
-  type DesktopSidebarMode,
-  type LocationPreference,
-  type OfficialSourcePreference,
 } from './lib/experienceSettings';
 import {
-  applyPersonalizedOrdering,
   buildCombinedMedicalNotes,
-  buildPersonalizationRankingContext,
-  getMedicationGuidance,
 } from './lib/personalization';
 import { saveAppointment } from './lib/followUpRecords';
 import { requestPushPermission, scheduleFollowUpNotification } from './lib/pushNotification';
@@ -67,11 +56,8 @@ import {
   findMatchingConversation,
   formatDateTimeLabel,
   getCaseSourceLabel,
-  getConversationReferenceText,
   getConversationSourceLabel,
   getReportCount,
-  matchesSearchQuery,
-  normalizeRecordKey,
   trimText,
 } from './lib/appShellUtils';
 import type { Hospital, SendMessageInput } from './types';
@@ -154,7 +140,6 @@ export default function App() {
     weatherData,
     activeSessionId,
     conversationSessions,
-    locationData,
     pendingFollowUpRecords,
     completedFollowUpRecords,
     activeFollowUpRecord,
@@ -178,12 +163,8 @@ export default function App() {
   const [reportCount, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map' | 'b2b'>('home');
-  const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('history');
+  const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('records');
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
-  const [recordSearchQuery, setRecordSearchQuery] = useState('');
-  const [connectedWebSearch, setConnectedWebSearch] = useState<ConnectedWebSearchState>({
-    status: 'idle',
-  });
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [switchingHouseholdProfileId, setSwitchingHouseholdProfileId] = useState<string | null>(null);
   const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
@@ -386,7 +367,7 @@ export default function App() {
   }, [defaultWorkspaceSection]);
 
   const handleOpenSettings = useCallback(() => {
-    handleOpenWorkspaceSection('settings');
+    handleOpenWorkspaceSection('profile');
   }, [handleOpenWorkspaceSection]);
 
   const handleChatInputLayoutChange = useCallback((nextLayout: ChatInputLayoutMetrics) => {
@@ -399,57 +380,11 @@ export default function App() {
     );
   }, []);
 
-  const handleDesktopSidebarModeChange = useCallback((value: DesktopSidebarMode) => {
-    setExperienceSettings((current) =>
-      current.desktopSidebarMode === value ? current : { ...current, desktopSidebarMode: value }
-    );
-  }, []);
-
-  const handleLocationPreferenceChange = useCallback((value: LocationPreference) => {
-    setExperienceSettings((current) =>
-      current.locationPreference === value ? current : { ...current, locationPreference: value }
-    );
-  }, []);
-
-  const handleOfficialSourcePreferenceChange = useCallback((value: OfficialSourcePreference) => {
-    setExperienceSettings((current) =>
-      current.officialSourcePreference === value
-        ? current
-        : { ...current, officialSourcePreference: value }
-    );
-  }, []);
-
-  const handleChatDensityChange = useCallback((value: ChatDensityPreference) => {
-    setExperienceSettings((current) =>
-      current.chatDensity === value ? current : { ...current, chatDensity: value }
-    );
-  }, []);
-
   const handleToggleSidebarCollapse = useCallback(() => {
     setExperienceSettings((current) => ({
       ...current,
       desktopSidebarMode: current.desktopSidebarMode === 'collapsed' ? 'expanded' : 'collapsed',
     }));
-  }, []);
-
-  const handleResetExperienceSettings = useCallback(() => {
-    setExperienceSettings({ ...DEFAULT_EXPERIENCE_SETTINGS });
-  }, []);
-
-  const handleRecordSearchChange = useCallback((value: string) => {
-    setRecordSearchQuery(value);
-    setConnectedWebSearch(
-      value.trim()
-        ? {
-            status: 'loading',
-            sourceLabel: '公开资料检索',
-          }
-        : { status: 'idle' }
-    );
-    if (value.trim()) {
-      setWorkspaceSection('search');
-      setCurrentPage('workspace');
-    }
   }, []);
 
   const handleOpenMap = useCallback(() => {
@@ -618,192 +553,8 @@ export default function App() {
     workspace.recentCases,
   ]);
 
-  const normalizedSearchQuery = useMemo(
-    () => normalizeRecordKey(recordSearchQuery),
-    [recordSearchQuery]
-  );
-  const knowledgeSearchPreview = useMemo(
-    () =>
-      normalizedSearchQuery ? searchMedicalKnowledge(recordSearchQuery.trim(), { limit: 8 }) : null,
-    [normalizedSearchQuery, recordSearchQuery]
-  );
-
-  useEffect(() => {
-    if (workspaceSection !== 'search' || !recordSearchQuery.trim()) return;
-
-    let cancelled = false;
-    const query = recordSearchQuery.trim();
-    const timeoutId = window.setTimeout(() => {
-      void searchWebSources(query)
-        .then((result) => {
-          if (cancelled) return;
-          setConnectedWebSearch({
-            status: 'ready',
-            sourceLabel: result.sourceLabel,
-            fetchedAt: result.fetchedAt,
-            message: result.message,
-            results: result.results,
-          });
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setConnectedWebSearch({
-            status: 'error',
-            sourceLabel: '公开资料检索',
-            message: '联网检索暂时不可用，可先查看本地知识命中或改用外部搜索。',
-          });
-        });
-    }, 450);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-    };
-  }, [recordSearchQuery, workspaceSection]);
-
-  const personalizationRankingContext = useMemo(
-    () =>
-      buildPersonalizationRankingContext({
-        profile: workspace.profile,
-        recentCases: workspace.recentCases,
-        recentSessions: conversationSessions,
-      }),
-    [conversationSessions, workspace.profile, workspace.recentCases]
-  );
-
-  const matchedConversationSessions = useMemo(() => {
-    if (!normalizedSearchQuery) return conversationSessions;
-
-    return conversationSessions.filter((session) =>
-      [
-        session.title,
-        getConversationReferenceText(session),
-        session.diagnosisResult?.reason,
-        session.diagnosisResult?.action,
-        session.diagnosisResult?.departments.join(' '),
-      ].some((value) => matchesSearchQuery(value, normalizedSearchQuery))
-    );
-  }, [conversationSessions, normalizedSearchQuery]);
-
-  const personalizedConversationSearch = useMemo(() => {
-    if (!normalizedSearchQuery) {
-      return { items: matchedConversationSessions, changed: false };
-    }
-
-    return applyPersonalizedOrdering(
-      matchedConversationSessions,
-      (session) => [
-        session.title,
-        getConversationReferenceText(session),
-        session.diagnosisResult?.reason,
-        session.diagnosisResult?.action,
-        session.diagnosisResult?.departments.join(' '),
-      ],
-      personalizationRankingContext
-    );
-  }, [matchedConversationSessions, normalizedSearchQuery, personalizationRankingContext]);
-
-  const filteredConversationSessions = personalizedConversationSearch.items;
-
-  const matchedRecordsCenterFollowUps = useMemo(() => {
-    if (!normalizedSearchQuery) return recordsCenterFollowUps;
-
-    return recordsCenterFollowUps.filter((item) =>
-      [
-        item.title,
-        item.summary,
-        item.statusLabel,
-        item.metaLabel,
-        item.sourceLabel,
-        item.tags?.join(' '),
-        item.riskLevel ?? '',
-      ].some((value) => matchesSearchQuery(value, normalizedSearchQuery))
-    );
-  }, [normalizedSearchQuery, recordsCenterFollowUps]);
-
-  const personalizedRecordsCenterFollowUps = useMemo(() => {
-    if (!normalizedSearchQuery) {
-      return { items: matchedRecordsCenterFollowUps, changed: false };
-    }
-
-    return applyPersonalizedOrdering(
-      matchedRecordsCenterFollowUps,
-      (item) => [
-        item.title,
-        item.summary,
-        item.statusLabel,
-        item.metaLabel,
-        item.sourceLabel,
-        item.tags?.join(' '),
-        item.riskLevel ?? '',
-      ],
-      personalizationRankingContext
-    );
-  }, [matchedRecordsCenterFollowUps, normalizedSearchQuery, personalizationRankingContext]);
-
-  const filteredRecordsCenterFollowUps = personalizedRecordsCenterFollowUps.items;
-
-  const matchedRecordsCenterSummaries = useMemo(() => {
-    if (!normalizedSearchQuery) return recordsCenterSummaries;
-
-    return recordsCenterSummaries.filter((item) =>
-      [
-        item.title,
-        item.summary,
-        item.metaLabel,
-        item.sourceLabel,
-        item.departments?.join(' '),
-        item.riskLevel ?? '',
-      ].some((value) => matchesSearchQuery(value, normalizedSearchQuery))
-    );
-  }, [normalizedSearchQuery, recordsCenterSummaries]);
-
-  const personalizedRecordsCenterSummaries = useMemo(() => {
-    if (!normalizedSearchQuery) {
-      return { items: matchedRecordsCenterSummaries, changed: false };
-    }
-
-    return applyPersonalizedOrdering(
-      matchedRecordsCenterSummaries,
-      (item) => [
-        item.title,
-        item.summary,
-        item.metaLabel,
-        item.sourceLabel,
-        item.departments?.join(' '),
-        item.riskLevel ?? '',
-      ],
-      personalizationRankingContext
-    );
-  }, [matchedRecordsCenterSummaries, normalizedSearchQuery, personalizationRankingContext]);
-
-  const filteredRecordsCenterSummaries = personalizedRecordsCenterSummaries.items;
-
-  const filteredCaseCount = useMemo(() => {
-    if (!normalizedSearchQuery) return workspace.recentCases.length;
-
-    return workspace.recentCases.filter((item) =>
-      [
-        item.chiefComplaint,
-        item.assistantPreview,
-        item.departments.join(' '),
-        item.triageLevel,
-        item.status,
-      ].some((value) => matchesSearchQuery(String(value ?? ''), normalizedSearchQuery))
-    ).length;
-  }, [normalizedSearchQuery, workspace.recentCases]);
-
-  const medicationBadgeCount = useMemo(() => {
-    if (!diagnosisResult) return 0;
-    return getMedicationGuidance(diagnosisResult, workspace.profile).filter((item) => item.suitable)
-      .length;
-  }, [diagnosisResult, workspace.profile]);
-
-  const searchPersonalizationHintVisible =
-    Boolean(normalizedSearchQuery) &&
-    (personalizedConversationSearch.changed ||
-      personalizedRecordsCenterFollowUps.changed ||
-      personalizedRecordsCenterSummaries.changed);
+  const filteredConversationSessions = conversationSessions;
+
   const normalizedProfileCity = workspace.profile.city?.trim();
   const localCity =
     experienceSettings.locationPreference === 'none'
@@ -830,19 +581,17 @@ export default function App() {
   // Mobile bottom nav is visible on home and workspace pages; hidden during active chat
   // so it never overlaps the floating ChatInput.
   const showMobileBottomNav = effectivePage !== 'chat';
-  const mobileBottomNavActivePrimaryTab: 'chat' | 'search' | 'records' | 'profile' | null =
-    showWorkspace && workspaceSection === 'search'
-      ? 'search'
-      : showWorkspace && workspaceSection === 'records'
-        ? 'records'
-        : showWorkspace && workspaceSection === 'profile'
-          ? 'profile'
-          : effectivePage === 'home'
-            ? 'chat'
-            : null;
+  const mobileBottomNavActivePrimaryTab: 'chat' | 'records' | 'profile' | null =
+    showWorkspace && workspaceSection === 'records'
+      ? 'records'
+      : showWorkspace && workspaceSection === 'profile'
+        ? 'profile'
+        : effectivePage === 'home'
+          ? 'chat'
+          : null;
 
   const contentWidthClass = showWorkspace
-    ? workspaceSection === 'profile' || workspaceSection === 'settings'
+    ? workspaceSection === 'profile'
       ? 'max-w-6xl'
       : 'max-w-5xl'
     : showWelcome
@@ -882,53 +631,19 @@ export default function App() {
   const pageHeader = useMemo(() => {
     if (effectivePage === 'workspace') {
       switch (workspaceSection) {
-        case 'search':
-          return {
-            title: '查记录',
-            subtitle: recordSearchQuery.trim()
-              ? `已筛到 ${filteredConversationSessions.length} 段会话、${filteredRecordsCenterFollowUps.length} 项待跟进、${filteredCaseCount} 条摘要线索，并同步联动知识库与公开资料${
-                    searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                  }`
-              : '按症状、标题、科室或建议快速查找历史会话、医学知识和公开资料。',
-          };
         case 'profile':
           return {
-            title: '我的资料',
-            subtitle: '管理基础资料、家庭成员和云端同步，后续问诊会自动沿用这些信息。',
+            title: '我的',
+            subtitle: '管理基础资料、家庭成员、偏好设置和云端同步，后续问诊会自动沿用这些信息。',
           };
-        case 'evidence':
-          return {
-            title: '为什么这样建议',
-            subtitle: '把这次分级的主要原因、医学知识参考和公开资料核对点整理在一起，方便理解为什么这样建议。',
-          };
-        case 'history':
-          return {
-            title: '历史问诊',
-            subtitle: recordSearchQuery.trim()
-              ? `已按“${recordSearchQuery}”筛选历史线程${
-                    searchPersonalizationHintVisible ? '，并结合档案与最近记录微调排序。' : '。'
-                  }`
-              : '所有问诊会按线程保存，方便随时回到原上下文继续咨询。',
-          };
-        case 'medication':
-          return {
-            title: '服务入口',
-            subtitle:
-              '把最近问诊里的 OTC / 家庭处理方向前置展示出来，并保留风险提醒与回到原线程的入口。',
-          };
-        case 'settings':
-          return {
-            title: '偏好设置',
-            subtitle:
-              '调整侧栏宽度、定位使用方式、资料展示顺序和聊天排版；更改只保存在当前浏览器。',
-          };
+        case 'records':
         default:
           return {
-            title: '记录与跟进',
+            title: '记录',
             subtitle:
               pendingFollowUpRecords.length > 0
                 ? `当前有 ${pendingFollowUpRecords.length} 项待跟进，建议优先处理。`
-                : '最近摘要与随访记录会集中显示在这里。',
+                : '历史会话、摘要与随访记录会集中显示在这里。',
           };
       }
     }
@@ -957,14 +672,9 @@ export default function App() {
     currentConversationTitle,
     diagnosisResult,
     effectivePage,
-    filteredCaseCount,
-    filteredConversationSessions.length,
-    filteredRecordsCenterFollowUps.length,
     pendingFollowUpRecords.length,
-    recordSearchQuery,
-    searchPersonalizationHintVisible,
     workspaceSection,
-  ]);
+  ]);;
 
   const shellBanner = !network.isOnline
     ? {
@@ -1071,32 +781,24 @@ export default function App() {
       )}
       {!isConsulting && (
         <AppSidebar
-          activeSection={showWorkspace ? workspaceSection : null}
-          searchQuery={recordSearchQuery}
+          activeSection={showWorkspace ? workspaceSection : (effectivePage === 'chat' || effectivePage === 'home' ? 'chat' : null)}
           sessions={filteredConversationSessions}
           activeSessionId={activeSessionId}
           onOpenSession={handleOpenConversation}
           onDeleteSession={handleDeleteConversation}
           onStartNewSession={handleResetChat}
-          onSelectSearch={() => handleOpenWorkspaceSection('search')}
-          onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
+          onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
           onSelectProfile={() => handleOpenWorkspaceSection('profile')}
-          onSelectHistory={() => handleOpenWorkspaceSection('history')}
           onSelectRecords={() => handleOpenWorkspaceSection('records')}
-          onSelectMedication={() => handleOpenWorkspaceSection('medication')}
-          onSelectSettings={handleOpenSettings}
-          onOpenMap={handleOpenMap}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={handleToggleSidebarCollapse}
           onOpenAuth={handleOpenAuthDialog}
           authActionLabel={authActionLabel}
           sessionEmail={workspace.sessionEmail}
-          currentCity={localCity}
           statusLabel={workspace.statusLabel}
           statusHelperText={workspace.helperText}
           profileCompletion={profileCompletion}
           pendingFollowUpCount={pendingFollowUpRecords.length}
-          medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
         />
       )}
 
@@ -1166,19 +868,11 @@ export default function App() {
               <WorkspaceView
                 workspaceSection={workspaceSection}
                 onSelectSection={handleOpenWorkspaceSection}
-                recordSearchQuery={recordSearchQuery}
-                onRecordSearchChange={handleRecordSearchChange}
                 filteredConversationSessions={filteredConversationSessions}
                 activeSessionId={activeSessionId}
                 onOpenSession={handleOpenConversation}
                 onDeleteSession={handleDeleteConversation}
                 onStartNewSession={handleResetChat}
-                filteredRecordsCenterFollowUps={filteredRecordsCenterFollowUps}
-                filteredRecordsCenterSummaries={filteredRecordsCenterSummaries}
-                filteredCaseCount={filteredCaseCount}
-                knowledgeSearchPreview={knowledgeSearchPreview}
-                connectedWebSearch={connectedWebSearch}
-                searchPersonalizationHintVisible={searchPersonalizationHintVisible}
                 workspaceMode={workspace.mode}
                 workspaceStatusLabel={workspace.statusLabel}
                 workspaceHelperText={workspace.helperText}
@@ -1195,19 +889,9 @@ export default function App() {
                 onRemoveHouseholdProfile={workspace.deleteHouseholdProfile}
                 onOpenWorkspaceSection={handleOpenWorkspaceSection}
                 onOpenAuth={handleOpenAuthDialog}
-                experienceSettings={experienceSettings}
                 currentCity={localCity}
                 conversationCount={conversationSessions.length}
-                conversationSessions={conversationSessions}
                 pendingFollowUpCount={pendingFollowUpRecords.length}
-                onDesktopSidebarModeChange={handleDesktopSidebarModeChange}
-                onLocationPreferenceChange={handleLocationPreferenceChange}
-                onOfficialSourcePreferenceChange={handleOfficialSourcePreferenceChange}
-                onChatDensityChange={handleChatDensityChange}
-                onResetExperienceSettings={handleResetExperienceSettings}
-                diagnosisResult={diagnosisResult}
-                locationData={locationData}
-                onOpenConversation={handleOpenConversation}
                 recordsCenterFollowUps={recordsCenterFollowUps}
                 recordsCenterSummaries={recordsCenterSummaries}
               />
@@ -1400,7 +1084,7 @@ export default function App() {
                       hospitalSectionMeta={hospitalSectionMeta}
                       consultationModeId={selectedConsultationModeId}
                       onReport={() => setReportCount(getReportCount())}
-                      onOpenMedicationHub={() => handleOpenWorkspaceSection('medication')}
+                      onOpenMedicationHub={() => handleOpenWorkspaceSection('records')}
                       onToggleMap={handleOpenMap}
                     />
                   </Suspense>
@@ -1433,19 +1117,9 @@ export default function App() {
           activePrimaryTab={mobileBottomNavActivePrimaryTab}
           pendingFollowUpCount={pendingFollowUpRecords.length}
           profileCompletion={profileCompletion}
-          medicationBadge={medicationBadgeCount > 0 ? String(medicationBadgeCount) : undefined}
-          currentCity={localCity}
-          authActionLabel={authActionLabel}
           onSelectChat={() => setCurrentPage(messages.length > 0 ? 'chat' : 'home')}
-          onSelectSearch={() => handleOpenWorkspaceSection('search')}
-          onSelectEvidence={() => handleOpenWorkspaceSection('evidence')}
           onSelectRecords={() => handleOpenWorkspaceSection('records')}
           onSelectProfile={() => handleOpenWorkspaceSection('profile')}
-          onSelectHistory={() => handleOpenWorkspaceSection('history')}
-          onSelectMedication={() => handleOpenWorkspaceSection('medication')}
-          onOpenMap={handleOpenMap}
-          onOpenSettings={handleOpenSettings}
-          onOpenAuth={handleOpenAuthDialog}
         />
       )}
 

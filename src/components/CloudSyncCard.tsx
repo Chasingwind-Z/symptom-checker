@@ -652,7 +652,7 @@ export function CloudSyncCard({
             <div className="mt-4 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => onOpenWorkspaceSection('history')}
+                onClick={() => onOpenWorkspaceSection('records')}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
               >
                 <MessageSquareText size={14} />
@@ -668,7 +668,7 @@ export function CloudSyncCard({
               </button>
               <button
                 type="button"
-                onClick={() => onOpenWorkspaceSection('medication')}
+                onClick={() => onOpenWorkspaceSection('records')}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
               >
                 <Pill size={14} />
@@ -688,7 +688,7 @@ export function CloudSyncCard({
                 onOpenWorkspaceSection ? (
                   <button
                     type="button"
-                    onClick={() => onOpenWorkspaceSection('history')}
+                    onClick={() => onOpenWorkspaceSection('records')}
                     className="inline-flex items-center gap-1 text-xs font-medium text-cyan-700 transition-colors hover:text-cyan-800"
                   >
                     查看全部
@@ -1174,7 +1174,7 @@ export function CloudSyncCard({
                     label="用药与家庭处理"
                     description="根据慢病、过敏和最近记录，查看更保守的 OTC / 家庭处理方向。"
                     icon={Pill}
-                    onClick={() => onOpenWorkspaceSection('medication')}
+                    onClick={() => onOpenWorkspaceSection('records')}
                     toneClass="border-cyan-100 bg-cyan-50/50 hover:border-cyan-200 hover:bg-cyan-50"
                   />
                 )}

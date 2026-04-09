@@ -3,13 +3,8 @@ import type { CaseHistoryItem } from './healthData'
 import type { ConversationSession } from '../types'
 
 export const WORKSPACE_TAB_LABELS: Record<SidebarSection, string> = {
-  search: '查记录',
-  evidence: '为什么这样建议',
-  profile: '我的资料',
-  history: '历史问诊',
-  records: '记录与跟进',
-  medication: '服务入口',
-  settings: '偏好设置',
+  records: '记录',
+  profile: '我的',
 }
 
 export function getReportCount(): number {

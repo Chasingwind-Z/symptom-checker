@@ -1,51 +1,33 @@
 import type { ComponentType } from 'react';
 import {
   ClipboardList,
-  HeartPulse,
-  History,
   LogIn,
-  MapPin,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
-  Pill,
   Plus,
-  Search,
-  Settings2,
-  ShieldCheck,
   Stethoscope,
+  User,
 } from 'lucide-react';
 import { maskEmail } from '../lib/supabase';
 import type { ConversationSession } from '../types';
 import { ConversationHistoryPanel } from './ConversationHistoryPanel';
 
-export type SidebarSection =
-  | 'search'
-  | 'evidence'
-  | 'profile'
-  | 'history'
-  | 'records'
-  | 'medication'
-  | 'settings';
+export type SidebarSection = 'records' | 'profile';
 
 export const DESKTOP_SIDEBAR_EXPANDED_WIDTH = 232;
 export const DESKTOP_SIDEBAR_COLLAPSED_WIDTH = 72;
 
 interface AppSidebarProps {
-  activeSection: SidebarSection | 'chat' | 'map' | null;
-  searchQuery: string;
+  activeSection: SidebarSection | 'chat' | null;
   sessions: ConversationSession[];
   activeSessionId?: string | null;
   onOpenSession: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
   onStartNewSession: () => void;
-  onSelectSearch: () => void;
-  onSelectEvidence: () => void;
+  onSelectChat: () => void;
   onSelectProfile: () => void;
-  onSelectHistory: () => void;
   onSelectRecords: () => void;
-  onSelectMedication: () => void;
-  onSelectSettings: () => void;
-  onOpenMap: () => void;
   isCollapsed?: boolean;
   onToggleCollapse: () => void;
   accountLabel?: string;
@@ -53,11 +35,9 @@ interface AppSidebarProps {
   statusHelperText?: string;
   profileCompletion: number;
   pendingFollowUpCount: number;
-  medicationBadge?: string;
   onOpenAuth?: () => void;
   authActionLabel?: string;
   sessionEmail?: string | null;
-  currentCity?: string | null;
 }
 
 interface SidebarNavButtonProps {
@@ -77,6 +57,28 @@ function SidebarNavButton({
   isCollapsed = false,
   badge,
 }: SidebarNavButtonProps) {
+  if (isCollapsed) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        title={label}
+        aria-label={label}
+        aria-current={isActive ? 'page' : undefined}
+        className={`relative flex w-full items-center justify-center rounded-xl px-0 py-2 text-left transition-colors ${
+          isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
+        }`}
+      >
+        <Icon size={16} />
+        {badge && (
+          <span className="absolute right-2 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-xs font-medium text-white">
+            {badge}
+          </span>
+        )}
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -84,31 +86,14 @@ function SidebarNavButton({
       title={label}
       aria-label={label}
       aria-current={isActive ? 'page' : undefined}
-      className={`relative flex w-full items-center rounded-xl text-left transition-colors ${
-        isCollapsed
-          ? `justify-center px-0 py-2 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`
-          : `gap-2 px-2.5 py-1.5 ${isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+        isActive ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
       }`}
     >
-      <span
-        className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-          isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400'
-        }`}
-      >
-        <Icon size={16} />
-      </span>
-      {!isCollapsed && (
-        <>
-          <span className="min-w-0 flex-1 text-[13px] font-medium">{label}</span>
-          {badge && (
-            <span className="shrink-0 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-500">
-              {badge}
-            </span>
-          )}
-        </>
-      )}
-      {isCollapsed && badge && (
-        <span className="absolute right-2 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-xs font-medium text-white">
+      <Icon size={16} />
+      <span className="min-w-0 flex-1">{label}</span>
+      {badge && (
+        <span className="shrink-0 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-500">
           {badge}
         </span>
       )}
@@ -118,20 +103,14 @@ function SidebarNavButton({
 
 export function AppSidebar({
   activeSection,
-  searchQuery,
   sessions,
   activeSessionId,
   onOpenSession,
   onDeleteSession,
   onStartNewSession,
-  onSelectSearch,
-  onSelectEvidence,
+  onSelectChat,
   onSelectProfile,
-  onSelectHistory,
   onSelectRecords,
-  onSelectMedication,
-  onSelectSettings,
-  onOpenMap,
   isCollapsed = false,
   onToggleCollapse,
   accountLabel,
@@ -139,28 +118,15 @@ export function AppSidebar({
   statusHelperText,
   profileCompletion,
   pendingFollowUpCount,
-  medicationBadge,
   onOpenAuth,
   authActionLabel,
   sessionEmail,
-  currentCity,
 }: AppSidebarProps) {
-  const normalizedSearchQuery = searchQuery.trim();
-  const featuredSession =
-    sessions.find((session) => session.id === activeSessionId) ?? sessions[0] ?? null;
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : '';
-  const resolvedAccountLabel = accountLabel ?? (maskedSessionEmail || '本地使用中');
-  const normalizedCity = currentCity?.trim();
-  const localCity = normalizedCity && normalizedCity !== '中国大陆' ? normalizedCity : null;
+  const resolvedAccountLabel = accountLabel ?? (maskedSessionEmail || '游客使用中');
   const accountInitial = resolvedAccountLabel.trim().charAt(0) || '游';
   const pendingBadge =
     pendingFollowUpCount > 0 ? `${Math.min(9, pendingFollowUpCount)}${pendingFollowUpCount > 9 ? '+' : ''}` : undefined;
-  const historyBadge =
-    featuredSession?.riskLevel === 'red'
-      ? '紧急'
-      : featuredSession?.riskLevel === 'orange'
-        ? '高风险'
-        : undefined;
 
   return (
     <aside
@@ -204,25 +170,15 @@ export function AppSidebar({
       </button>
 
       <nav className={`mt-2 ${isCollapsed ? 'space-y-1.5' : 'space-y-0.5'}`}>
-        {!isCollapsed && (
-          <p className="px-2 pb-1 text-xs font-medium tracking-[0.08em] text-slate-400">主功能</p>
-        )}
         <SidebarNavButton
-          label="查记录"
-          isActive={activeSection === 'search'}
-          onClick={onSelectSearch}
-          icon={Search}
+          label="问诊"
+          isActive={activeSection === 'chat'}
+          onClick={onSelectChat}
+          icon={MessageSquare}
           isCollapsed={isCollapsed}
         />
         <SidebarNavButton
-          label="为什么这样建议"
-          isActive={activeSection === 'evidence'}
-          onClick={onSelectEvidence}
-          icon={ShieldCheck}
-          isCollapsed={isCollapsed}
-        />
-        <SidebarNavButton
-          label="记录与跟进"
+          label="记录"
           isActive={activeSection === 'records'}
           onClick={onSelectRecords}
           icon={ClipboardList}
@@ -230,51 +186,14 @@ export function AppSidebar({
           badge={pendingBadge}
         />
         <SidebarNavButton
-          label="服务入口"
-          isActive={activeSection === 'medication'}
-          onClick={onSelectMedication}
-          icon={Pill}
-          isCollapsed={isCollapsed}
-          badge={medicationBadge}
-        />
-        <SidebarNavButton
-          label="健康地图"
-          isActive={activeSection === 'map'}
-          onClick={onOpenMap}
-          icon={MapPin}
-          isCollapsed={isCollapsed}
-          badge={localCity ? '本地' : undefined}
-        />
-      </nav>
-
-      <div className="mt-2 border-t border-slate-100 pt-2">
-        {!isCollapsed && (
-          <p className="px-2 pb-1 text-xs font-medium tracking-[0.08em] text-slate-400">个人</p>
-        )}
-        <SidebarNavButton
-          label="我的资料"
+          label="我的"
           isActive={activeSection === 'profile'}
           onClick={onSelectProfile}
-          icon={HeartPulse}
+          icon={User}
           isCollapsed={isCollapsed}
           badge={profileCompletion >= 100 ? '已完成' : `${profileCompletion}%`}
         />
-        <SidebarNavButton
-          label="历史问诊"
-          isActive={activeSection === 'history'}
-          onClick={onSelectHistory}
-          icon={History}
-          isCollapsed={isCollapsed}
-          badge={historyBadge}
-        />
-        <SidebarNavButton
-          label="偏好设置"
-          isActive={activeSection === 'settings'}
-          onClick={onSelectSettings}
-          icon={Settings2}
-          isCollapsed={isCollapsed}
-        />
-      </div>
+      </nav>
 
       {!isCollapsed && (
         <div className="mt-2 min-h-0 flex-1 overflow-hidden">
@@ -283,17 +202,9 @@ export function AppSidebar({
             activeSessionId={activeSessionId}
             onOpenSession={onOpenSession}
             onDeleteSession={onDeleteSession}
-            title={normalizedSearchQuery ? '匹配会话' : '最近会话'}
-            description={
-              normalizedSearchQuery
-                ? `按“${searchQuery}”筛到的线程`
-                : '最近线程会固定展示在左侧，方便随时继续。'
-            }
-            emptyMessage={
-              normalizedSearchQuery
-                ? '没有找到匹配的会话，试试症状、科室或建议关键词。'
-                : '还没有历史会话。完成一次问诊后，线程会自动出现在这里。'
-            }
+            title="最近会话"
+            description="最近线程会固定展示在左侧，方便随时继续。"
+            emptyMessage="还没有历史会话。完成一次问诊后，线程会自动出现在这里。"
             maxItems={6}
             variant="sidebar"
             showStartButton={false}
