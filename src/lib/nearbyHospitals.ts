@@ -1,4 +1,5 @@
 import type { Hospital, RiskLevel } from '../types';
+import { getHospitalsByCity, filterHospitalsByRisk } from './mockHospitals';
 
 const WEB_KEY = import.meta.env.VITE_AMAP_WEB_KEY as string;
 
@@ -78,8 +79,14 @@ const KEYWORD_BY_LEVEL: Record<RiskLevel, string> = {
 export async function searchNearbyHospitals(
   longitude: number,
   latitude: number,
-  level: RiskLevel
+  level: RiskLevel,
+  city?: string
 ): Promise<Hospital[]> {
+  // When AMAP key is not configured, fall back to city-based mock data
+  if (!WEB_KEY) {
+    return filterHospitalsByRisk(getHospitalsByCity(city || '北京'), level);
+  }
+
   const isUrgent = level === 'red' || level === 'orange';
   // 090100 综合医院 | 090101 三甲 | 090200 专科 | 090300 诊所 | 090400 药店
   const types = isUrgent
