@@ -706,11 +706,11 @@ export function ResultCard({
       case 'green':
         return { label: '买药备着', icon: <ShoppingCart size={16} />, action: 'jd' as const };
       case 'yellow':
-        return { label: '找附近诊所', icon: <MapPin size={16} />, action: 'hospital' as const };
+        return { label: '找今日门诊', icon: <MapPin size={16} />, action: 'hospital' as const };
       case 'orange':
-        return { label: '今日门诊', icon: <MapPin size={16} />, action: 'hospital' as const };
+        return { label: '找今日门诊(紧急)', icon: <MapPin size={16} />, action: 'hospital' as const };
       case 'red':
-        return { label: '拨打120', icon: <Phone size={16} />, action: 'call120' as const };
+        return { label: '立即拨打120', icon: <Phone size={16} />, action: 'call120' as const };
     }
   }, [result.level]);
 
@@ -745,12 +745,13 @@ export function ResultCard({
   const secondaryCTA = useMemo(() => {
     switch (result.level) {
       case 'green':
-        return { label: '准备就诊', icon: <ClipboardList size={14} />, action: 'visit_card' as const };
+        return { label: '查附近社区诊所', icon: <MapPin size={14} />, action: 'hospital' as const };
       case 'yellow':
+        return { label: '下载就诊摘要', icon: <ClipboardList size={14} />, action: 'visit_card' as const };
       case 'orange':
-        return { label: '准备就诊', icon: <ClipboardList size={14} />, action: 'visit_card' as const };
+        return { label: '拨打120备用', icon: <Phone size={14} />, action: 'call120' as const };
       case 'red':
-        return { label: '附近急诊', icon: <MapPin size={14} />, action: 'hospital' as const };
+        return { label: '查最近急诊', icon: <MapPin size={14} />, action: 'hospital' as const };
     }
   }, [result.level]);
 
@@ -829,10 +830,10 @@ export function ResultCard({
 
       {/* Top gradient header */}
       <div className={`px-6 py-5 ${
-        result.level === 'green' ? 'bg-gradient-to-r from-emerald-50 to-emerald-100' :
-        result.level === 'yellow' ? 'bg-gradient-to-r from-amber-50 to-amber-100' :
-        result.level === 'orange' ? 'bg-gradient-to-r from-orange-50 to-orange-100' :
-        'bg-gradient-to-r from-red-50 to-red-100'
+        result.level === 'green' ? 'bg-gradient-to-r from-emerald-500 to-teal-600' :
+        result.level === 'yellow' ? 'bg-gradient-to-r from-amber-500 to-amber-600' :
+        result.level === 'orange' ? 'bg-gradient-to-r from-orange-500 to-orange-600' :
+        'bg-gradient-to-r from-red-500 to-red-600'
       }`}>
         <div className="flex items-center gap-3">
           <span className="text-3xl">{
@@ -841,25 +842,30 @@ export function ResultCard({
             result.level === 'orange' ? '🟠' : '🔴'
           }</span>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">{
+            <h2 className="text-xl font-bold text-white">{
               result.level === 'green' ? '可居家观察' :
               result.level === 'yellow' ? '建议尽快就诊' :
               result.level === 'orange' ? '建议今日就医' : '请立即急诊'
             }</h2>
-            <p className="text-sm text-slate-600 mt-0.5">{result.reason}</p>
+            <p className="text-sm text-white/80 mt-0.5">{result.reason}</p>
           </div>
         </div>
         <div className="flex gap-3 mt-4">
           <button
             onClick={() => handleCTAClick(primaryCTA.action)}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-semibold text-slate-800 shadow-sm hover:shadow-md transition-shadow"
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold shadow-sm hover:shadow-md transition-shadow ${
+              result.level === 'green' ? 'text-emerald-600' :
+              result.level === 'yellow' ? 'text-amber-600' :
+              result.level === 'orange' ? 'text-orange-600' :
+              'text-red-600'
+            }`}
           >
             {primaryCTA.icon}
             {primaryCTA.label}
           </button>
           <button
             onClick={() => handleCTAClick(secondaryCTA.action)}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white/70 py-3 text-sm font-medium text-slate-600 hover:bg-white transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white/20 border border-white/40 py-2.5 text-sm font-medium text-white hover:bg-white/30 transition-colors"
           >
             {secondaryCTA.icon}
             {secondaryCTA.label}
@@ -868,13 +874,13 @@ export function ResultCard({
         <div className="flex items-center gap-2 mt-3">
           <button
             onClick={handleShareToFamily}
-            className="flex items-center gap-1.5 rounded-xl bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-white transition-colors"
+            className="flex items-center gap-1.5 rounded-xl bg-white/20 border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors"
           >
             <Share2 size={14} />
             发给家人
           </button>
           {shareCopied && (
-            <span className="text-xs text-emerald-600 font-medium animate-pulse">已复制，可粘贴发送</span>
+            <span className="text-xs text-white font-medium animate-pulse">已复制，可粘贴发送</span>
           )}
         </div>
       </div>

@@ -3,6 +3,7 @@ import type { SidebarSection } from './AppSidebar'
 import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 import { HealthSettingsPanel } from './HealthSettingsPanel'
 import { LazySurfaceFallback } from './LazySurfaceFallback'
+import { MedicineBoxPanel } from './MedicineBoxPanel'
 import {
   RecordsCenterPanel,
   type RecordsCenterFollowUpItem,
@@ -165,6 +166,7 @@ export function WorkspaceView({
             pendingFollowUpCount={pendingFollowUpCount}
             sessionEmail={sessionEmail}
           />
+          <MedicineBoxPanel />
         </div>
       )}
 
