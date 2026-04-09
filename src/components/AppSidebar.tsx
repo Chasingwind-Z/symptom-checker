@@ -149,7 +149,7 @@ export function AppSidebar({
   const featuredSession =
     sessions.find((session) => session.id === activeSessionId) ?? sessions[0] ?? null;
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : '';
-  const resolvedAccountLabel = accountLabel ?? (maskedSessionEmail || '游客使用中');
+  const resolvedAccountLabel = accountLabel ?? (maskedSessionEmail || '本地使用中');
   const normalizedCity = currentCity?.trim();
   const localCity = normalizedCity && normalizedCity !== '中国大陆' ? normalizedCity : null;
   const accountInitial = resolvedAccountLabel.trim().charAt(0) || '游';

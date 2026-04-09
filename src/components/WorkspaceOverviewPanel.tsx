@@ -33,7 +33,7 @@ export function WorkspaceOverviewPanel({
 }: WorkspaceOverviewPanelProps) {
   const riskMeta = getRiskPresentation(latestCase?.triageLevel ?? latestConversation?.riskLevel ?? null);
   const latestTitle = latestCase?.chiefComplaint || latestConversation?.title || '还没有历史问诊';
-  const accountLabel = sessionEmail ? maskEmail(sessionEmail) : '游客使用中';
+  const accountLabel = sessionEmail ? maskEmail(sessionEmail) : '本地使用中';
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
@@ -85,7 +85,7 @@ export function WorkspaceOverviewPanel({
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{accountLabel}</p>
           <p className="mt-1 text-xs text-slate-500">
-            {sessionEmail ? '资料与历史会自动跨设备同步' : '未登录时仅保存在当前浏览器'}
+            {sessionEmail ? '资料与历史会自动跨设备同步' : '资料保存在当前浏览器'}
           </p>
         </div>
 

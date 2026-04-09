@@ -443,7 +443,7 @@ export function HealthSettingsPanel({
                       <UserRound size={15} />
                     </div>
                     <p className="text-sm font-medium text-slate-800">
-                      {isSignedIn ? '已连接云端账号' : '当前为游客模式'}
+                      {isSignedIn ? '已连接云端账号' : '本地模式'}
                     </p>
                   </div>
                   <p className="mt-2 text-[13px] leading-relaxed text-slate-500">

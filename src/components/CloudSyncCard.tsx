@@ -1,16 +1,11 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import {
-  Activity,
-  AlertCircle,
   ArrowRight,
-  CheckCircle2,
   ChevronDown,
   ClipboardList,
   Cloud,
-  Clock3,
   FileDown,
   FileText,
-  HeartPulse,
   LogIn,
   MapPin,
   MessageSquareText,
@@ -29,7 +24,6 @@ import {
   buildHealthDigest,
   buildHealthTimeline,
   buildNearbyPharmacyUrl,
-  buildProfileCompletionGuide,
   buildWorkspaceShareText,
   type HouseholdProfileRecord,
 } from '../lib/healthWorkspaceInsights';
@@ -204,31 +198,6 @@ function SectionCard({
   );
 }
 
-function OverviewMetricCard({
-  icon: Icon,
-  label,
-  value,
-  description,
-  toneClass,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  description: string;
-  toneClass: string;
-}) {
-  return (
-    <div className={`rounded-2xl border px-4 py-3 ${toneClass}`}>
-      <div className="flex items-center gap-2 text-xs text-slate-500">
-        <Icon size={13} />
-        {label}
-      </div>
-      <p className="mt-2 text-lg font-semibold text-slate-900">{value}</p>
-      <p className="mt-1 text-xs leading-relaxed text-slate-600">{description}</p>
-    </div>
-  );
-}
-
 function ShortcutTile({
   label,
   description,
@@ -315,6 +284,7 @@ export function CloudSyncCard({
   const [householdFeedback, setHouseholdFeedback] = useState<FeedbackState | null>(null);
   const [reportFeedback, setReportFeedback] = useState<FeedbackState | null>(null);
   const demoPersonas = getDemoPersonaSummaries();
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     setDraft(profile);
@@ -344,8 +314,7 @@ export function CloudSyncCard({
 
   const isSignedIn = Boolean(sessionEmail);
   const isCloudConfigured = mode === 'cloud-ready' || mode === 'cloud-session';
-  const completionGuide = useMemo(() => buildProfileCompletionGuide(draft), [draft]);
-  const timelineEntries = useMemo(() => buildHealthTimeline(recentCases), [recentCases]);
+  const timelineEntries= useMemo(() => buildHealthTimeline(recentCases), [recentCases]);
   const digest = useMemo(
     () => buildHealthDigest(recentCases, recentCases.length >= 3 ? 'month' : 'week'),
     [recentCases]
@@ -354,16 +323,16 @@ export function CloudSyncCard({
     () => new Map(recentCases.map((item) => [item.id, item] as const)),
     [recentCases]
   );
-  const latestCase = recentCases[0];
-  const latestRisk = getRiskPresentation(latestCase?.triageLevel ?? null);
   const dominantDepartment = useMemo(() => getDominantDepartment(recentCases), [recentCases]);
-  const priorityCount = recentCases.filter(
-    (item) => item.triageLevel === 'orange' || item.triageLevel === 'red'
-  ).length;
-  const openCaseCount = recentCases.filter((item) => item.status === 'active').length;
   const currentAgeLabel = getAgeLabel(draft.birthYear);
   const currentRelationshipLabel = getRelationshipLabel(draft);
   const currentProfileLabel = draft.displayName.trim() || '未命名档案';
+  const profileOneLiner = [
+    currentAgeLabel,
+    draft.gender || null,
+    draft.allergies ? `过敏:${trimText(draft.allergies, 12)}` : null,
+    draft.chronicConditions ? `慢病:${trimText(draft.chronicConditions, 12)}` : null,
+  ].filter(Boolean).join(' · ') || '尚未填写基础信息';
   const nearbyPharmacyUrl = useMemo(() => buildNearbyPharmacyUrl(draft.city), [draft.city]);
   const nearbyClinicUrl = useMemo(
     () => buildNearbyClinicUrl(draft.city, dominantDepartment),
@@ -386,9 +355,7 @@ export function CloudSyncCard({
     householdProfiles.find((record) => record.id === selectedHouseholdId) ?? null;
   const syncBadgeLabel = isSignedIn
     ? '云端同步已开启'
-    : isCloudConfigured
-      ? '登录后可同步'
-      : '仅当前浏览器保存';
+    : '仅本地保存';
   const syncBadgeClasses = isSignedIn
     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
     : isCloudConfigured
@@ -597,7 +564,7 @@ export function CloudSyncCard({
 
   const accountHint = isSignedIn
     ? '资料与最近问诊会优先尝试跨设备同步'
-    : '未登录时仅保存在当前浏览器';
+    : '资料保存在当前浏览器';
 
   const overviewCards = [
     {
@@ -705,7 +672,7 @@ export function CloudSyncCard({
                 <div className="min-w-[180px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <p className="text-xs text-slate-500">当前账号</p>
                   <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-                    {isSignedIn ? maskEmail(sessionEmail ?? '') : '游客模式'}
+                    {isSignedIn ? maskEmail(sessionEmail ?? '') : '本地模式'}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">{accountHint}</p>
                 </div>

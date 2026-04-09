@@ -460,12 +460,12 @@ export function WelcomeScreen({
 
       {/* Status + input prompt area */}
       <div className="rounded-3xl border border-slate-200 bg-white/95 px-5 pb-5 pt-4 shadow-sm">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
-          <span className={`h-1.5 w-1.5 rounded-full ${sessionEmail ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-          {sessionEmail
-            ? `已登录 · ${maskedSessionEmail}${cloudSessions.length > 0 ? ` · ${cloudSessions.length} 段问诊可继续` : ''}`
-            : '未登录 · 仅本设备保存'}
-        </div>
+        {sessionEmail && (
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+            {`已登录 · ${maskedSessionEmail}${cloudSessions.length > 0 ? ` · ${cloudSessions.length} 段问诊可继续` : ''}`}
+          </div>
+        )}
 
         {/* eslint-disable-next-line no-constant-binary-expression */}
         {false && (

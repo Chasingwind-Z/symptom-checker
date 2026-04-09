@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import {
   AppSidebar,
   DESKTOP_SIDEBAR_COLLAPSED_WIDTH,
@@ -104,6 +105,9 @@ export default function App() {
   const [welcomeFocusSignal, setWelcomeFocusSignal] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showShareBanner, setShowShareBanner] = useState(false);
+  const [guestBannerDismissed, setGuestBannerDismissed] = useState(
+    () => localStorage.getItem('guest_banner_dismissed') === 'true'
+  );
 
   useEffect(() => {
     const id = window.setTimeout(() => setShowOnboarding(!localStorage.getItem('onboarding_done')), 0);
@@ -1115,6 +1119,26 @@ export default function App() {
           }}
           diagnosisRiskLevel={diagnosisResult?.level ?? null}
         />
+
+        {!workspace.sessionEmail && !guestBannerDismissed && (
+          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-2">
+            <p className="text-xs text-slate-500">
+              游客模式 · 数据保存在本设备 ·{' '}
+              <button onClick={handleOpenAuthDialog} className="text-blue-500 hover:underline">
+                登录同步到云端
+              </button>
+            </p>
+            <button
+              onClick={() => {
+                setGuestBannerDismissed(true);
+                localStorage.setItem('guest_banner_dismissed', 'true');
+              }}
+              className="text-slate-400 hover:text-slate-600"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {!showWorkspace && !isConsulting && (
           <InfoBar
