@@ -60,6 +60,7 @@ import {
   getMedicationGuidance,
 } from './lib/personalization';
 import { saveAppointment } from './lib/followUpRecords';
+import { requestPushPermission, scheduleFollowUpNotification } from './lib/pushNotification';
 import {
   findMatchingCase,
   findMatchingConversation,
@@ -1325,6 +1326,16 @@ export default function App() {
                               scheduledAt: pendingFollowUp.date,
                               note: pendingFollowUp.note,
                               originalSessionId: activeSessionId || undefined,
+                            });
+                            requestPushPermission().then(granted => {
+                              if (granted) {
+                                const delayMs = new Date(pendingFollowUp.date).getTime() - Date.now() - 24 * 60 * 60 * 1000;
+                                scheduleFollowUpNotification(
+                                  delayMs,
+                                  '复诊提醒',
+                                  '您有一个复诊预约即将到期，建议今天安排就医'
+                                );
+                              }
                             });
                             setPendingFollowUp(null);
                           }}
