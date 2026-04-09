@@ -959,15 +959,22 @@ export default function App() {
                   isLoading={isLoading}
                   hasStreamingContent={Boolean(streamingContent)}
                 />
-                {messages.map((msg) => (
-                  <ChatBubble
-                    key={msg.id}
-                    message={msg}
-                    onQuickReply={handleSendMessage}
-                    diagnosisResult={!!diagnosisResult}
-                    density={experienceSettings.chatDensity}
-                  />
-                ))}
+                {(() => {
+                  let assistantCount = 0;
+                  return messages.map((msg) => {
+                    if (msg.role === 'assistant') assistantCount++;
+                    return (
+                      <ChatBubble
+                        key={msg.id}
+                        message={msg}
+                        onQuickReply={handleSendMessage}
+                        diagnosisResult={!!diagnosisResult}
+                        density={experienceSettings.chatDensity}
+                        assistantMessageIndex={msg.role === 'assistant' ? assistantCount : undefined}
+                      />
+                    );
+                  });
+                })()}
 
                 {streamingContent && (
                   <ChatBubble

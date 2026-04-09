@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
@@ -22,7 +23,7 @@ import {
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
-import { getDistrictRiskData, getActiveCity, fetchCityAggregation, detectLocalSurgeAlert, type SurgeAlert } from '../lib/epidemicDataEngine'
+import { getActiveCity, fetchCityAggregation, detectLocalSurgeAlert, type SurgeAlert } from '../lib/epidemicDataEngine'
 import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate'
 import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
 import { DailyCheckin } from './DailyCheckin'
@@ -294,39 +295,23 @@ export function WelcomeScreen({
     const cityName = getActiveCity()
     setTrendCity(cityName)
 
+    // Only show real Supabase data — no seededRandom fallback on WelcomeScreen
     fetchCityAggregation(cityName || '北京').then(agg => {
-      if (agg) {
+      if (agg && agg.totalReports > 0) {
         window.setTimeout(() => setTodayReportCount(agg.totalReports), 0)
+
+        const topSymptoms = agg.topSymptoms.slice(0, 3)
+        if (topSymptoms.length > 0) {
+          const maxCount = topSymptoms[0]?.count ?? 1
+          const trends = topSymptoms.map(({ symptom, count }) => {
+            const heat = Math.min(99, Math.max(10, Math.round((count / maxCount) * 65 + 20)))
+            const color = heat >= 60 ? 'red' : heat >= 40 ? 'amber' : 'emerald'
+            return { symptom, heat, color }
+          })
+          setTrendData(trends)
+        }
       }
     })
-
-    const districts = getDistrictRiskData(cityName)
-    const symptomAgg: Record<string, { count: number; totalScore: number }> = {}
-
-    for (const d of districts) {
-      for (const s of d.topSymptoms) {
-        if (!symptomAgg[s]) symptomAgg[s] = { count: 0, totalScore: 0 }
-        symptomAgg[s].count++
-        symptomAgg[s].totalScore += d.riskScore
-      }
-    }
-
-    const sorted = Object.entries(symptomAgg)
-      .map(([symptom, { count, totalScore }]) => ({
-        symptom,
-        rawHeat: (totalScore / count) * (count / districts.length),
-      }))
-      .sort((a, b) => b.rawHeat - a.rawHeat)
-      .slice(0, 3)
-
-    const maxRaw = sorted[0]?.rawHeat ?? 1
-    const trends = sorted.map(({ symptom, rawHeat }) => {
-      const heat = Math.min(99, Math.max(10, Math.round((rawHeat / maxRaw) * 65 + 20)))
-      const color = heat >= 60 ? 'red' : heat >= 40 ? 'amber' : 'emerald'
-      return { symptom, heat, color }
-    })
-
-    setTrendData(trends)
   }, [])
 
   const personalizedScenarios = buildPersonalizedScenarios({
@@ -522,15 +507,13 @@ export function WelcomeScreen({
       </div>
 
       {/* Community health trend card */}
-      {trendData.length > 0 ? (
+      {trendData.length > 0 && todayReportCount != null && todayReportCount > 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm">
           <p className="text-xs font-medium text-slate-600">
             📍 {localCityLabel || trendCity} · 今日社区健康动态
-            {todayReportCount != null && todayReportCount > 0 && (
-              <span className="ml-1 text-slate-400">
-                · 今日已有 {todayReportCount} 人参与健康上报
-              </span>
-            )}
+            <span className="ml-1 text-slate-400">
+              · 今日已有 {todayReportCount} 人参与健康上报
+            </span>
           </p>
           <div className="mt-3 space-y-2.5">
             {trendData.map((item) => (
@@ -569,13 +552,18 @@ export function WelcomeScreen({
           )}
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm">
-          <p className="text-xs font-medium text-slate-600">
-            📍 {localCityLabel || trendCity} · 今日社区健康动态
-          </p>
-          <p className="mt-2 text-sm text-blue-600 font-medium">
-            成为首个健康数据贡献者 →
-          </p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Activity size={14} className="text-slate-400" />
+              <p className="text-xs text-slate-500">本地健康数据积累中</p>
+            </div>
+            {onOpenEpidemicDashboard && (
+              <button onClick={onOpenEpidemicDashboard} className="text-xs text-blue-500">
+                查看详情 →
+              </button>
+            )}
+          </div>
         </div>
       )}
 

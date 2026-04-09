@@ -32,6 +32,7 @@ interface ChatBubbleProps {
   onQuickReply?: (text: string) => void;
   diagnosisResult?: boolean;
   density?: ChatDensityPreference;
+  assistantMessageIndex?: number;
 }
 
 function formatTime(date: Date): string {
@@ -241,6 +242,7 @@ export function ChatBubble({
   onQuickReply,
   diagnosisResult,
   density = 'comfortable',
+  assistantMessageIndex,
 }: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const guardianTheme = useGuardianTheme();
@@ -432,6 +434,21 @@ export function ChatBubble({
               {getQuestionIcon(displayContent)}
             </div>
             <div className={`text-slate-700 ${bubbleTextClass}`}>
+              {isQuestionPhase && assistantMessageIndex != null && assistantMessageIndex > 0 && (
+                <div className="flex items-center gap-1.5 mb-2">
+                  {[1, 2, 3].map(i => (
+                    <div
+                      key={i}
+                      className={`h-1 rounded-full transition-all ${
+                        i <= assistantMessageIndex ? 'w-5 bg-blue-400' : 'w-2 bg-slate-200'
+                      }`}
+                    />
+                  ))}
+                  <span className="text-xs text-slate-400 ml-1">
+                    {assistantMessageIndex < 3 ? `还有约${3 - assistantMessageIndex}个问题` : '即将给出建议'}
+                  </span>
+                </div>
+              )}
               {agentSummary}
               {toolCallSummary}
               <AssistantMarkdown content={displayContent} />
