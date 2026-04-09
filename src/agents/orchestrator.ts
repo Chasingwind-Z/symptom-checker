@@ -2,6 +2,7 @@ import { loadSkills } from '../lib/skillLoader';
 import { getHistoryContextForAI, detectFamilyCrossInfection } from '../lib/symptomTracking';
 import { getMedicineBoxSummary } from '../lib/familyMedicineBox';
 import { getMetricsSummaryForAI } from '../lib/healthMetrics';
+import { SEASONAL_SYMPTOM_PATTERNS } from '../lib/symptomKB';
 import type { AgentBadge, AgentId, AgentRoute, AgentStep, SymptomInfo } from '../types';
 import { careNavigatorAgent } from './careNavigatorAgent';
 import { evidenceAgent } from './evidenceAgent';
@@ -382,6 +383,12 @@ function buildContextNotes(context: AgentPromptContext): string[] {
         '、'
       )}。如用户继续追问医院、天气或风险变化，可结合工具给出更具体建议。`
     );
+  }
+
+  const month = new Date().getMonth();
+  const seasonal = SEASONAL_SYMPTOM_PATTERNS[month];
+  if (seasonal) {
+    notes.push(`【季节性提醒】${seasonal.context}。高发关键词：${seasonal.keywords.join('、')}。`);
   }
 
   return notes;

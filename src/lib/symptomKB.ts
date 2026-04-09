@@ -1,5 +1,62 @@
 import type { RiskLevel, SymptomInfo } from '../types';
 
+export interface ChineseOTCDrug {
+  name: string;
+  aliases: string[];
+  indications: string[];
+  contraindications: string[];
+  interactions: string[];
+  category: string;
+}
+
+export const CHINESE_OTC_DRUGS: ChineseOTCDrug[] = [
+  { name: '藿香正气水', aliases: ['藿香正气液','藿香正气口服液'], indications: ['中暑','胃肠感冒','恶心呕吐','腹胀腹泻'], contraindications: ['酒精过敏'], interactions: ['头孢类抗生素'], category: '消化' },
+  { name: '板蓝根颗粒', aliases: ['板蓝根'], indications: ['风热感冒','咽喉肿痛','扁桃体炎'], contraindications: ['脾胃虚寒'], interactions: [], category: '感冒' },
+  { name: '连花清瘟胶囊', aliases: ['连花清瘟'], indications: ['流感','发热','咳嗽','肌肉酸痛'], contraindications: ['孕妇'], interactions: ['退烧药(对乙酰氨基酚)'], category: '感冒' },
+  { name: '小柴胡颗粒', aliases: ['小柴胡'], indications: ['感冒少阳证','寒热往来','胸胁苦满','食欲不振'], contraindications: [], interactions: [], category: '感冒' },
+  { name: '六味地黄丸', aliases: ['六味地黄'], indications: ['肾阴虚','腰膝酸软','头晕耳鸣','盗汗'], contraindications: ['脾胃虚弱','消化不良'], interactions: [], category: '补益' },
+  { name: '逍遥丸', aliases: ['逍遥散'], indications: ['肝郁脾虚','月经不调','胸闷','情绪低落'], contraindications: ['孕妇'], interactions: [], category: '调理' },
+  { name: '金银花露', aliases: ['金银花'], indications: ['上火','口腔溃疡','咽痛','热毒'], contraindications: ['脾胃虚寒'], interactions: [], category: '清热' },
+  { name: '蒲地蓝消炎口服液', aliases: ['蒲地蓝'], indications: ['咽炎','扁桃体炎','口腔炎','腮腺炎'], contraindications: [], interactions: [], category: '消炎' },
+  { name: '健胃消食片', aliases: ['健胃消食'], indications: ['消化不良','食欲不振','腹胀','积食'], contraindications: [], interactions: [], category: '消化' },
+  { name: '保和丸', aliases: [], indications: ['食积停滞','腹胀','嗳气','大便不调'], contraindications: [], interactions: [], category: '消化' },
+  { name: '复方丹参滴丸', aliases: ['丹参滴丸'], indications: ['胸闷','心绞痛','冠心病辅助'], contraindications: ['出血倾向'], interactions: ['抗凝药'], category: '心血管' },
+  { name: '速效救心丸', aliases: [], indications: ['心绞痛急性发作','胸闷气短'], contraindications: [], interactions: ['硝酸甘油'], category: '心血管' },
+  { name: '牛黄解毒片', aliases: ['牛黄解毒'], indications: ['上火','牙龈肿痛','口舌生疮','便秘'], contraindications: ['孕妇','长期服用'], interactions: [], category: '清热' },
+  { name: '三九感冒灵', aliases: ['感冒灵颗粒','感冒灵'], indications: ['感冒','头痛','鼻塞','流涕','咽痛'], contraindications: [], interactions: ['对乙酰氨基酚(成分重复)'], category: '感冒' },
+  { name: '双黄连口服液', aliases: ['双黄连'], indications: ['风热感冒','发热','咳嗽','咽痛'], contraindications: ['风寒感冒'], interactions: [], category: '感冒' },
+  { name: '清开灵颗粒', aliases: ['清开灵'], indications: ['上呼吸道感染','病毒性感冒','高热'], contraindications: ['脾胃虚寒','孕妇'], interactions: [], category: '感冒' },
+  { name: '银翘解毒片', aliases: ['银翘'], indications: ['风热感冒初期','咽痛','微恶风寒'], contraindications: [], interactions: [], category: '感冒' },
+  { name: '午时茶颗粒', aliases: ['午时茶'], indications: ['暑湿感冒','胃肠感冒','恶心呕吐'], contraindications: [], interactions: [], category: '感冒' },
+  { name: '香砂养胃丸', aliases: ['香砂养胃'], indications: ['胃痛','胃胀','消化不良','食欲差'], contraindications: [], interactions: [], category: '消化' },
+  { name: '胃苏颗粒', aliases: ['胃苏'], indications: ['胃脘胀痛','嗳气','反酸'], contraindications: [], interactions: [], category: '消化' },
+  { name: '安神补脑液', aliases: [], indications: ['失眠','神经衰弱','头晕','健忘'], contraindications: ['实热证'], interactions: ['镇静药'], category: '安神' },
+  { name: '天王补心丹', aliases: [], indications: ['心悸','失眠','多梦','健忘'], contraindications: ['脾胃虚弱'], interactions: [], category: '安神' },
+  { name: '云南白药', aliases: ['云南白药气雾剂','云南白药膏'], indications: ['跌打损伤','淤血肿痛','出血'], contraindications: ['孕妇'], interactions: ['抗凝药'], category: '外伤' },
+  { name: '正骨水', aliases: [], indications: ['跌打扭伤','肌肉酸痛','关节疼痛'], contraindications: ['皮肤破损'], interactions: [], category: '外伤' },
+  { name: '风油精', aliases: [], indications: ['蚊虫叮咬','头痛头晕','晕车','鼻塞'], contraindications: ['婴幼儿','皮肤破损'], interactions: [], category: '外用' },
+  { name: '皮炎平', aliases: ['复方醋酸地塞米松'], indications: ['皮炎','湿疹','皮肤瘙痒'], contraindications: ['真菌感染','长期使用'], interactions: [], category: '皮肤' },
+  { name: '马应龙痔疮膏', aliases: ['马应龙'], indications: ['痔疮','肛裂','肛周瘙痒'], contraindications: ['孕妇'], interactions: [], category: '肛肠' },
+  { name: '川贝枇杷膏', aliases: ['川贝枇杷','念慈菴'], indications: ['咳嗽','咽干','痰多'], contraindications: ['糖尿病(含糖)'], interactions: [], category: '止咳' },
+  { name: '急支糖浆', aliases: [], indications: ['急性支气管炎','咳嗽','痰黄'], contraindications: ['糖尿病'], interactions: [], category: '止咳' },
+  { name: '通宣理肺丸', aliases: ['通宣理肺'], indications: ['风寒咳嗽','鼻塞流涕','头痛'], contraindications: ['风热咳嗽'], interactions: [], category: '止咳' },
+];
+
+export const SEASONAL_SYMPTOM_PATTERNS: Record<number, { keywords: string[]; context: string }> = {
+  0: { keywords: ['流感','感冒','咳嗽','发烧'], context: '当前为冬季流感高发期' },
+  1: { keywords: ['流感','感冒','咳嗽'], context: '冬末流感仍活跃' },
+  2: { keywords: ['过敏','花粉','鼻炎','打喷嚏'], context: '春季花粉过敏高发' },
+  3: { keywords: ['过敏','花粉','鼻炎','皮疹'], context: '春季过敏症状高峰' },
+  4: { keywords: ['过敏','紫外线','晒伤'], context: '初夏过敏和紫外线风险' },
+  5: { keywords: ['中暑','腹泻','食物中毒','胃肠'], context: '夏季肠胃疾病和中暑风险增加' },
+  6: { keywords: ['中暑','腹泻','空调病','热射病'], context: '盛夏中暑高发' },
+  7: { keywords: ['中暑','腹泻','蚊虫叮咬'], context: '高温季节注意防暑和食品安全' },
+  8: { keywords: ['干燥','咽炎','皮肤干','鼻出血'], context: '秋季干燥，呼吸道和皮肤问题增多' },
+  9: { keywords: ['干燥','咽炎','过敏','感冒'], context: '秋季换季感冒增多' },
+  10: { keywords: ['感冒','流感','咳嗽','支气管炎'], context: '入冬流感季开始' },
+  11: { keywords: ['流感','感冒','冻伤','干燥'], context: '冬季流感高峰，注意保暖' },
+};
+
 interface RawSymptomInfo extends Omit<SymptomInfo, 'id' | 'default_min_level'> {
   default_min_level: '轻度' | '中度' | '重度';
 }
