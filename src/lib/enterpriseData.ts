@@ -1,3 +1,5 @@
+import { getSupabaseClient } from './supabase';
+
 const ORG_KEY = 'enterprise_org';
 const INVITE_CODE_LENGTH = 6;
 
@@ -67,6 +69,47 @@ export function getEnterpriseDashboardData(orgName: string): EnterpriseDashboard
     riskDistribution: { green: 68, yellow: 24, orange: 6, red: 2 },
     weeklyTrend: [15, 18, 22, 19, 25, 28, 20],
   };
+}
+
+export async function getEnterpriseDashboardDataAsync(orgName: string): Promise<EnterpriseDashboardData> {
+  try {
+    const supabase = getSupabaseClient();
+    if (!supabase) throw new Error('no client');
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { data, error } = await supabase
+      .from('anonymous_reports')
+      .select('symptoms, level, created_at')
+      .gte('created_at', sevenDaysAgo);
+
+    if (error || !data || data.length === 0) throw new Error('no data');
+
+    const totalReports = data.length;
+    const symptomCounts: Record<string, number> = {};
+    const levelCounts: Record<string, number> = {};
+
+    for (const row of data) {
+      if (row.symptoms) for (const s of row.symptoms) symptomCounts[s] = (symptomCounts[s] || 0) + 1;
+      if (row.level) levelCounts[row.level] = (levelCounts[row.level] || 0) + 1;
+    }
+
+    const topSymptoms = Object.entries(symptomCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count, trend: 'stable' as const }));
+
+    const total = Math.max(Object.values(levelCounts).reduce((a, b) => a + b, 0), 1);
+    const riskDistribution = {
+      green: Math.round(((levelCounts['green'] || 0) / total) * 100),
+      yellow: Math.round(((levelCounts['yellow'] || 0) / total) * 100),
+      orange: Math.round(((levelCounts['orange'] || 0) / total) * 100),
+      red: Math.round(((levelCounts['red'] || 0) / total) * 100),
+    };
+
+    return { orgName, totalReports, weeklyChange: 0, topSymptoms, riskDistribution, weeklyTrend: [totalReports] };
+  } catch {
+    return getEnterpriseDashboardData(orgName);
+  }
 }
 
 export const PRICING_TIERS = [

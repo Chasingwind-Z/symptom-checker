@@ -1,3 +1,5 @@
+import { getSupabaseClient } from './supabase';
+
 const METRICS_KEY = 'health_metrics';
 
 export type MetricType = 'blood_pressure' | 'blood_sugar' | 'heart_rate';
@@ -12,7 +14,7 @@ export interface HealthMetric {
   note?: string;
 }
 
-export function saveMetric(metric: Omit<HealthMetric, 'id'>): HealthMetric {
+export async function saveMetric(metric: Omit<HealthMetric, 'id'>): Promise<HealthMetric> {
   const items = getMetrics();
   const newMetric: HealthMetric = {
     ...metric,
@@ -20,6 +22,29 @@ export function saveMetric(metric: Omit<HealthMetric, 'id'>): HealthMetric {
   };
   items.push(newMetric);
   localStorage.setItem(METRICS_KEY, JSON.stringify(items.slice(-200)));
+
+  // Cloud sync (fire and forget)
+  try {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        Promise.resolve(
+          supabase.from('health_metrics_cloud').insert({
+            user_id: user.id,
+            type: metric.type,
+            value_primary: metric.valuePrimary,
+            value_secondary: metric.valueSecondary,
+            meal_context: metric.mealContext,
+            recorded_at: metric.recordedAt,
+          })
+        ).catch(() => {});
+      }
+    }
+  } catch {
+    // Ignore cloud sync failures
+  }
+
   return newMetric;
 }
 

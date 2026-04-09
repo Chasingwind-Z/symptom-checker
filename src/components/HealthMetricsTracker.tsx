@@ -31,15 +31,15 @@ export function HealthMetricsTracker() {
     const primary = parseFloat(inputPrimary);
     if (isNaN(primary)) return;
 
-    const metric = saveMetric({
+    saveMetric({
       type: activeTab,
       valuePrimary: primary,
       valueSecondary: activeTab === 'blood_pressure' ? parseFloat(inputSecondary) || undefined : undefined,
       mealContext: activeTab === 'blood_sugar' ? mealContext : undefined,
       recordedAt: new Date().toISOString(),
+    }).then(metric => {
+      setEntries(prev => [...prev.slice(-6), metric]);
     });
-
-    setEntries(prev => [...prev.slice(-6), metric]);
     setInputPrimary('');
     setInputSecondary('');
   }, [activeTab, inputPrimary, inputSecondary, mealContext]);

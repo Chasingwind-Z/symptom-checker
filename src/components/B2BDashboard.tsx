@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Building2, TrendingUp, TrendingDown, Minus, Users, Shield, BarChart3 } from 'lucide-react';
-import { getOrganization, createOrganization, getEnterpriseDashboardData, PRICING_TIERS, type Organization } from '../lib/enterpriseData';
+import { getOrganization, createOrganization, getEnterpriseDashboardDataAsync, PRICING_TIERS, type Organization, type EnterpriseDashboardData } from '../lib/enterpriseData';
 
 const RISK_COLORS: Record<string, string> = {
   green: 'bg-emerald-500', yellow: 'bg-amber-500', orange: 'bg-orange-500', red: 'bg-red-500',
@@ -36,9 +36,13 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
     return !!localStorage.getItem('partner_application');
   });
 
-  const data = useMemo(() => {
-    if (!org) return null;
-    return getEnterpriseDashboardData(org.name);
+  const [data, setData] = useState<EnterpriseDashboardData | null>(null);
+
+  useEffect(() => {
+    if (!org) return;
+    getEnterpriseDashboardDataAsync(org.name).then(d => {
+      window.setTimeout(() => setData(d), 0);
+    });
   }, [org]);
 
   const handleCreate = () => {
@@ -142,6 +146,30 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
   }
 
   if (!data) return null;
+
+  if (data.totalReports === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center justify-between mb-6">
+            <button onClick={onBack} className="text-sm text-blue-600">← 返回</button>
+            <div className="flex items-center gap-2">
+              <Building2 size={16} className="text-blue-600" />
+              <p className="text-sm font-semibold text-slate-800">{data.orgName}</p>
+            </div>
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] text-blue-600">
+              邀请码: {org!.inviteCode}
+            </span>
+          </div>
+          <div className="rounded-xl bg-white border border-slate-200 px-6 py-10 text-center">
+            <Users size={32} className="mx-auto text-slate-300 mb-3" />
+            <p className="text-sm font-medium text-slate-600">暂无员工数据，发送邀请码开始收集</p>
+            <p className="text-[11px] text-slate-400 mt-1">邀请码: {org!.inviteCode}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const maxTrend = Math.max(...data.weeklyTrend, 1);
   const totalRisk = Object.values(data.riskDistribution).reduce((a, b) => a + b, 0) || 1;
