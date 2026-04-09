@@ -1,17 +1,17 @@
-import { useState } from 'react'
-import {
-  ArrowRight,
-} from 'lucide-react'
+import { useState, useMemo } from 'react'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
 import type { WeatherData } from '../lib/geolocation'
 import type { ConversationSession } from '../types'
+import type { Population } from '../types'
 import {
   MODE_TO_POPULATION,
   type ConsultationModeId,
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
+import { generateSuggestions } from '../services/suggestions/generator'
 import { StatusStrip } from './StatusStrip'
+import { PopulationTabs } from './PopulationTabs'
 import { SuggestionCards } from './SuggestionCards'
 
 interface WelcomeScreenProps {
@@ -36,6 +36,13 @@ interface WelcomeScreenProps {
 
 const DEFAULT_PROFILE_CITY = '中国大陆'
 
+const POPULATION_TO_MODE: Record<Population, ConsultationModeId> = {
+  self: 'self',
+  pediatric: 'child',
+  geriatric: 'elderly',
+  chronic: 'chronic',
+}
+
 function normalizeText(value?: string | null) {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
 }
@@ -55,32 +62,6 @@ function wasUpdatedWithinOneDay(value: string) {
   return Date.now() - updatedAt.getTime() <= 24 * 60 * 60 * 1000
 }
 
-const GUARDIAN_MODES = [
-  {
-    id: 'self' as const,
-    emoji: '👤',
-    label: '我自己',
-    subtitle: '标准问诊',
-  },
-  {
-    id: 'child' as const,
-    emoji: '👶',
-    label: '孩子',
-    subtitle: '儿科优先',
-  },
-  {
-    id: 'elderly' as const,
-    emoji: '🧓',
-    label: '家里老人',
-    subtitle: '高风险优先',
-  },
-  {
-    id: 'chronic' as const,
-    emoji: '💊',
-    label: '慢病家属',
-    subtitle: '基础病叠加',
-  },
-] as const
 
 export function WelcomeScreen({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -120,15 +101,31 @@ export function WelcomeScreen({
     } catch { return false; }
   });
 
+  const [timeContext] = useState(() => {
+    const now = new Date();
+    return { hour: now.getHours(), month: now.getMonth() + 1 };
+  });
+
+  const currentPopulation = MODE_TO_POPULATION[selectedModeId || 'self'] || 'self';
+
+  const smartSuggestions = useMemo(() => {
+    return generateSuggestions({
+      population: currentPopulation,
+      hour: timeContext.hour,
+      month: timeContext.month,
+      recentQueries: [],
+    });
+  }, [currentPopulation, timeContext]);
+
   const normalizedProfileCity = normalizeText(profile?.city)
   const localCityLabel =
     normalizedProfileCity && normalizedProfileCity !== DEFAULT_PROFILE_CITY ? normalizedProfileCity : ''
   const weatherSummary = buildWeatherExperienceSummary(weather ?? null)
   const recentConversationChips = recentSessions.slice(0, 4)
   const latestSession = recentSessions[0] ?? null
-  const showReengagement = Boolean(
-    latestSession && (pendingFollowUpCount > 0 || wasUpdatedWithinOneDay(latestSession.updatedAt))
-  )
+  const pendingFollowup = latestSession && (pendingFollowUpCount > 0 || wasUpdatedWithinOneDay(latestSession.updatedAt))
+    ? { title: truncateText(getRecentSessionReference(latestSession) || latestSession.title, 24), sessionId: latestSession.id }
+    : null;
 
   return (
     <div className="space-y-4">
@@ -146,71 +143,26 @@ export function WelcomeScreen({
         <p className="text-xs text-slate-500 mt-1">30秒告诉你严不严重、要不要去医院</p>
       </div>
 
-      {/* Guardian Mode Cards — slim horizontal, 2×2 grid */}
-      <div className="grid grid-cols-2 gap-3 mt-5">
-        {GUARDIAN_MODES.map((mode) => {
-          const isSelected = selectedModeId === mode.id
-          return (
-            <button
-              key={mode.id}
-              type="button"
-              onClick={() => onSelectMode(mode.id)}
-              className={`group flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition-all ${
-                isSelected
-                  ? 'border-blue-400 bg-blue-50 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-blue-200 hover:shadow-sm'
-              }`}
-            >
-              <span className="text-2xl shrink-0">{mode.emoji}</span>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-800">{mode.label}</p>
-                <p className="text-xs text-slate-500 truncate">{mode.subtitle}</p>
-              </div>
-            </button>
-          )
-        })}
-      </div>
+      {/* Population tabs — horizontal filter */}
+      <PopulationTabs
+        value={currentPopulation}
+        onChange={(p) => {
+          const modeId = POPULATION_TO_MODE[p] || 'self';
+          onSelectMode(modeId);
+        }}
+      />
 
-      {/* Daily health check-in moved to StatusStrip */}
-
-      {/* Re-engagement card */}
-      {showReengagement && latestSession && (
-        <button
-          type="button"
-          onClick={() => onOpenConversation(latestSession.id)}
-          className="w-full rounded-3xl border border-amber-100 bg-amber-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-amber-100/70"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">
-                {pendingFollowUpCount > 0 ? `还有 ${pendingFollowUpCount} 项跟进未处理` : '上次问诊还有内容未完成'}
-              </p>
-              <p className="mt-1 truncate text-xs text-slate-600">
-                {truncateText(getRecentSessionReference(latestSession) || latestSession.title, 24)}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">点击继续，可接着之前的上下文提问。</p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-amber-700">
-              继续上次
-              <ArrowRight size={13} />
-            </span>
-          </div>
-        </button>
-      )}
-
-      {/* Suggestion cards — population-aware */}
-      <div className="mt-5">
+      {/* Smart suggestion cards — hero section */}
+      <div className="mt-3">
         <SuggestionCards
-          population={MODE_TO_POPULATION[selectedModeId || 'self'] || 'self'}
+          suggestions={smartSuggestions}
           onSelect={(query) => {
             onApplyStarterText(query);
           }}
+          pendingFollowup={pendingFollowup}
+          onOpenFollowup={(sessionId) => onOpenConversation(sessionId)}
         />
       </div>
-
-      <p className="text-center text-xs text-slate-400 mt-3">
-        或者直接在下方描述你的情况 ↓
-      </p>
 
       {/* Recent session chips */}
       {recentConversationChips.length > 0 && (
