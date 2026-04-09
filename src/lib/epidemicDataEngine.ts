@@ -22,7 +22,8 @@ export async function submitAnonymousReport(report: AnonymousReport): Promise<bo
       .from('anonymous_reports')
       .insert(report)
     return !error
-  } catch {
+  } catch (error) {
+    console.warn('Anonymous report failed:', error)
     return false
   }
 }
@@ -31,6 +32,26 @@ export async function fetchCityAggregation(city: string): Promise<CityAggregatio
   try {
     const client = getSupabaseClient()
     if (!client) return null
+
+    // Try RPC first
+    try {
+      const { data: rpcData } = await client.rpc('get_symptom_trends', { p_city: city })
+      if (rpcData && (rpcData as Record<string, unknown>[]).length > 0) {
+        const rows = rpcData as { symptom: string; cnt: number; report_date: string }[]
+        const totalReports = rows.reduce((sum, r) => sum + Number(r.cnt), 0)
+        const symptomCounts: Record<string, number> = {}
+        for (const r of rows) {
+          symptomCounts[r.symptom] = (symptomCounts[r.symptom] || 0) + Number(r.cnt)
+        }
+        const topSymptoms = Object.entries(symptomCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([symptom, count]) => ({ symptom, count }))
+        return { totalReports, topSymptoms, districtBreakdown: [] }
+      }
+    } catch {
+      // Fall back to direct query below
+    }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     const { data, error } = await client

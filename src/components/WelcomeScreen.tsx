@@ -534,7 +534,7 @@ export function WelcomeScreen({
       </div>
 
       {/* Community health trend card */}
-      {trendData.length > 0 && (
+      {trendData.length > 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm">
           <p className="text-xs font-medium text-slate-600">
             📍 {localCityLabel || trendCity} · 今日社区健康动态
@@ -579,6 +579,15 @@ export function WelcomeScreen({
               </button>
             </div>
           )}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm">
+          <p className="text-xs font-medium text-slate-600">
+            📍 {localCityLabel || trendCity} · 今日社区健康动态
+          </p>
+          <p className="mt-2 text-sm text-blue-600 font-medium">
+            成为首个健康数据贡献者 →
+          </p>
         </div>
       )}
 
