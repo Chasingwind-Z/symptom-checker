@@ -399,6 +399,15 @@ function buildContextNotes(context: AgentPromptContext): string[] {
     );
   }
 
+  // Time context for decision language (called from event handler context, not render)
+  const hour = new Date().getHours();
+  const isNightTime = hour >= 20 || hour < 7;
+  if (isNightTime) {
+    notes.push(`【当前为夜间${hour}点】照料者可能焦虑，结论必须明确"今晚"还是"明天"。夜间green级别应明确说"今晚不用去"。`);
+  } else {
+    notes.push(`【当前为白天${hour}点】正常门诊时间段，可以建议"今天去"或"明天去"。`);
+  }
+
   const month = new Date().getMonth();
   const seasonal = SEASONAL_SYMPTOM_PATTERNS[month];
   if (seasonal) {

@@ -224,25 +224,25 @@ const GUARDIAN_MODES = [
     id: 'self' as const,
     emoji: '👤',
     label: '我自己',
-    description: '成年人自查',
+    description: '自己不舒服，快速自查',
   },
   {
     id: 'child' as const,
     emoji: '👶',
     label: '孩子',
-    description: '14岁以下',
+    description: '孩子发烧/不舒服，帮我判断',
   },
   {
     id: 'elderly' as const,
     emoji: '🧓',
     label: '家里老人',
-    description: '60岁以上',
+    description: '老人有异常，该不该送医院',
   },
   {
     id: 'chronic' as const,
     emoji: '💊',
-    label: '慢病患者',
-    description: '有基础疾病',
+    label: '慢病家属',
+    description: '长期用药的家人，今天有变化',
   },
 ] as const
 
@@ -397,7 +397,9 @@ export function WelcomeScreen({
       {/* Compact header */}
       <div className="px-1 pt-2">
         <h1 className="text-xl font-bold text-slate-800">健康助手</h1>
-        <p className="mt-1 text-sm text-slate-500">今天在照顾谁？</p>
+        <p className="text-xs text-slate-500 mt-1">
+          为自己或家人判断：严不严重、要不要去医院
+        </p>
       </div>
 
       {/* Guardian Mode Cards — HERO position, 2×2 grid */}

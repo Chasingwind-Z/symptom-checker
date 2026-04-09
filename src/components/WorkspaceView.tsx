@@ -160,13 +160,13 @@ export function WorkspaceView({
               onOpenAuth={onOpenAuth}
             />
           </Suspense>
+          <MedicineBoxPanel />
           <HealthSettingsPanel
             currentCity={currentCity}
             conversationCount={conversationCount}
             pendingFollowUpCount={pendingFollowUpCount}
             sessionEmail={sessionEmail}
           />
-          <MedicineBoxPanel />
         </div>
       )}
 
