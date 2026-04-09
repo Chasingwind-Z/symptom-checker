@@ -25,6 +25,7 @@ import { ToolCallIndicator } from './components/ToolCallIndicator';
 import { MobileBottomNav, MOBILE_BOTTOM_NAV_HEIGHT } from './components/MobileBottomNav';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { InfoBar } from './components/WeatherBar';
+import { DisclaimerView } from './components/DisclaimerView';
 import { WorkspaceView } from './components/WorkspaceView';
 import { GuardianThemeProvider } from './contexts/GuardianThemeContext';
 import { useChat } from './hooks/useChat';
@@ -156,7 +157,7 @@ export default function App() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousShellStateRef = useRef<{
-    page: 'home' | 'chat' | 'workspace' | 'map' | 'b2b';
+    page: 'home' | 'chat' | 'workspace' | 'map' | 'b2b' | 'disclaimer';
     section: SidebarSection;
   }>({
     page: 'home',
@@ -164,7 +165,7 @@ export default function App() {
   });
   const [reportCount, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map' | 'b2b'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map' | 'b2b' | 'disclaimer'>('home');
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('records');
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
@@ -412,6 +413,14 @@ export default function App() {
       section: workspaceSection,
     };
     setCurrentPage('b2b');
+  }, [currentPage, workspaceSection]);
+
+  const handleOpenDisclaimer = useCallback(() => {
+    previousShellStateRef.current = {
+      page: currentPage === 'disclaimer' ? 'home' : currentPage,
+      section: workspaceSection,
+    };
+    setCurrentPage('disclaimer');
   }, [currentPage, workspaceSection]);
 
   const handleOpenAuthDialog = useCallback(() => {
@@ -720,7 +729,7 @@ export default function App() {
         : null;
 
   useEffect(() => {
-    document.title = `${currentPage === 'map' ? '健康地图' : currentPage === 'b2b' ? '企业健康看板' : pageHeader.title} · 健康助手`;
+    document.title = `${currentPage === 'map' ? '健康地图' : currentPage === 'b2b' ? '企业健康看板' : currentPage === 'disclaimer' ? '使用须知与免责声明' : pageHeader.title} · 健康助手`;
   }, [currentPage, pageHeader.title]);
 
   if (effectivePage === 'map') {
@@ -765,6 +774,18 @@ export default function App() {
           }}
         />
       </Suspense>
+    );
+  }
+
+  if (effectivePage === 'disclaimer') {
+    return (
+      <DisclaimerView
+        onBack={() => {
+          const previousShellState = previousShellStateRef.current;
+          setWorkspaceSection(previousShellState.section);
+          setCurrentPage(previousShellState.page);
+        }}
+      />
     );
   }
 
@@ -896,6 +917,7 @@ export default function App() {
                 pendingFollowUpCount={pendingFollowUpRecords.length}
                 recordsCenterFollowUps={recordsCenterFollowUps}
                 recordsCenterSummaries={recordsCenterSummaries}
+                onOpenDisclaimer={handleOpenDisclaimer}
               />
             )}
 

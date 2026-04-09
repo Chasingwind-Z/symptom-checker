@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { ShieldAlert } from 'lucide-react'
 import type { SidebarSection } from './AppSidebar'
 import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 import { HealthSettingsPanel } from './HealthSettingsPanel'
@@ -64,6 +65,7 @@ interface WorkspaceViewProps {
   pendingFollowUpCount: number
   recordsCenterFollowUps: RecordsCenterFollowUpItem[]
   recordsCenterSummaries: RecordsCenterSummaryItem[]
+  onOpenDisclaimer?: () => void
 }
 
 export function WorkspaceView({
@@ -95,6 +97,7 @@ export function WorkspaceView({
   pendingFollowUpCount,
   recordsCenterFollowUps,
   recordsCenterSummaries,
+  onOpenDisclaimer,
 }: WorkspaceViewProps) {
   const reportRecords = useMemo(() => getReportRecords(), []);
   const [weeklyReport, setWeeklyReport] = useState<WeeklyReportData | null>(null);
@@ -167,6 +170,15 @@ export function WorkspaceView({
             pendingFollowUpCount={pendingFollowUpCount}
             sessionEmail={sessionEmail}
           />
+          {onOpenDisclaimer && (
+            <button
+              onClick={onOpenDisclaimer}
+              className="w-full flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 px-5 py-4 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors"
+            >
+              <ShieldAlert size={16} className="text-amber-500" />
+              使用须知与免责声明 →
+            </button>
+          )}
         </div>
       )}
 

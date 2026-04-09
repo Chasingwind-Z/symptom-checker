@@ -105,7 +105,36 @@ npm run dev
 | `VITE_AMAP_JS_KEY` | 推荐 | 高德地图 Web JS Key |
 | `VITE_AMAP_WEB_KEY` | 推荐 | 高德 Web 服务 Key（POI 搜索） |
 | `VITE_QWEATHER_KEY` | 推荐 | 和风天气 API Key |
-| `VITE_TAVILY_API_KEY` | 可选 | 联网搜索增强，未配置则搜索功能静默失败 |
+| `VITE_TAVILY_API_KEY` | 可选 | 联网搜索增强，未配置则搜索功能静默降级 |
+
+---
+
+## 📚 知识库
+
+### 数据来源
+
+| 层级 | 来源 | 许可 | 条数 | 语言 |
+|------|------|------|------|------|
+| 自策展核心层 | 原创照料者决策卡片 | 原创 | 50+ | 中文 |
+| MedlinePlus | NLM 自产 Health Topics | US Public Domain | 28+ | 英文 |
+| CDC | Health Topics A-Z | US Public Domain | 16+ | 英文 |
+
+### 覆盖范围
+- ✅ 儿童发热/咳嗽、老年胸痛/跌倒、血压波动、常见感冒/头痛/胃痛
+- ❌ **不覆盖**：肿瘤治疗、罕见病、精神科诊断、妊娠用药、急救操作流程
+
+### 审核状态
+自策展层当前全部为 `pending_medical_review`（待医学审核），表示：
+- 内容由开发者基于公共分级方法论编写
+- 尚未经过执业医师逐条审核
+- 使用时 AI 回答和引用卡片均会标注此状态
+
+### 严格排除的来源
+- WHO 内容（CC BY-NC-SA 非商用限制）
+- UpToDate / 默沙东 / DynaMed（商业付费数据库）
+- A.D.A.M. / ASHP 授权内容（即使出现在 MedlinePlus 页面上）
+
+详细来源文档见 [docs/data-sources.md](docs/data-sources.md)
 
 ---
 
