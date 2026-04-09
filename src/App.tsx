@@ -900,39 +900,43 @@ export default function App() {
             )}
 
             {showWelcome && (
-              <div className="w-full space-y-3 py-6 sm:py-7">
-                <WelcomeScreen
-                  onStartConsultation={handleStartConsultation}
-                  onApplyStarterText={handleApplyStarterText}
-                  selectedModeId={selectedConsultationModeId}
-                  onSelectMode={handleSelectConsultationMode}
-                  onToggleMap={handleOpenMap}
-                  onOpenEpidemicDashboard={handleOpenMap}
-                  sessionEmail={workspace.sessionEmail}
-                  profile={workspace.profile}
-                  weather={weatherData}
-                  pendingFollowUpCount={pendingFollowUpRecords.length}
-                  householdProfiles={workspace.householdProfiles}
-                  switchingHouseholdProfileId={switchingHouseholdProfileId}
-                  recentCases={workspace.recentCases}
-                  recentSessions={conversationSessions}
-                  onOpenConversation={handleOpenConversation}
-                  onSelectHouseholdProfile={handleSelectHouseholdProfile}
-                  onManageProfiles={() => handleOpenWorkspaceSection('profile')}
-                />
-                <ChatInput
-                  variant="inline"
-                  onSend={handleSendMessage}
-                  isLoading={isLoading}
-                  draftValue={welcomeDraftValue}
-                  onDraftChange={setWelcomeDraftValue}
-                  placeholderOverride={selectedConsultationMode?.placeholder}
-                  selectedModeLabel={selectedConsultationMode?.label}
-                  selectedModeSummary={selectedConsultationMode?.summary}
-                  onClearSelectedMode={handleClearSelectedConsultationMode}
-                  focusSignal={welcomeFocusSignal}
-                  messagesCount={messages.length}
-                />
+              <div className="flex flex-col min-h-[calc(100vh-64px)]">
+                <div className="flex-1 overflow-y-auto px-4 py-6">
+                  <WelcomeScreen
+                    onStartConsultation={handleStartConsultation}
+                    onApplyStarterText={handleApplyStarterText}
+                    selectedModeId={selectedConsultationModeId}
+                    onSelectMode={handleSelectConsultationMode}
+                    onToggleMap={handleOpenMap}
+                    onOpenEpidemicDashboard={handleOpenMap}
+                    sessionEmail={workspace.sessionEmail}
+                    profile={workspace.profile}
+                    weather={weatherData}
+                    pendingFollowUpCount={pendingFollowUpRecords.length}
+                    householdProfiles={workspace.householdProfiles}
+                    switchingHouseholdProfileId={switchingHouseholdProfileId}
+                    recentCases={workspace.recentCases}
+                    recentSessions={conversationSessions}
+                    onOpenConversation={handleOpenConversation}
+                    onSelectHouseholdProfile={handleSelectHouseholdProfile}
+                    onManageProfiles={() => handleOpenWorkspaceSection('profile')}
+                  />
+                </div>
+                <div className="sticky bottom-0 bg-white/80 backdrop-blur-md border-t border-slate-100 px-4 pb-4">
+                  <ChatInput
+                    variant="inline"
+                    onSend={handleSendMessage}
+                    isLoading={isLoading}
+                    draftValue={welcomeDraftValue}
+                    onDraftChange={setWelcomeDraftValue}
+                    placeholderOverride={selectedConsultationMode?.placeholder}
+                    selectedModeLabel={selectedConsultationMode?.label}
+                    selectedModeSummary={selectedConsultationMode?.summary}
+                    onClearSelectedMode={handleClearSelectedConsultationMode}
+                    focusSignal={welcomeFocusSignal}
+                    messagesCount={messages.length}
+                  />
+                </div>
               </div>
             )}
 

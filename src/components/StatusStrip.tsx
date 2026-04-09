@@ -30,7 +30,7 @@ export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, location
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
+    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-1.5 text-xs text-slate-500 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
       {weatherText && (
         <span className="flex items-center gap-1 shrink-0">
           <CloudSun size={12} />
