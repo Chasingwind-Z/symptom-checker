@@ -122,7 +122,7 @@ export function AppSidebar({
   sessionEmail,
 }: AppSidebarProps) {
   const maskedSessionEmail = sessionEmail ? maskEmail(sessionEmail) : '';
-  const resolvedAccountLabel = accountLabel ?? (maskedSessionEmail || '游客使用中');
+  const resolvedAccountLabel = accountLabel ?? (maskedSessionEmail || '');
   const accountInitial = resolvedAccountLabel.trim().charAt(0) || '游';
   const pendingBadge =
     pendingFollowUpCount > 0 ? `${Math.min(9, pendingFollowUpCount)}${pendingFollowUpCount > 9 ? '+' : ''}` : undefined;
@@ -237,7 +237,6 @@ export function AppSidebar({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-[13px] font-medium text-slate-900">{statusLabel}</p>
-              <p className="mt-0.5 truncate text-xs text-slate-500">{resolvedAccountLabel}</p>
 
             </div>
             {onOpenAuth && authActionLabel && (

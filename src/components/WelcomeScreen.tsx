@@ -1,16 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
-  Activity,
-  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   ChevronRight,
   HeartPulse,
   MapPin,
   ShieldPlus,
-  ShoppingCart,
-  TrendingUp,
-  X,
   type LucideIcon,
 } from 'lucide-react'
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
@@ -23,11 +18,8 @@ import {
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
-import { getActiveCity, fetchCityAggregation, detectLocalSurgeAlert, type SurgeAlert } from '../lib/epidemicDataEngine'
-import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate'
 import { HouseholdProfileSwitcher } from './HouseholdProfileSwitcher'
-import { DailyCheckin } from './DailyCheckin'
-import { detectFamilyCrossInfection, type FamilyCrossInfectionAlert } from '../lib/symptomTracking'
+import { StatusStrip } from './StatusStrip'
 
 interface ScenarioChip {
   label: string
@@ -254,7 +246,8 @@ export function WelcomeScreen({
   onSelectMode,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onToggleMap: _onToggleMap,
-  onOpenEpidemicDashboard,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onOpenEpidemicDashboard: _onOpenEpidemicDashboard,
   sessionEmail,
   profile,
   weather,
@@ -268,53 +261,18 @@ export function WelcomeScreen({
   onManageProfiles,
 }: WelcomeScreenProps) {
   const [showExtras, setShowExtras] = useState(false)
-  const [crossInfectionAlert, setCrossInfectionAlert] = useState<FamilyCrossInfectionAlert | null>(null)
-  const [alertDismissed, setAlertDismissed] = useState(false)
 
-  useEffect(() => {
-    const alert = detectFamilyCrossInfection()
-    if (alert) {
-      window.setTimeout(() => setCrossInfectionAlert(alert), 0)
-    }
-  }, [])
+  const [checkedInToday] = useState(() => {
+    try {
+      const raw = localStorage.getItem('daily_checkins');
+      if (!raw) return false;
+      const checkins = JSON.parse(raw) as Array<{ date: string }>;
+      const today = new Date().toISOString().slice(0, 10);
+      return checkins.some(c => c.date === today);
+    } catch { return false; }
+  });
 
-  // Community health trend data (loaded once from epidemic data engine)
-  const [trendData, setTrendData] = useState<{ symptom: string; heat: number; color: string }[]>([])
-  const [trendCity, setTrendCity] = useState('本地')
-  const [todayReportCount, setTodayReportCount] = useState<number | null>(null)
-  const [surgeAlert, setSurgeAlert] = useState<SurgeAlert | null>(null)
-
-  useEffect(() => {
-    const alert = detectLocalSurgeAlert()
-    if (alert) {
-      window.setTimeout(() => setSurgeAlert(alert), 0)
-    }
-  }, [])
-
-  useEffect(() => {
-    const cityName = getActiveCity()
-    setTrendCity(cityName)
-
-    // Only show real Supabase data — no seededRandom fallback on WelcomeScreen
-    fetchCityAggregation(cityName || '北京').then(agg => {
-      if (agg && agg.totalReports > 0) {
-        window.setTimeout(() => setTodayReportCount(agg.totalReports), 0)
-
-        const topSymptoms = agg.topSymptoms.slice(0, 3)
-        if (topSymptoms.length > 0) {
-          const maxCount = topSymptoms[0]?.count ?? 1
-          const trends = topSymptoms.map(({ symptom, count }) => {
-            const heat = Math.min(99, Math.max(10, Math.round((count / maxCount) * 65 + 20)))
-            const color = heat >= 60 ? 'red' : heat >= 40 ? 'amber' : 'emerald'
-            return { symptom, heat, color }
-          })
-          setTrendData(trends)
-        }
-      }
-    })
-  }, [])
-
-  const personalizedScenarios = buildPersonalizedScenarios({
+  const personalizedScenarios= buildPersonalizedScenarios({
     profile,
     recentCases,
     recentSessions,
@@ -324,7 +282,7 @@ export function WelcomeScreen({
   const normalizedProfileCity = normalizeText(profile?.city)
   const localCityLabel =
     normalizedProfileCity && normalizedProfileCity !== DEFAULT_PROFILE_CITY ? normalizedProfileCity : ''
-  void buildWeatherExperienceSummary(weather ?? null) // kept for focusPathCards internal use
+  const weatherSummary = buildWeatherExperienceSummary(weather ?? null)
   const focusPathCards = buildFocusPathCards({
     selectedModeId,
     cityLabel: localCityLabel,
@@ -356,35 +314,18 @@ export function WelcomeScreen({
 
   return (
     <div className="space-y-4">
-      {/* Cross-infection alert banner */}
-      {crossInfectionAlert && !alertDismissed && (
-        <div className="mb-4 rounded-2xl border-2 border-orange-200 bg-orange-50 px-4 py-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={16} className="text-orange-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-orange-800">家庭健康提醒</p>
-                <p className="text-xs text-orange-700 mt-1 leading-relaxed">
-                  {crossInfectionAlert.alertText}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setAlertDismissed(true)}
-              className="text-orange-400 hover:text-orange-600 shrink-0"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Compact status strip */}
+      <StatusStrip
+        weatherText={weatherSummary?.tags?.[0]}
+        checkedIn={checkedInToday}
+        pendingFollowUps={pendingFollowUpCount > 0 ? pendingFollowUpCount : undefined}
+        locationText={localCityLabel || undefined}
+      />
 
       {/* Compact header */}
-      <div className="px-1 pt-2">
-        <h1 className="text-xl font-bold text-slate-800">健康助手</h1>
-        <p className="text-xs text-slate-500 mt-1">
-          为自己或家人判断：严不严重、要不要去医院
-        </p>
+      <div className="text-center pt-2">
+        <h1 className="text-xl font-bold text-slate-800">现在谁不舒服？</h1>
+        <p className="text-xs text-slate-500 mt-1">30秒告诉你严不严重、要不要去医院</p>
       </div>
 
       {/* Guardian Mode Cards — HERO position, 2×2 grid */}
@@ -415,33 +356,7 @@ export function WelcomeScreen({
         </p>
       )}
 
-      {/* Scenario quick-entry chips — shown only when no mode selected */}
-      {!selectedModeId && (
-        <div className="flex flex-wrap gap-2 mt-4">
-          {([
-            { label: '🚨 紧急情况', mode: null as ConsultationModeId | null, text: '紧急情况，请帮我判断' },
-            { label: '👶 孩子发烧', mode: 'child' as ConsultationModeId, text: '孩子发烧了' },
-            { label: '🧓 老人胸闷', mode: 'elderly' as ConsultationModeId, text: '老人说胸闷' },
-            { label: '💊 慢病用药', mode: 'chronic' as ConsultationModeId, text: '长期用药的家人今天有变化' },
-          ]).map(chip => (
-            <button
-              key={chip.label}
-              onClick={() => {
-                if (chip.mode) onSelectMode(chip.mode);
-                onApplyStarterText(chip.text);
-              }}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Daily health check-in */}
-      <div className="mt-4">
-        <DailyCheckin />
-      </div>
+      {/* Daily health check-in moved to StatusStrip */}
 
       {/* Re-engagement card */}
       {showReengagement && latestSession && (
@@ -506,98 +421,7 @@ export function WelcomeScreen({
         </div>
       </div>
 
-      {/* Community health trend card */}
-      {trendData.length > 0 && todayReportCount != null && todayReportCount > 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm">
-          <p className="text-xs font-medium text-slate-600">
-            📍 {localCityLabel || trendCity} · 今日社区健康动态
-            <span className="ml-1 text-slate-400">
-              · 今日已有 {todayReportCount} 人参与健康上报
-            </span>
-          </p>
-          <div className="mt-3 space-y-2.5">
-            {trendData.map((item) => (
-              <div key={item.symptom} className="flex items-center gap-2.5 text-xs">
-                <span>
-                  {item.color === 'red' ? '🔴' : item.color === 'amber' ? '🟡' : '🟢'}
-                </span>
-                <span className="w-16 shrink-0 text-slate-700">{item.symptom}</span>
-                <div className="h-2 flex-1 rounded-full bg-slate-100">
-                  <div
-                    className={`h-2 rounded-full ${
-                      item.color === 'red'
-                        ? 'bg-red-500'
-                        : item.color === 'amber'
-                          ? 'bg-amber-500'
-                          : 'bg-emerald-500'
-                    }`}
-                    style={{ width: `${item.heat}%` }}
-                  />
-                </div>
-                <span className="w-10 shrink-0 text-right text-slate-400">热度 {item.heat}</span>
-              </div>
-            ))}
-          </div>
-          {onOpenEpidemicDashboard && (
-            <div className="mt-3 text-right">
-              <button
-                type="button"
-                onClick={onOpenEpidemicDashboard}
-                className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 transition-colors hover:text-blue-700"
-              >
-                查看完整预警大屏
-                <ArrowRight size={12} />
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mt-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity size={14} className="text-slate-400" />
-              <p className="text-xs text-slate-500">本地健康数据积累中</p>
-            </div>
-            {onOpenEpidemicDashboard && (
-              <button onClick={onOpenEpidemicDashboard} className="text-xs text-blue-500">
-                查看详情 →
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Seasonal surge alert card */}
-      {surgeAlert && (
-        <div className="mt-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-3">
-          <div className="flex items-start gap-2">
-            <TrendingUp size={16} className="text-amber-600 mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-amber-800">
-                ⚠️ {surgeAlert.symptom} 上升 {surgeAlert.increasePercent}%
-              </p>
-              <p className="text-xs text-amber-700 mt-1">{surgeAlert.alertText}</p>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {surgeAlert.suggestedMeds.map(med => (
-                  <button
-                    key={med}
-                    onClick={() => {
-                      trackMedicationClick({ medicationName: med, source: 'surge_alert' })
-                      window.open(buildJDSearchUrl(med), '_blank', 'noopener')
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-600 hover:bg-red-100 transition-colors"
-                  >
-                    <ShoppingCart size={10} />
-                    备{med}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Collapsible section for chips and recent sessions — default collapsed */}
+      {/* Collapsible section for recent sessions — default collapsed */}
       <div className="mt-2">
         <button
           type="button"
@@ -605,7 +429,7 @@ export function WelcomeScreen({
           className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700"
         >
           <ChevronRight size={14} className={`transition-transform ${showExtras ? 'rotate-90' : ''}`} />
-          常见问题与最近记录
+          最近记录
         </button>
         {showExtras && (
           <div className="mt-3 space-y-4">
