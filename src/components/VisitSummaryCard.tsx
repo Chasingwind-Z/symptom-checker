@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { DiagnosisResult, Message, RiskLevel } from '../types';
 import type { ProfileDraft } from '../lib/healthData';
@@ -6,6 +7,7 @@ interface VisitSummaryCardProps {
   result: DiagnosisResult;
   profile?: Partial<ProfileDraft> | null;
   messages: Message[];
+  consultationModeId?: string | null;
   onClose: () => void;
 }
 
@@ -34,8 +36,10 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function VisitSummaryCard({ result, profile, messages, onClose }: VisitSummaryCardProps) {
+export function VisitSummaryCard({ result, profile, messages, consultationModeId, onClose }: VisitSummaryCardProps) {
   const levelConfig = LEVEL_CONFIG[result.level];
+  const isChild = consultationModeId === 'child';
+  const isElderly = consultationModeId === 'elderly';
 
   const userMessages = messages.filter((m) => m.role === 'user');
   const chiefComplaint = userMessages.length > 0
@@ -45,6 +49,48 @@ export function VisitSummaryCard({ result, profile, messages, onClose }: VisitSu
     .slice(0, 3)
     .map((m) => m.content.slice(0, 60))
     .join(' → ');
+
+  const chiefComplaintTitle = isChild
+    ? '孩子情况（家长描述）'
+    : isElderly
+      ? '老人情况（家属描述）'
+      : '主诉';
+
+  const parentConcerns = useMemo(() => {
+    if (!isChild) return [];
+    const concerns: string[] = [];
+    for (const msg of messages) {
+      if (msg.role !== 'user') continue;
+      const text = msg.content;
+      if (/担心|害怕|会不会|严重吗|要紧吗|焦虑/.test(text)) {
+        concerns.push(text.slice(0, 40));
+      }
+    }
+    return concerns.slice(0, 2);
+  }, [messages, isChild]);
+
+  const familyNotes = useMemo(() => {
+    if (!isElderly) return [];
+    const notes: string[] = [];
+    for (const msg of messages) {
+      if (msg.role !== 'user') continue;
+      const text = msg.content;
+      if (/补充|另外|还有|其实|忘了说|顺便/.test(text)) {
+        notes.push(text.slice(0, 40));
+      }
+    }
+    return notes.slice(0, 2);
+  }, [messages, isElderly]);
+
+  const livesAlone = useMemo(() => {
+    if (!isElderly) return null;
+    for (const msg of messages) {
+      if (msg.role !== 'user') continue;
+      if (/独居|一个人住|自己住|没人照顾/.test(msg.content)) return true;
+      if (/有人陪|家人在|不是独居|有人照顾/.test(msg.content)) return false;
+    }
+    return null;
+  }, [messages, isElderly]);
 
   const birthYearText = profile?.birthYear ? `${profile.birthYear}年生` : null;
   const hasProfileInfo = !!(
@@ -77,8 +123,41 @@ export function VisitSummaryCard({ result, profile, messages, onClose }: VisitSu
           <p className="text-sm mt-1">{result.reason}</p>
         </div>
 
-        {/* 主诉 */}
-        <Section title="主诉">{chiefComplaint}</Section>
+        {/* 主诉 / 孩子情况 / 老人情况 */}
+        <Section title={chiefComplaintTitle}>{chiefComplaint}</Section>
+
+        {/* 家长特别关注 (child mode) */}
+        {isChild && parentConcerns.length > 0 && (
+          <Section title="家长特别关注">
+            <ul className="list-disc list-inside space-y-0.5">
+              {parentConcerns.map((c, i) => (
+                <li key={i} className="text-sm text-blue-700">{c}</li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
+        {/* 家属补充说明 + 独居状态 (elderly mode) */}
+        {isElderly && (
+          <>
+            {familyNotes.length > 0 && (
+              <Section title="家属补充说明">
+                <ul className="list-disc list-inside space-y-0.5">
+                  {familyNotes.map((n, i) => (
+                    <li key={i} className="text-sm text-orange-700">{n}</li>
+                  ))}
+                </ul>
+              </Section>
+            )}
+            <Section title="独居状态">
+              <p className="text-sm">
+                {livesAlone === true && '⚠️ 老人独居，需特别关注'}
+                {livesAlone === false && '✅ 有家人陪伴'}
+                {livesAlone === null && '未提及'}
+              </p>
+            </Section>
+          </>
+        )}
 
         {/* 症状经过 */}
         <Section title="症状经过">{symptomTimeline || '无'}</Section>

@@ -747,13 +747,13 @@ export function ResultCard({
       case 'green':
         return { label: '查附近社区诊所', icon: <MapPin size={14} />, action: 'hospital' as const };
       case 'yellow':
-        return { label: '下载就诊摘要', icon: <ClipboardList size={14} />, action: 'visit_card' as const };
+        return { label: consultationModeId === 'child' ? '生成孩子就诊卡' : consultationModeId === 'elderly' ? '生成老人就诊卡' : '下载就诊摘要', icon: <ClipboardList size={14} />, action: 'visit_card' as const };
       case 'orange':
         return { label: '拨打120备用', icon: <Phone size={14} />, action: 'call120' as const };
       case 'red':
         return { label: '查最近急诊', icon: <MapPin size={14} />, action: 'hospital' as const };
     }
-  }, [result.level]);
+  }, [result.level, consultationModeId]);
 
   function handleCTAClick(action: string) {
     switch (action) {
@@ -963,7 +963,11 @@ export function ResultCard({
             className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-white transition-colors border border-slate-200"
           >
             <ClipboardList size={14} />
-            准备就诊（截图给医生）
+            {consultationModeId === 'child'
+              ? '生成孩子就诊卡（截图给医生）'
+              : consultationModeId === 'elderly'
+                ? '生成老人就诊卡（截图给医生）'
+                : '准备就诊（截图给医生）'}
           </button>
         </div>
 
@@ -1541,6 +1545,7 @@ export function ResultCard({
             result={result}
             profile={profile}
             messages={messages}
+            consultationModeId={consultationModeId}
             onClose={() => setShowVisitCard(false)}
           />
         )}
