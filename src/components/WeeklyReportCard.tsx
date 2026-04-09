@@ -37,7 +37,7 @@ export function WeeklyReportCard({ report, onClose }: WeeklyReportCardProps) {
         {/* Risk breakdown */}
         {report.consultationCount > 0 && (
           <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-            <p className="text-[11px] font-medium text-slate-600 mb-1.5">风险分布</p>
+            <p className="text-xs font-medium text-slate-600 mb-1.5">风险分布</p>
             <div className="flex gap-3">
               {Object.entries(report.riskLevelBreakdown).map(([level, count]) => (
                 <span key={level} className="text-xs text-slate-600">
@@ -51,10 +51,10 @@ export function WeeklyReportCard({ report, onClose }: WeeklyReportCardProps) {
         {/* Main symptoms */}
         {report.mainSymptoms.length > 0 && (
           <div>
-            <p className="text-[11px] font-medium text-slate-500 mb-1.5">主要症状</p>
+            <p className="text-xs font-medium text-slate-500 mb-1.5">主要症状</p>
             <div className="flex flex-wrap gap-1.5">
               {report.mainSymptoms.map(s => (
-                <span key={s} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] text-blue-700">{s}</span>
+                <span key={s} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700">{s}</span>
               ))}
             </div>
           </div>
@@ -71,7 +71,7 @@ export function WeeklyReportCard({ report, onClose }: WeeklyReportCardProps) {
         </div>
 
         {/* Footer */}
-        <p className="text-[10px] text-slate-400 text-center">长按截图分享给家人</p>
+        <p className="text-xs text-slate-400 text-center">长按截图分享给家人</p>
 
         <button onClick={onClose} className="w-full rounded-xl bg-slate-100 py-2 text-sm text-slate-600 hover:bg-slate-200 transition-colors">
           关闭
@@ -86,7 +86,7 @@ function StatBlock({ icon, label, value }: { icon: React.ReactNode; label: strin
     <div className="rounded-xl bg-slate-50 px-3 py-2.5 text-center">
       <div className="flex justify-center mb-1">{icon}</div>
       <p className="text-sm font-semibold text-slate-800">{value}</p>
-      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-xs text-slate-400">{label}</p>
     </div>
   );
 }

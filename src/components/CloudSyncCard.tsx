@@ -219,12 +219,12 @@ function OverviewMetricCard({
 }) {
   return (
     <div className={`rounded-2xl border px-4 py-3 ${toneClass}`}>
-      <div className="flex items-center gap-2 text-[11px] text-slate-500">
+      <div className="flex items-center gap-2 text-xs text-slate-500">
         <Icon size={13} />
         {label}
       </div>
       <p className="mt-2 text-lg font-semibold text-slate-900">{value}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-slate-600">{description}</p>
+      <p className="mt-1 text-xs leading-relaxed text-slate-600">{description}</p>
     </div>
   );
 }
@@ -676,19 +676,19 @@ export function CloudSyncCard({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${syncBadgeClasses}`}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${syncBadgeClasses}`}
                 >
                   <Cloud size={12} />
                   {syncBadgeLabel}
                 </span>
                 {draft.profileMode === 'demo' && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">
                     <Sparkles size={12} />
                     场景模板
                   </span>
                 )}
                 {reportCount > 0 && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
                     <FileText size={12} />
                     已导出 {reportCount} 份报告
                   </span>
@@ -703,11 +703,11 @@ export function CloudSyncCard({
                 </div>
 
                 <div className="min-w-[180px] rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[11px] text-slate-500">当前账号</p>
+                  <p className="text-xs text-slate-500">当前账号</p>
                   <p className="mt-1 truncate text-sm font-semibold text-slate-900">
                     {isSignedIn ? maskEmail(sessionEmail ?? '') : '游客模式'}
                   </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{accountHint}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">{accountHint}</p>
                 </div>
               </div>
 
@@ -715,7 +715,7 @@ export function CloudSyncCard({
                 {summaryChips.map((item) => (
                   <span
                     key={item}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
                   >
                     {item}
                   </span>
@@ -792,7 +792,7 @@ export function CloudSyncCard({
               title="档案完善指引"
               description="优先补齐这些关键字段，后续问诊、记录检索和分享都会更贴近真实场景。"
               action={
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
                   {completionGuide.completedCount}/{completionGuide.totalCount} 已完成
                 </span>
               }
@@ -852,13 +852,13 @@ export function CloudSyncCard({
                     completionGuide.nextFocus.map((item) => (
                       <span
                         key={item}
-                        className="rounded-full border border-cyan-200 bg-white px-3 py-1 text-[11px] font-medium text-cyan-700"
+                        className="rounded-full border border-cyan-200 bg-white px-3 py-1 text-xs font-medium text-cyan-700"
                       >
                         {item}
                       </span>
                     ))
                   ) : (
-                    <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-[11px] font-medium text-emerald-700">
+                    <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-medium text-emerald-700">
                       档案已适合长期保存和继续问诊
                     </span>
                   )}
@@ -909,14 +909,14 @@ export function CloudSyncCard({
                                   {trimText(item.title, 28)}
                                 </p>
                                 <span
-                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                                  className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                                 >
                                   {riskMeta.label}
                                 </span>
                               </div>
                               <p className="mt-1 text-xs text-slate-500">{item.meta}</p>
                             </div>
-                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600">
                               {item.statusLabel}
                             </span>
                           </div>
@@ -930,7 +930,7 @@ export function CloudSyncCard({
                               {item.departments.slice(0, 3).map((department) => (
                                 <span
                                   key={department}
-                                  className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-slate-500"
+                                  className="rounded-full bg-white px-2 py-1 text-xs font-medium text-slate-500"
                                 >
                                   {department}
                                 </span>
@@ -963,18 +963,18 @@ export function CloudSyncCard({
                 {summaryChips.slice(0, 5).map((item) => (
                   <span
                     key={item}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
                   >
                     {item}
                   </span>
                 ))}
                 {currentHouseholdRecord && (
-                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-medium text-cyan-700">
+                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
                     来自家庭档案：{currentHouseholdRecord.label}
                   </span>
                 )}
                 {hasUnsavedChanges && (
-                  <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-medium text-amber-700">
+                  <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
                     有未保存修改
                   </span>
                 )}
@@ -1174,7 +1174,7 @@ export function CloudSyncCard({
               <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-medium text-cyan-700">当前生效档案</p>
+                    <p className="text-xs font-medium text-cyan-700">当前生效档案</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">{currentProfileLabel}</p>
                     <p className="mt-1 text-xs leading-relaxed text-slate-600">
                       {draft.careFocus
@@ -1183,11 +1183,11 @@ export function CloudSyncCard({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    <span className="rounded-full border border-cyan-200 bg-white px-2 py-0.5 text-[10px] font-medium text-cyan-700">
+                    <span className="rounded-full border border-cyan-200 bg-white px-2 py-0.5 text-xs font-medium text-cyan-700">
                       {currentRelationshipLabel}
                     </span>
                     {currentAgeLabel && (
-                      <span className="rounded-full border border-cyan-200 bg-white px-2 py-0.5 text-[10px] font-medium text-cyan-700">
+                      <span className="rounded-full border border-cyan-200 bg-white px-2 py-0.5 text-xs font-medium text-cyan-700">
                         {currentAgeLabel}
                       </span>
                     )}
@@ -1214,7 +1214,7 @@ export function CloudSyncCard({
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="text-sm font-semibold text-slate-900">{record.label}</p>
-                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600">
                               {record.relationship}
                             </span>
                           </div>
@@ -1222,7 +1222,7 @@ export function CloudSyncCard({
                             {getHouseholdSummary(record)}
                           </p>
                         </div>
-                        <p className="text-[10px] text-slate-400">
+                        <p className="text-xs text-slate-400">
                           {formatDateTimeLabel(record.updatedAt)}
                         </p>
                       </div>
@@ -1286,7 +1286,7 @@ export function CloudSyncCard({
                           {persona.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="rounded-full bg-white px-2 py-1 text-[10px] font-medium text-violet-700"
+                              className="rounded-full bg-white px-2 py-1 text-xs font-medium text-violet-700"
                             >
                               {tag}
                             </span>
@@ -1311,7 +1311,7 @@ export function CloudSyncCard({
               title="档案摘要与分享"
               description="适合发给家人、门诊分诊台，或作为下一次复诊时的开场说明。"
               action={
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-medium text-slate-600">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
                   {reportCount > 0 ? `PDF 报告 ${reportCount} 份` : '文字摘要可直接分享'}
                 </span>
               }
@@ -1362,7 +1362,7 @@ export function CloudSyncCard({
                 </button>
               </div>
 
-              <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+              <p className="mt-3 text-xs leading-relaxed text-slate-500">
                 更正式的 PDF 问诊报告仍可在单次问诊结果页导出；这里先提供更适合转发和交接的轻量摘要。
               </p>
 
@@ -1427,7 +1427,7 @@ export function CloudSyncCard({
                           {plan.description}
                         </p>
                       </div>
-                      <span className="rounded-full border border-white/70 bg-white px-2.5 py-0.5 text-[10px] font-medium text-slate-600">
+                      <span className="rounded-full border border-white/70 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600">
                         {plan.badge}
                       </span>
                     </div>

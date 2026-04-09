@@ -277,14 +277,14 @@ export function ChatBubble({
                   <p className="text-xs font-medium">
                     {AI_VISION_ENABLED ? '图片已发送给视觉模型' : '图片文件名已包含在分析上下文中'}
                   </p>
-                  <p className="text-[11px] leading-relaxed opacity-80">
+                  <p className="text-xs leading-relaxed opacity-80">
                     为避免浏览器缓存超限，刷新后只保留文件名，不再展示完整预览。
                   </p>
                 </div>
               </div>
             )}
             <div
-              className={`flex items-center gap-2 px-3 py-2 text-[11px] ${
+              className={`flex items-center gap-2 px-3 py-2 text-xs ${
                 isUser ? 'text-blue-50/90' : 'text-slate-500'
               }`}
             >
@@ -310,8 +310,9 @@ export function ChatBubble({
         ))}
       </div>
     ) : null;
+  // Hide agent orchestration info from end users — only show on diagnosis conclusion bubbles
   const agentSummary =
-    !isUser && !isQuestionPhase && message.agentRoute ? (
+    !isUser && !isQuestionPhase && hasJsonBlock && message.agentRoute ? (
       <div className="mb-2">
         <AgentOrchestrationPanel route={message.agentRoute} compact />
       </div>
@@ -345,7 +346,7 @@ export function ChatBubble({
 
   const drugChips = detectedDrugs.length > 0 ? (
     <div className="flex flex-wrap gap-1.5 mt-2">
-      <span className="text-[10px] text-slate-400 mr-1 self-center">相关药品：</span>
+      <span className="text-xs text-slate-400 mr-1 self-center">相关药品：</span>
       {detectedDrugs.map((drug) => (
         <button
           key={drug.name}
@@ -490,7 +491,7 @@ export function ChatBubble({
             {hasAssistantCopy ? <AssistantMarkdown content={animatedStreamingContent} /> : null}
             {attachmentGallery}
             <div
-              className={`flex items-center gap-2 text-[11px] font-medium text-slate-400 ${
+              className={`flex items-center gap-2 text-xs font-medium text-slate-400 ${
                 hasAssistantCopy || attachmentGallery ? 'mt-3' : ''
               }`}
             >

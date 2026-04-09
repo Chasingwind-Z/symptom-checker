@@ -141,7 +141,7 @@ function SettingGroup<T extends string>({
   return (
     <section className="rounded-3xl border border-slate-200 bg-slate-50/70 px-4 py-4">
       <div className="max-w-2xl">
-        <p className="text-[11px] font-medium tracking-[0.08em] text-slate-500">{eyebrow}</p>
+        <p className="text-xs font-medium tracking-[0.08em] text-slate-500">{eyebrow}</p>
         <h3 className="mt-2 text-sm font-semibold text-slate-900">{title}</h3>
         <p className="mt-1 text-sm leading-relaxed text-slate-500">{description}</p>
       </div>
@@ -175,12 +175,12 @@ function SettingGroup<T extends string>({
                     <p className="text-sm font-medium text-slate-800">{option.label}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {option.badge && (
-                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-500">
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
                           {option.badge}
                         </span>
                       )}
                       {isActive && (
-                        <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-medium text-white">
+                        <span className="rounded-full bg-blue-600 px-2 py-0.5 text-xs font-medium text-white">
                           当前
                         </span>
                       )}
@@ -317,7 +317,7 @@ export function HealthSettingsPanel({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-800">疾病预警订阅</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">本地区疾病趋势异常时提醒</p>
+                  <p className="text-xs text-slate-500 mt-0.5">本地区疾病趋势异常时提醒</p>
                 </div>
                 <button
                   onClick={() => {
@@ -338,7 +338,7 @@ export function HealthSettingsPanel({
 
             <div className="mt-4 rounded-xl border border-slate-200 px-4 py-3">
               <p className="text-sm font-medium text-slate-800 mb-1">导入健康数据</p>
-              <p className="text-[11px] text-slate-500 mb-2">支持华为健康/Apple Health导出的CSV文件</p>
+              <p className="text-xs text-slate-500 mb-2">支持华为健康/Apple Health导出的CSV文件</p>
               <label className="block">
                 <input
                   type="file"
@@ -380,7 +380,7 @@ export function HealthSettingsPanel({
 
           <aside className="space-y-3">
             <section className="rounded-3xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-              <p className="text-[11px] font-medium tracking-[0.08em] text-slate-500">当前生效</p>
+              <p className="text-xs font-medium tracking-[0.08em] text-slate-500">当前生效</p>
               <div className="mt-3 space-y-3">
                 {[
                   {
@@ -426,7 +426,7 @@ export function HealthSettingsPanel({
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-cyan-50 via-white to-blue-50 px-4 py-4">
-              <p className="text-[11px] font-medium tracking-[0.08em] text-slate-500">当前账号与数据</p>
+              <p className="text-xs font-medium tracking-[0.08em] text-slate-500">当前账号与数据</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 <div className="rounded-2xl border border-white/80 bg-white/90 px-3 py-3">
                   <p className="text-sm font-semibold text-slate-900">{conversationCount} 段历史会话</p>
@@ -452,10 +452,10 @@ export function HealthSettingsPanel({
                       : '这些偏好同样会保存在本机，后续登录后也不会覆盖你已有的问诊内容。'}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500">
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
                       {hasCurrentCity ? `档案城市 · ${normalizedCity}` : '尚未填写档案城市'}
                     </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-500">
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
                       即时生效
                     </span>
                   </div>

@@ -146,7 +146,7 @@ export function DiagnosisProgress({
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-slate-400">问诊进度</p>
+              <p className="text-xs font-semibold tracking-[0.18em] text-slate-400">问诊进度</p>
               <p className="mt-1 text-sm font-semibold text-slate-800">{statusMeta.headline}</p>
               <p className="mt-1 text-xs leading-5 text-slate-500">{statusMeta.description}</p>
             </div>
@@ -163,7 +163,7 @@ export function DiagnosisProgress({
             {summaryPills.map((pill) => (
               <span
                 key={pill.label}
-                className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-medium ${pill.className}`}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${pill.className}`}
               >
                 {pill.label}
               </span>
@@ -207,7 +207,7 @@ export function DiagnosisProgress({
                     </div>
                     <span className={`mt-2 text-xs font-medium ${getStepLabelClass(stepState)}`}>{step.label}</span>
                     <span
-                      className={`mt-1 text-[11px] font-medium ${getStepCaptionClass(
+                      className={`mt-1 text-xs font-medium ${getStepCaptionClass(
                         stepState,
                         isFinalStep
                       )}`}
@@ -219,7 +219,7 @@ export function DiagnosisProgress({
               })}
             </div>
 
-            <p className="mt-3 text-[11px] leading-4 text-slate-400">
+            <p className="mt-3 text-xs leading-4 text-slate-400">
               仅展示当前问诊阶段，不代表诊断把握度或确诊结果。
             </p>
           </div>

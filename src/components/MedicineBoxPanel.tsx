@@ -40,7 +40,7 @@ export function MedicineBoxPanel() {
       <div className="flex items-center gap-2 mb-3">
         <Pill size={16} className="text-violet-600" />
         <p className="text-sm font-semibold text-slate-800">家庭药箱</p>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
           {items.length} 种
         </span>
       </div>
@@ -74,7 +74,7 @@ export function MedicineBoxPanel() {
           <div key={item.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
             <div>
               <p className="text-xs font-medium text-slate-700">{item.name}</p>
-              <p className="text-[10px] text-slate-400">{item.quantity}</p>
+              <p className="text-xs text-slate-400">{item.quantity}</p>
             </div>
             <button onClick={() => handleRemove(item.id)} className="text-slate-300 hover:text-red-400">
               <Trash2 size={13} />
@@ -91,10 +91,10 @@ export function MedicineBoxPanel() {
         <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2">
           <div className="flex items-center gap-1.5 mb-1">
             <AlertTriangle size={12} className="text-red-600" />
-            <p className="text-[11px] font-semibold text-red-700">药物相互作用提醒</p>
+            <p className="text-xs font-semibold text-red-700">药物相互作用提醒</p>
           </div>
           {interactions.slice(0, 3).map((w, idx) => (
-            <p key={idx} className="text-[10px] text-red-600 leading-relaxed">
+            <p key={idx} className="text-xs text-red-600 leading-relaxed">
               {w.triggeredBy.current} + {w.triggeredBy.recommended}：{w.interaction.warning}
             </p>
           ))}

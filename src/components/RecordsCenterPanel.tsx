@@ -133,7 +133,7 @@ export function RecordsCenterPanel({
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
             <ClipboardList size={13} className="text-cyan-600" />
             {statusLabel}
           </div>
@@ -149,30 +149,30 @@ export function RecordsCenterPanel({
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <Clock3 size={12} />
             待跟进项目
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{followUps.length} 项</p>
-          <p className="mt-1 text-[11px] text-slate-500">适合承接追问、随访提醒和待补充信息。</p>
+          <p className="mt-1 text-xs text-slate-500">适合承接追问、随访提醒和待补充信息。</p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <Sparkles size={12} />
             高优先级
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{priorityFollowUpCount} 项</p>
-          <p className="mt-1 text-[11px] text-slate-500">橙色和红色记录会在这里快速暴露优先级。</p>
+          <p className="mt-1 text-xs text-slate-500">橙色和红色记录会在这里快速暴露优先级。</p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <CheckCircle2 size={12} />
             最近完成摘要
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{recentSummaries.length} 条</p>
-          <p className="mt-1 text-[11px] text-slate-500">已完成判断可随时回看，并继续打开相关记录。</p>
+          <p className="mt-1 text-xs text-slate-500">已完成判断可随时回看，并继续打开相关记录。</p>
         </div>
       </div>
 
@@ -183,7 +183,7 @@ export function RecordsCenterPanel({
               <div className="flex items-center gap-2 flex-wrap">
                 <MessageSquareText size={16} className="text-cyan-600" />
                 <p className="text-sm font-semibold text-slate-800">待跟进</p>
-                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">
+                <span className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-500">
                   {followUps.length} 项
                 </span>
               </div>
@@ -220,18 +220,18 @@ export function RecordsCenterPanel({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="truncate text-sm font-semibold text-slate-800">{item.title}</p>
-                          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600">
                             {item.statusLabel ?? '待继续'}
                           </span>
                           {riskMeta && (
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                             >
                               {riskMeta.label}
                             </span>
                           )}
                           {item.isActive && (
-                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                            <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
                               当前
                             </span>
                           )}
@@ -240,7 +240,7 @@ export function RecordsCenterPanel({
                       </div>
 
                       {item.metaLabel && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-medium text-slate-500">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
                           <Clock3 size={11} />
                           {item.metaLabel}
                         </span>
@@ -248,7 +248,7 @@ export function RecordsCenterPanel({
                     </div>
 
                     {hasMeta && (
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         {item.sourceLabel && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
                             <FolderOpen size={11} />
@@ -258,7 +258,7 @@ export function RecordsCenterPanel({
                         {item.tags?.map((tag) => (
                           <span
                             key={`${item.id}-${tag}`}
-                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500"
+                            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500"
                           >
                             {tag}
                           </span>
@@ -291,7 +291,7 @@ export function RecordsCenterPanel({
               <div className="flex items-center gap-2 flex-wrap">
                 <Stethoscope size={16} className="text-cyan-600" />
                 <p className="text-sm font-semibold text-slate-800">最近完成</p>
-                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">
+                <span className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-500">
                   {recentSummaries.length} 条
                 </span>
               </div>
@@ -324,12 +324,12 @@ export function RecordsCenterPanel({
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="truncate text-sm font-semibold text-slate-800">{item.title}</p>
-                          <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                          <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                             已完成
                           </span>
                           {riskMeta && (
                             <span
-                              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                              className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                             >
                               {riskMeta.label}
                             </span>
@@ -351,7 +351,7 @@ export function RecordsCenterPanel({
                           </button>
                         )}
                         {item.metaLabel && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-500">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
                             <Clock3 size={11} />
                             {item.metaLabel}
                           </span>
@@ -360,7 +360,7 @@ export function RecordsCenterPanel({
                     </div>
 
                     {hasMeta && (
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         {item.sourceLabel && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
                             <FolderOpen size={11} />
@@ -370,13 +370,13 @@ export function RecordsCenterPanel({
                         {visibleDepartments.map((department) => (
                           <span
                             key={`${item.id}-${department}`}
-                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500"
+                            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500"
                           >
                             {department}
                           </span>
                         ))}
                         {hiddenDepartmentCount > 0 && (
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                             +{hiddenDepartmentCount}
                           </span>
                         )}

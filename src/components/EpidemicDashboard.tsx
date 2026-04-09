@@ -739,20 +739,20 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
               <span className="text-white font-bold text-xl">{currentCity} · 本地健康趋势参考</span>
             </div>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
-              <span className="bg-white/10 text-white/70 text-[10px] px-2 py-0.5 rounded-full">
+              <span className="bg-white/10 text-white/70 text-xs px-2 py-0.5 rounded-full">
                 {cityContext.badge}
               </span>
               <span className="text-white/75 text-xs">{cityContext.summary}</span>
             </div>
-            <p className="mt-1 text-[11px] text-white/45 leading-relaxed">{cityContext.detail}</p>
-            <p className="mt-1 text-[11px] text-white/35 leading-relaxed">{locationUsageMeta}</p>
+            <p className="mt-1 text-xs text-white/45 leading-relaxed">{cityContext.detail}</p>
+            <p className="mt-1 text-xs text-white/35 leading-relaxed">{locationUsageMeta}</p>
             {(showDetectedCityAction || showRecommendedCityAction || showDetectedDistrictAction) && (
               <div className="mt-2 flex items-center gap-2 flex-wrap">
                 {showDetectedCityAction && (
                   <button
                     type="button"
                     onClick={() => focusDetectedCity('detected')}
-                    className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-[11px] text-cyan-100 transition-colors hover:bg-cyan-500/20"
+                    className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100 transition-colors hover:bg-cyan-500/20"
                   >
                     切回定位城市{detectedCity ? ` · ${detectedCity}` : ''}
                   </button>
@@ -761,7 +761,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                   <button
                     type="button"
                     onClick={() => focusDetectedCity('manual')}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-white/75 transition-colors hover:bg-white/10"
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/75 transition-colors hover:bg-white/10"
                   >
                     查看最近支持城市{detectedCity ? ` · ${detectedCity}` : ''}
                   </button>
@@ -770,7 +770,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                   <button
                     type="button"
                     onClick={focusDetectedDistrictArea}
-                    className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100 transition-colors hover:bg-emerald-500/20"
+                    className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100 transition-colors hover:bg-emerald-500/20"
                   >
                     查看附近片区{detectedDistrict ? ` · ${detectedDistrict}` : ''}
                   </button>
@@ -780,7 +780,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
           </div>
 
           <label className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 min-w-[190px]">
-            <span className="block text-[10px] tracking-[0.24em] uppercase text-white/35">
+            <span className="block text-xs tracking-[0.24em] uppercase text-white/35">
               当前查看城市
             </span>
             <select
@@ -792,7 +792,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                 <option key={city} value={city} className="text-slate-900">{city}</option>
               ))}
             </select>
-            <span className="mt-2 block text-[10px] text-white/35">
+            <span className="mt-2 block text-xs text-white/35">
               可按当前位置推荐，也可切换到家人或工作地所在城市
             </span>
           </label>
@@ -804,7 +804,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
             {sourceLayerBadges.map(item => (
               <span
                 key={item.label}
-                className={`border text-[10px] px-2.5 py-1 rounded-full ${item.className}`}
+                className={`border text-xs px-2.5 py-1 rounded-full ${item.className}`}
               >
                 {item.label}
               </span>
@@ -913,10 +913,10 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-amber-100 text-sm font-semibold">当前优先关注片区</span>
-                  <span className="bg-amber-400/15 text-amber-200 text-[11px] px-2 py-0.5 rounded-full">
+                  <span className="bg-amber-400/15 text-amber-200 text-xs px-2 py-0.5 rounded-full">
                     {focusDistrict.district}
                   </span>
-                  <span className="text-white/35 text-[11px]">
+                  <span className="text-white/35 text-xs">
                     本地参考分 {Math.round(focusDistrict.riskScore)} · {getRiskLabel(focusDistrict.riskLevel)}
                   </span>
                 </div>
@@ -928,13 +928,13 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
               </div>
             </div>
             <div className="hidden xl:flex items-center gap-2 flex-wrap justify-end">
-              <span className="bg-white/8 border border-white/10 text-white/65 text-[11px] px-2.5 py-1 rounded-full">
+              <span className="bg-white/8 border border-white/10 text-white/65 text-xs px-2.5 py-1 rounded-full">
                 趋势 / 参考
               </span>
               {focusDistrict.alertReasons.slice(0, 2).map(reason => (
                 <span
                   key={reason}
-                  className="bg-white/8 border border-white/10 text-white/65 text-[11px] px-2.5 py-1 rounded-full"
+                  className="bg-white/8 border border-white/10 text-white/65 text-xs px-2.5 py-1 rounded-full"
                 >
                   {reason}
                 </span>
@@ -953,10 +953,10 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <Map size={16} className="text-white/60" />
                     <span className="text-white font-medium text-sm">{currentCity}各区近 7 日趋势热力图</span>
-                    <span className="text-white/30 text-[11px] hidden md:inline">趋势 / 参考 · 点击片区查看分区说明</span>
+                    <span className="text-white/30 text-xs hidden md:inline">趋势 / 参考 · 点击片区查看分区说明</span>
                     {activeDistrict && (
                       <span
-                        className="text-[10px] px-2 py-0.5 rounded-full border"
+                        className="text-xs px-2 py-0.5 rounded-full border"
                         style={{
                           color: getRiskColor(activeDistrict.riskLevel),
                           background: `${getRiskColor(activeDistrict.riskLevel)}18`,
@@ -967,15 +967,15 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                       </span>
                     )}
                     {locationStatus === 'detected' && detectedDistrict && detectedCity === currentCity && (
-                      <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-200">
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-200">
                         定位附近：{detectedDistrict}
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-[10px] leading-relaxed text-white/35">{mapUsageNote}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-white/35">{mapUsageNote}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap justify-end">
-                  <span className="bg-cyan-500/15 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full">
+                  <span className="bg-cyan-500/15 text-cyan-200 text-xs px-2 py-0.5 rounded-full">
                     趋势 / 参考
                   </span>
                   {mapLegendItems.map(item => (
@@ -994,9 +994,9 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                       <p className="text-sm font-semibold text-white">
                         {mapStatus === 'loading' ? `正在加载${currentCity}分区趋势图` : `先看${currentCity}分区趋势摘要`}
                       </p>
-                      <p className="mt-2 text-[11px] leading-relaxed text-white/65">{mapNote}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-white/65">{mapNote}</p>
                       {focusDistrict && (
-                        <p className="mt-3 text-[11px] leading-relaxed text-cyan-200">
+                        <p className="mt-3 text-xs leading-relaxed text-cyan-200">
                           当前先留意 {focusDistrict.district}，高频不适为
                           {focusDistrict.topSymptoms.slice(0, 2).join('、')}。
                         </p>
@@ -1008,12 +1008,12 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                   <div className="absolute left-4 bottom-4 max-w-xs rounded-2xl border border-white/10 bg-slate-950/75 backdrop-blur px-3 py-2.5 shadow-2xl">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-white/85 text-xs font-medium">{currentCity}重点片区摘要</span>
-                      <span className="text-[10px] text-white/40">优先核对</span>
+                      <span className="text-xs text-white/40">优先核对</span>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-sm font-semibold text-white">{focusDistrict.district}</span>
                       <span
-                        className="text-[10px] px-2 py-0.5 rounded-full"
+                        className="text-xs px-2 py-0.5 rounded-full"
                         style={{
                           color: getRiskColor(focusDistrict.riskLevel),
                           background: `${getRiskColor(focusDistrict.riskLevel)}18`,
@@ -1022,7 +1022,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                         {getRiskLabel(focusDistrict.riskLevel)}
                       </span>
                     </div>
-                    <p className="text-[11px] text-white/65 mt-1 leading-relaxed">
+                    <p className="text-xs text-white/65 mt-1 leading-relaxed">
                       {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，近 7 日变化
                       {formatTrendDelta(focusDistrict.trend, focusDistrict.trendPercent)}，建议结合下方三类信息分层综合判断。
                     </p>
@@ -1042,27 +1042,27 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                     <div key={district.district} className="rounded-xl bg-slate-950/45 border border-white/10 p-3">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-white/35">#{index + 1}</span>
+                          <span className="text-xs text-white/35">#{index + 1}</span>
                           <span className="text-white/85 text-sm">{district.district}</span>
                         </div>
                         <span
-                          className="text-[10px] px-2 py-0.5 rounded-full"
+                          className="text-xs px-2 py-0.5 rounded-full"
                           style={{ color: getRiskColor(district.riskLevel), background: `${getRiskColor(district.riskLevel)}18` }}
                         >
                           {Math.round(district.riskScore)}
                         </span>
                       </div>
-                      <p className="text-[11px] text-white/60 mt-1 leading-relaxed">{district.alertReasons[0]}</p>
+                      <p className="text-xs text-white/60 mt-1 leading-relaxed">{district.alertReasons[0]}</p>
                       <div className="flex items-center gap-2 flex-wrap mt-2">
                         {district.topSymptoms.slice(0, 2).map(symptom => (
                           <span
                             key={symptom}
-                            className="border border-cyan-400/15 bg-cyan-500/10 px-2 py-0.5 rounded-full text-[10px] text-cyan-200"
+                            className="border border-cyan-400/15 bg-cyan-500/10 px-2 py-0.5 rounded-full text-xs text-cyan-200"
                           >
                             {symptom}
                           </span>
                         ))}
-                        <span className="text-[10px] text-white/40">{formatTrendDelta(district.trend, district.trendPercent)}</span>
+                        <span className="text-xs text-white/40">{formatTrendDelta(district.trend, district.trendPercent)}</span>
                       </div>
                     </div>
                   ))}
@@ -1075,37 +1075,37 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                     <ShieldCheck size={16} className="text-emerald-300" />
                     <span className="text-white font-medium text-sm">信息分层与阅读方式</span>
                   </div>
-                  <span className="bg-white/10 text-white/50 text-[10px] px-2 py-0.5 rounded-full">
+                  <span className="bg-white/10 text-white/50 text-xs px-2 py-0.5 rounded-full">
                     分层展示
                   </span>
                 </div>
-                <p className="text-[11px] text-white/60 leading-relaxed">
+                <p className="text-xs text-white/60 leading-relaxed">
                   这张图把官方 / 公共来源、趋势 / 参考和社区信号分开展示，方便你分辨哪些信息用来核对正式建议，哪些信息用来看同城变化方向。
                 </p>
                 <div className="space-y-2.5 mt-3">
                   {sourceTierCards.map(card => (
                     <div key={card.id} className={`rounded-xl border p-3 ${card.wrapperClass}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className={`text-[10px] font-medium ${card.labelClass}`}>{card.label}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${card.badgeClass}`}>
+                        <span className={`text-xs font-medium ${card.labelClass}`}>{card.label}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${card.badgeClass}`}>
                           {card.badge}
                         </span>
                       </div>
                       <p className="text-white/85 text-xs mt-1">{card.title}</p>
-                      <p className="text-[11px] text-white/60 mt-1 leading-relaxed">{card.summary}</p>
-                      <p className="text-[10px] text-white/35 mt-2 leading-relaxed">{card.note}</p>
+                      <p className="text-xs text-white/60 mt-1 leading-relaxed">{card.summary}</p>
+                      <p className="text-xs text-white/35 mt-2 leading-relaxed">{card.note}</p>
                     </div>
                   ))}
                 </div>
                 <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/35 p-3">
-                  <p className="text-white/40 text-[11px]">建议阅读顺序</p>
+                  <p className="text-white/40 text-xs">建议阅读顺序</p>
                   <div className="space-y-2 mt-2">
                     {readingGuide.map((item, index) => (
                       <div key={item} className="flex items-start gap-2">
-                        <span className="w-4 h-4 rounded-full bg-white/10 text-white/60 text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="w-4 h-4 rounded-full bg-white/10 text-white/60 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                           {index + 1}
                         </span>
-                        <p className="text-[11px] text-white/65 leading-relaxed">{item}</p>
+                        <p className="text-xs text-white/65 leading-relaxed">{item}</p>
                       </div>
                     ))}
                   </div>
@@ -1118,12 +1118,12 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                     <TrendingUp size={16} className="text-cyan-300" />
                     <span className="text-white font-medium text-sm">近期趋势参考</span>
                   </div>
-                  <span className="bg-cyan-500/15 text-cyan-200 text-[10px] px-2 py-0.5 rounded-full">
+                  <span className="bg-cyan-500/15 text-cyan-200 text-xs px-2 py-0.5 rounded-full">
                     趋势 / 参考
                   </span>
                 </div>
                 {signalDistrict && (
-                  <p className="text-[11px] text-white/60 leading-relaxed mb-3">
+                  <p className="text-xs text-white/60 leading-relaxed mb-3">
                     以 <span className="text-white/85">{signalDistrict.district}</span> 为当前观察窗口，
                     当前结合社区分诊、购药咨询与季节因子估算近期关注度，用来看变化方向，不代表官方病例统计。
                   </p>
@@ -1135,12 +1135,12 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                         <span className="text-white/75 text-xs">{item.label}</span>
                         <span className="text-cyan-200 text-xs font-semibold">{item.value}</span>
                       </div>
-                      <p className="text-[11px] text-cyan-300 mt-1">{item.delta}</p>
-                      <p className="text-[11px] text-white/50 mt-1 leading-relaxed">{item.note}</p>
+                      <p className="text-xs text-cyan-300 mt-1">{item.delta}</p>
+                      <p className="text-xs text-white/50 mt-1 leading-relaxed">{item.note}</p>
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-white/35 mt-3">
+                <p className="text-xs text-white/35 mt-3">
                   注：该卡更贴近居民体感与服务需求变化，建议与官方公开资料和线下接诊情况交叉判断。
                 </p>
               </div>
@@ -1156,7 +1156,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                     <BarChart2 size={16} className="text-white/60" />
                     <span className="text-white font-medium text-sm">各区观察优先级</span>
                   </div>
-                  <span className="text-white/30 text-[11px]">按本地参考分排序</span>
+                  <span className="text-white/30 text-xs">按本地参考分排序</span>
                 </div>
               {filteredSortedDistricts.map((d, i) => (
                 <div
@@ -1169,7 +1169,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                   <span className="text-white/30 text-xs w-4">{i + 1}</span>
                   <span className="text-white/80 text-xs flex-1">{d.district}</span>
                   {locationStatus === 'detected' && detectedCity === currentCity && detectedDistrict === d.district && (
-                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-200">
+                    <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-1.5 py-0.5 text-xs text-emerald-200">
                       离你更近
                     </span>
                   )}
@@ -1204,7 +1204,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-white font-medium text-sm">{activeDistrict.district} · 分区说明卡</span>
                       <span
-                        className="text-[11px] px-2 py-0.5 rounded-full"
+                        className="text-xs px-2 py-0.5 rounded-full"
                         style={{
                           color: getRiskColor(activeDistrict.riskLevel),
                           background: `${getRiskColor(activeDistrict.riskLevel)}20`,
@@ -1213,7 +1213,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                         {getRiskLabel(activeDistrict.riskLevel)}
                       </span>
                     </div>
-                    <p className="text-white/35 text-[11px] mt-1">
+                    <p className="text-white/35 text-xs mt-1">
                       这张卡把官方 / 公共来源、趋势 / 参考和社区信号分开说明，便于判断“正式建议”“变化方向”“居民体感”分别来自哪里。
                     </p>
                   </div>
@@ -1221,19 +1221,19 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
 
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="rounded-xl bg-slate-950/40 border border-white/10 p-3">
-                    <p className="text-white/40 text-[11px]">近 7 日本地参考分</p>
+                    <p className="text-white/40 text-xs">近 7 日本地参考分</p>
                     <p className="text-2xl font-bold text-white mt-1">{Math.round(activeDistrict.riskScore)}</p>
                     <p className="text-xs mt-1" style={{ color: getRiskColor(activeDistrict.riskLevel) }}>
                       {getTrendLabel(activeDistrict.trend)} · {activeDistrict.trendPercent}%
                     </p>
                   </div>
                   <div className="rounded-xl bg-slate-950/40 border border-white/10 p-3">
-                    <p className="text-white/40 text-[11px]">居民近期高频不适</p>
+                    <p className="text-white/40 text-xs">居民近期高频不适</p>
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {activeDistrict.topSymptoms.map(symptom => (
                         <span
                           key={symptom}
-                          className="bg-cyan-500/10 text-cyan-200 text-[11px] px-2 py-0.5 rounded-full border border-cyan-400/15"
+                          className="bg-cyan-500/10 text-cyan-200 text-xs px-2 py-0.5 rounded-full border border-cyan-400/15"
                         >
                           {symptom}
                         </span>
@@ -1258,13 +1258,13 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                           }}
                         />
                       </div>
-                      <p className="text-white/35 text-[11px] mt-1">{item.description}</p>
+                      <p className="text-white/35 text-xs mt-1">{item.description}</p>
                     </div>
                   ))}
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-white/10">
-                  <p className="text-white/45 text-[11px] mb-1.5">为什么近期要多看一眼</p>
+                  <p className="text-white/45 text-xs mb-1.5">为什么近期要多看一眼</p>
                   <div className="space-y-1.5">
                     {activeDistrict.alertReasons.map(reason => (
                       <div key={reason} className="flex items-start gap-2 text-xs text-white/75">
@@ -1276,8 +1276,8 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
 
                   <div className="mt-3 rounded-xl bg-slate-950/40 border border-white/10 p-2.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-cyan-200 text-[11px]">这张区域卡的信息来源</span>
-                      <span className="bg-white/10 text-white/60 text-[10px] px-2 py-0.5 rounded-full">
+                      <span className="text-cyan-200 text-xs">这张区域卡的信息来源</span>
+                      <span className="bg-white/10 text-white/60 text-xs px-2 py-0.5 rounded-full">
                         分层查看
                       </span>
                     </div>
@@ -1285,11 +1285,11 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                       {districtSourceCards.map(card => (
                         <div key={card.id} className={`rounded-xl border p-2.5 ${card.wrapperClass}`}>
                           <div className="flex items-center justify-between gap-2">
-                            <span className={`text-[10px] font-medium ${card.tierClass}`}>{card.tier}</span>
+                            <span className={`text-xs font-medium ${card.tierClass}`}>{card.tier}</span>
                           </div>
-                          <p className="text-white/85 text-[11px] mt-1">{card.title}</p>
-                          <p className="text-white/60 text-[11px] leading-relaxed mt-1">{card.summary}</p>
-                          <p className="text-white/35 text-[10px] leading-relaxed mt-2">{card.note}</p>
+                          <p className="text-white/85 text-xs mt-1">{card.title}</p>
+                          <p className="text-white/60 text-xs leading-relaxed mt-1">{card.summary}</p>
+                          <p className="text-white/35 text-xs leading-relaxed mt-2">{card.note}</p>
                         </div>
                       ))}
                     </div>
@@ -1376,7 +1376,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
 
             {/* 每日上报趋势 */}
             <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
-              <p className="text-[11px] font-medium text-white/60 mb-3">每日上报趋势</p>
+              <p className="text-xs font-medium text-white/60 mb-3">每日上报趋势</p>
               <div className="flex items-end gap-2 h-20">
                 {dailyTrend.map((day, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1">
@@ -1400,7 +1400,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                   <p className="text-white/75 text-xs leading-relaxed whitespace-pre-line">
                     {warningText}
                   </p>
-                  <p className="text-white/35 text-[11px] mt-3">
+                  <p className="text-white/35 text-xs mt-3">
                     注：该研判用于辅助解释风险变化，不替代疾控部门正式结论。
                   </p>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
@@ -1419,18 +1419,18 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                     <span className="text-white font-medium text-sm">官方 / 公共来源对照</span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="bg-emerald-500/15 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full">
+                    <span className="bg-emerald-500/15 text-emerald-200 text-xs px-2 py-0.5 rounded-full">
                       {officialFreshnessLabel}
                     </span>
                     {officialTimeLabel && (
-                      <span className="text-white/35 text-[10px]">公开资料最近标注时间：{officialTimeLabel}</span>
+                      <span className="text-white/35 text-xs">公开资料最近标注时间：{officialTimeLabel}</span>
                     )}
                   </div>
                 </div>
-                <p className="text-[11px] text-white/65 mt-2 leading-relaxed">
+                <p className="text-xs text-white/65 mt-2 leading-relaxed">
                   {dashboardSourceStatus.summary}
                 </p>
-                <p className="text-[10px] text-white/40 mt-2 leading-relaxed">
+                <p className="text-xs text-white/40 mt-2 leading-relaxed">
                   {dashboardSourceStatus.note}
                 </p>
               </div>
@@ -1480,7 +1480,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
       </div>
 
       <div className="mt-4 text-center">
-        <p className="text-[11px] text-slate-400">
+        <p className="text-xs text-slate-400">
           企业/机构如需区域健康数据服务，
           <button onClick={onOpenB2B} className="text-blue-500 hover:underline">了解合作方案</button>
         </p>

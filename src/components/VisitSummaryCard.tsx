@@ -119,8 +119,8 @@ export function VisitSummaryCard({ result, profile, messages, onClose }: VisitSu
 
         {/* Footer */}
         <div className="mt-4 pt-3 border-t border-slate-100">
-          <p className="text-[10px] text-slate-400 text-center">{result.disclaimer}</p>
-          <p className="text-[10px] text-slate-400 text-center mt-1">
+          <p className="text-xs text-slate-400 text-center">{result.disclaimer}</p>
+          <p className="text-xs text-slate-400 text-center mt-1">
             长按截图保存，就诊时出示给医生
           </p>
         </div>

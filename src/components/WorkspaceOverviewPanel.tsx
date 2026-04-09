@@ -39,7 +39,7 @@ export function WorkspaceOverviewPanel({
     <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
             <Cloud size={13} className="text-cyan-600" />
             {statusLabel}
           </div>
@@ -79,45 +79,45 @@ export function WorkspaceOverviewPanel({
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <UserRound size={12} />
             当前账号
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{accountLabel}</p>
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="mt-1 text-xs text-slate-500">
             {sessionEmail ? '资料与历史会自动跨设备同步' : '未登录时仅保存在当前浏览器'}
           </p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <Cloud size={12} />
             档案完整度
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{profileCompletion}%</p>
-          <p className="mt-1 text-[11px] text-slate-500">补齐基础资料后，问诊会更少重复追问。</p>
+          <p className="mt-1 text-xs text-slate-500">补齐基础资料后，问诊会更少重复追问。</p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <MessageSquareText size={12} />
             最近一次
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{latestTitle}</p>
           <div className="mt-2 flex items-center gap-2">
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}>
+            <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}>
               {riskMeta.label}
             </span>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <MessageSquareText size={12} />
             历史会话
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{conversationCount} 段</p>
-          <p className="mt-1 text-[11px] text-slate-500">可在首页、聊天页和个人空间继续之前的对话线程。</p>
+          <p className="mt-1 text-xs text-slate-500">可在首页、聊天页和个人空间继续之前的对话线程。</p>
         </div>
       </div>
     </section>

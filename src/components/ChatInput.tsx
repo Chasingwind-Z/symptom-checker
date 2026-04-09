@@ -445,7 +445,7 @@ export function ChatInput({
           <div className="px-3 pb-3 pt-3 sm:px-4">
             {uploadError && (
               <div
-                className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] leading-relaxed text-rose-600"
+                className="mb-3 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs leading-relaxed text-rose-600"
                 role="alert"
               >
                 {uploadError}
@@ -475,7 +475,7 @@ export function ChatInput({
                   <button
                     type="button"
                     onClick={onClearSelectedMode}
-                    className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-[11px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                    className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-white px-2.5 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
                   >
                     <X size={12} />
                     取消
@@ -492,16 +492,16 @@ export function ChatInput({
                       <p className="text-sm font-semibold text-slate-800">
                         已附加 {attachmentCount} 张图片
                       </p>
-                      <span className="rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                      <span className="rounded-full bg-white/90 px-2 py-0.5 text-xs font-medium text-amber-700">
                         {AI_VISION_ENABLED ? '图片将直接发送给视觉模型' : '图片以文字上下文方式辅助'}
                       </span>
                       {remainingAttachmentSlots > 0 && (
-                        <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                        <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-500">
                           还可再加 {remainingAttachmentSlots} 张
                         </span>
                       )}
                     </div>
-                    <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
                       建议再补充部位、持续时间、是否疼 / 痒 / 发热；若是药盒或报告，可直接说明想核对的药名、剂量或指标。
                     </p>
                   </div>
@@ -535,7 +535,7 @@ export function ChatInput({
                       </button>
                       <div className="px-2.5 py-2">
                         <p className="truncate text-xs font-medium text-slate-700">{attachment.name}</p>
-                        <p className="mt-0.5 text-[10px] text-slate-500">
+                        <p className="mt-0.5 text-xs text-slate-500">
                           {formatFileSize(attachment.sizeBytes)} · 仅作辅助参考
                         </p>
                       </div>
@@ -551,7 +551,7 @@ export function ChatInput({
                       onClick={() =>
                         updateDraft((previousValue) => appendPromptTemplate(previousValue, shortcut.template))
                       }
-                      className="rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:text-blue-600"
+                      className="rounded-full border border-white/80 bg-white/90 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:text-blue-600"
                     >
                       {shortcut.label}
                     </button>
@@ -593,7 +593,7 @@ export function ChatInput({
                 >
                   <ImagePlus size={18} />
                   {attachmentCount > 0 && (
-                    <span className="absolute -right-1 -top-1 rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                    <span className="absolute -right-1 -top-1 rounded-full bg-blue-500 px-1.5 py-0.5 text-xs font-semibold text-white shadow-sm">
                       {attachmentCount}
                     </span>
                   )}
@@ -619,11 +619,11 @@ export function ChatInput({
                   />
 
                   <div className="mt-1.5 flex items-center justify-between gap-3 px-1">
-                    <p className="min-w-0 flex-1 text-[11px] leading-relaxed text-slate-500">
+                    <p className="min-w-0 flex-1 text-xs leading-relaxed text-slate-500">
                       {helperText}
                     </p>
                     <span
-                      className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${
+                      className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${
                         isListening ? 'bg-rose-50 text-rose-600' : 'bg-white text-slate-400'
                       }`}
                     >
@@ -672,7 +672,7 @@ export function ChatInput({
             </div>
 
             {!isInline && (
-              <div className="mt-2 flex items-start gap-2 rounded-2xl bg-slate-50/90 px-3 py-2.5 text-[11px] text-slate-500">
+              <div className="mt-2 flex items-start gap-2 rounded-2xl bg-slate-50/90 px-3 py-2.5 text-xs text-slate-500">
                 <ShieldAlert size={12} className="mt-0.5 flex-shrink-0 text-amber-500" />
                 <p className="leading-relaxed">
                   可上传最多 3 张皮疹、伤口、化验单或药盒照片（3 张限制是为了控制单轮提示词长度）。

@@ -97,7 +97,7 @@ export function ConversationHistoryPanel({
             <MessageSquareText size={16} className="text-cyan-600" />
             <p className="text-sm font-semibold text-slate-800">{title}</p>
             {hiddenCount > 0 && (isShelf || isSidebar) && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                 +{hiddenCount}
               </span>
             )}
@@ -147,22 +147,22 @@ export function ConversationHistoryPanel({
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
                           {isActive && (
-                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                            <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
                               当前
                             </span>
                           )}
                         </div>
-                        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                        <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
                           {getPreviewText(session)}
                         </p>
                       </div>
                       <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                       >
                         {riskMeta.label}
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-400">
                       <span>{formatUpdatedAt(session.updatedAt)}</span>
                       <div className="flex items-center gap-2">
                         <span>{session.messages.length} 条</span>
@@ -180,7 +180,7 @@ export function ConversationHistoryPanel({
             })}
           </div>
           {hiddenCount > 0 && (
-            <p className="mt-3 px-1 text-[11px] text-slate-400">
+            <p className="mt-3 px-1 text-xs text-slate-400">
               另外还有 {hiddenCount} 段较早对话，可在历史会话里继续查看。
             </p>
           )}
@@ -207,12 +207,12 @@ export function ConversationHistoryPanel({
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
                         <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                          className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                         >
                           {riskMeta.label}
                         </span>
                         {isActive && (
-                          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                          <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
                             当前
                           </span>
                         )}
@@ -223,7 +223,7 @@ export function ConversationHistoryPanel({
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                       <span className="inline-flex items-center gap-1">
                         <Clock3 size={12} />
                         {formatUpdatedAt(session.updatedAt)}
@@ -271,12 +271,12 @@ export function ConversationHistoryPanel({
                             {session.title}
                           </p>
                           <span
-                            className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                           >
                             {riskMeta.label}
                           </span>
                           {isActive && (
-                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-cyan-700">
+                            <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
                               当前会话
                             </span>
                           )}
@@ -284,7 +284,7 @@ export function ConversationHistoryPanel({
                         <p className="mt-2 text-xs leading-relaxed text-slate-600">
                           {getPreviewText(session)}
                         </p>
-                        <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500 flex-wrap">
+                        <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 flex-wrap">
                           <span className="inline-flex items-center gap-1">
                             <Clock3 size={12} />
                             {formatUpdatedAt(session.updatedAt)}
@@ -309,7 +309,7 @@ export function ConversationHistoryPanel({
             })}
           </div>
           {hiddenCount > 0 && (
-            <p className="mt-3 text-[11px] text-slate-400">
+            <p className="mt-3 text-xs text-slate-400">
               另外还有 {hiddenCount} 段较早对话，历史会按最近更新时间自动排序。
             </p>
           )}

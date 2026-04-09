@@ -101,14 +101,14 @@ function SidebarNavButton({
         <>
           <span className="min-w-0 flex-1 text-[13px] font-medium">{label}</span>
           {badge && (
-            <span className="shrink-0 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] text-slate-500">
+            <span className="shrink-0 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-500">
               {badge}
             </span>
           )}
         </>
       )}
       {isCollapsed && badge && (
-        <span className="absolute right-2 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-medium text-white">
+        <span className="absolute right-2 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1 text-xs font-medium text-white">
           {badge}
         </span>
       )}
@@ -205,7 +205,7 @@ export function AppSidebar({
 
       <nav className={`mt-2 ${isCollapsed ? 'space-y-1.5' : 'space-y-0.5'}`}>
         {!isCollapsed && (
-          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">主功能</p>
+          <p className="px-2 pb-1 text-xs font-medium tracking-[0.08em] text-slate-400">主功能</p>
         )}
         <SidebarNavButton
           label="查记录"
@@ -249,7 +249,7 @@ export function AppSidebar({
 
       <div className="mt-2 border-t border-slate-100 pt-2">
         {!isCollapsed && (
-          <p className="px-2 pb-1 text-[11px] font-medium tracking-[0.08em] text-slate-400">个人</p>
+          <p className="px-2 pb-1 text-xs font-medium tracking-[0.08em] text-slate-400">个人</p>
         )}
         <SidebarNavButton
           label="我的资料"
@@ -327,9 +327,9 @@ export function AppSidebar({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-[13px] font-medium text-slate-900">{statusLabel}</p>
-              <p className="mt-0.5 truncate text-[11px] text-slate-500">{resolvedAccountLabel}</p>
+              <p className="mt-0.5 truncate text-xs text-slate-500">{resolvedAccountLabel}</p>
               {statusHelperText && (
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-400">{statusHelperText}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">{statusHelperText}</p>
               )}
             </div>
             {onOpenAuth && authActionLabel && (

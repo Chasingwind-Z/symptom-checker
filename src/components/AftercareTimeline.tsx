@@ -18,7 +18,7 @@ export function AftercareTimeline({ plan }: AftercareTimelineProps) {
     <section className="mb-5 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600">
             <Clock3 size={12} />
             诊后计划
           </div>
@@ -31,7 +31,7 @@ export function AftercareTimeline({ plan }: AftercareTimelineProps) {
         {plan.steps.map((step) => (
           <article key={step.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
             <span
-              className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+              className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
                 STEP_TONE_CLASS[step.tone]
               }`}
             >

@@ -71,7 +71,7 @@ export function SearchIntelligencePanel({
     <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs text-violet-700">
             <Sparkles size={12} />
             相关资料
           </div>
@@ -80,7 +80,7 @@ export function SearchIntelligencePanel({
             输入症状或问题后，这里会整理本次判断可参考的资料、更新时间、适用人群和公开来源。
           </p>
         </div>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-500">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-500">
           当前检索：{query}
         </span>
       </div>
@@ -93,7 +93,7 @@ export function SearchIntelligencePanel({
                 <ShieldCheck size={15} className="text-violet-700" />
                 <p className="text-sm font-semibold text-slate-800">资料参考</p>
               </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
                 {knowledgeResult
                   ? `${knowledgeResult.sourceLabel} · ${knowledgeResult.retrievalLabel}`
                   : '会优先展示与当前问题最相关的资料片段、危险信号和处理建议。'}
@@ -101,12 +101,12 @@ export function SearchIntelligencePanel({
             </div>
             <div className="flex flex-wrap gap-2">
               {knowledgeResult?.focusPopulation && (
-                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-violet-700">
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-xs text-violet-700">
                   重点人群：{knowledgeResult.focusPopulation}
                 </span>
               )}
               {knowledgeResult && (
-                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-slate-500">
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-xs text-slate-500">
                   {getKnowledgeStorageLabel(knowledgeResult.storageMode)}
                 </span>
               )}
@@ -116,7 +116,7 @@ export function SearchIntelligencePanel({
           {knowledgeDocs.length > 0 ? (
             <div className="mt-3 space-y-3">
               {knowledgeResult && (
-                <div className="rounded-2xl border border-violet-100 bg-white/90 px-4 py-3 text-[11px] leading-relaxed text-slate-500">
+                <div className="rounded-2xl border border-violet-100 bg-white/90 px-4 py-3 text-xs leading-relaxed text-slate-500">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-violet-50 px-2 py-0.5 text-violet-700">
                       资料状态：{getKnowledgeStorageLabel(knowledgeResult.storageMode)}
@@ -143,10 +143,10 @@ export function SearchIntelligencePanel({
                 >
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-slate-800">{item.document.title}</p>
-                    <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700">
+                    <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700">
                       {getKnowledgeCategoryLabel(item.document.category)}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                       {item.document.audience}
                     </span>
                   </div>
@@ -156,7 +156,7 @@ export function SearchIntelligencePanel({
                       {item.matchedTerms.slice(0, 4).map((term) => (
                         <span
                           key={term}
-                          className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500"
+                          className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500"
                         >
                           {term}
                         </span>
@@ -164,7 +164,7 @@ export function SearchIntelligencePanel({
                     </div>
                   )}
                   {item.reasons.length > 0 && (
-                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
                       相关原因：{trimText(item.reasons.join('；'), 92)}
                     </p>
                   )}
@@ -188,12 +188,12 @@ export function SearchIntelligencePanel({
                 <Globe size={15} className="text-emerald-700" />
                 <p className="text-sm font-semibold text-slate-800">公开资料核对</p>
               </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+              <p className="mt-1 text-xs leading-relaxed text-slate-500">
                 {webSearch.sourceLabel || '优先展示可继续核对的公开资料；暂时没有时会给你一个外部检索入口。'}
               </p>
             </div>
             {webSearch.fetchedAt && (
-              <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-slate-500">
+              <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-xs text-slate-500">
                 {formatFetchedAt(webSearch.fetchedAt)}
               </span>
             )}

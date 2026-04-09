@@ -34,7 +34,7 @@ export function JudgmentBasisPanel({
   if (!diagnosisResult) {
     return (
       <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
           <ShieldCheck size={12} />
           判断依据
         </div>
@@ -54,7 +54,7 @@ export function JudgmentBasisPanel({
     <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] text-emerald-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
             <ShieldCheck size={12} />
             判断依据
           </div>
@@ -63,13 +63,13 @@ export function JudgmentBasisPanel({
             先看分级理由，再看补充知识和公开资料，方便你理解“为什么这样建议”，而不是只看结论。
           </p>
         </div>
-        <span className={`rounded-full border px-3 py-1 text-[11px] font-medium ${riskMeta.tone}`}>
+        <span className={`rounded-full border px-3 py-1 text-xs font-medium ${riskMeta.tone}`}>
           当前分级：{riskMeta.label}
         </span>
       </div>
 
       <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-4">
-        <p className="text-[11px] text-slate-500">本次主要判断</p>
+        <p className="text-xs text-slate-500">本次主要判断</p>
         <p className="mt-2 text-sm font-semibold text-slate-900">{diagnosisResult.reason}</p>
         <p className="mt-2 text-xs leading-relaxed text-slate-600">{diagnosisResult.action}</p>
         {diagnosisResult.departments.length > 0 && (
@@ -77,7 +77,7 @@ export function JudgmentBasisPanel({
             {diagnosisResult.departments.map((department) => (
               <span
                 key={department}
-                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600"
+                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600"
               >
                 {department}
               </span>
@@ -104,14 +104,14 @@ export function JudgmentBasisPanel({
           </div>
           {knowledgeDocs.length > 0 ? (
             <div className="mt-2 space-y-2">
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 {knowledgeResult?.sourceLabel}
                 {knowledgeResult?.retrievalLabel ? ` · ${knowledgeResult.retrievalLabel}` : ''}
               </p>
               {knowledgeDocs.map((item) => (
                 <div key={item.document.id} className="rounded-xl border border-violet-100 bg-white/90 px-3 py-2">
                   <p className="text-xs font-medium text-slate-800">{item.document.title}</p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
                     {trimText(item.snippet, 92)}
                   </p>
                   {item.document.sourceLabel && (
@@ -135,7 +135,7 @@ export function JudgmentBasisPanel({
           {webResults.length > 0 ? (
             <div className="mt-2 space-y-2">
               {webSearch.fetchedAt && (
-                <p className="text-[11px] text-slate-500">更新时间：{formatFetchedAt(webSearch.fetchedAt)}</p>
+                <p className="text-xs text-slate-500">更新时间：{formatFetchedAt(webSearch.fetchedAt)}</p>
               )}
               {webResults.map((item) => (
                 <a
@@ -148,7 +148,7 @@ export function JudgmentBasisPanel({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-slate-800">{trimText(item.title, 44)}</p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                      <p className="mt-1 text-xs leading-relaxed text-slate-500">
                         {trimText(item.snippet, 86)}
                       </p>
                     </div>

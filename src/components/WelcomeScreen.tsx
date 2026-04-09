@@ -428,26 +428,6 @@ export function WelcomeScreen({
         </p>
       )}
 
-      {/* Household profile switcher */}
-      <HouseholdProfileSwitcher
-        currentProfile={profile ?? {
-          displayName: '',
-          city: '中国大陆',
-          birthYear: null,
-          gender: '',
-          medicalNotes: '',
-          chronicConditions: '',
-          allergies: '',
-          currentMedications: '',
-          careFocus: '',
-          profileMode: 'custom',
-        }}
-        householdProfiles={householdProfiles}
-        isSwitchingId={switchingHouseholdProfileId}
-        onSwitchProfile={onSelectHouseholdProfile}
-        onManageProfiles={onManageProfiles}
-      />
-
       {/* Daily health check-in */}
       <div className="mt-4">
         <DailyCheckin />
@@ -472,29 +452,6 @@ export function WelcomeScreen({
             </div>
             <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-amber-700">
               继续上次
-              <ArrowRight size={13} />
-            </span>
-          </div>
-        </button>
-      )}
-
-      {/* Cloud sync card */}
-      {!showReengagement && sessionEmail && latestCloudSession && (
-        <button
-          type="button"
-          onClick={() => onOpenConversation(latestCloudSession.id)}
-          className="w-full rounded-3xl border border-blue-100 bg-blue-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">已同步 {cloudSessions.length} 段问诊，可跨设备继续</p>
-              <p className="mt-1 truncate text-xs text-slate-600">
-                {truncateText(getRecentSessionReference(latestCloudSession) || latestCloudSession.title, 24)}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">适合直接回到上次线程继续补充，不必从头再说。</p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-700">
-              继续查看
               <ArrowRight size={13} />
             </span>
           </div>
@@ -615,7 +572,7 @@ export function WelcomeScreen({
                       trackMedicationClick({ medicationName: med, source: 'surge_alert' })
                       window.open(buildJDSearchUrl(med), '_blank', 'noopener')
                     }}
-                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-100 transition-colors"
+                    className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-600 hover:bg-red-100 transition-colors"
                   >
                     <ShoppingCart size={10} />
                     备{med}
@@ -651,6 +608,49 @@ export function WelcomeScreen({
                 </button>
               ))}
             </div>
+
+            {/* Household profile switcher (moved from first screen) */}
+            <HouseholdProfileSwitcher
+              currentProfile={profile ?? {
+                displayName: '',
+                city: '中国大陆',
+                birthYear: null,
+                gender: '',
+                medicalNotes: '',
+                chronicConditions: '',
+                allergies: '',
+                currentMedications: '',
+                careFocus: '',
+                profileMode: 'custom',
+              }}
+              householdProfiles={householdProfiles}
+              isSwitchingId={switchingHouseholdProfileId}
+              onSwitchProfile={onSelectHouseholdProfile}
+              onManageProfiles={onManageProfiles}
+            />
+
+            {/* Cloud sync card (moved from first screen) */}
+            {!showReengagement && sessionEmail && latestCloudSession && (
+              <button
+                type="button"
+                onClick={() => onOpenConversation(latestCloudSession.id)}
+                className="w-full rounded-3xl border border-blue-100 bg-blue-50 px-4 py-4 text-left shadow-sm transition-colors hover:bg-blue-100/70"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">已同步 {cloudSessions.length} 段问诊，可跨设备继续</p>
+                    <p className="mt-1 truncate text-xs text-slate-600">
+                      {truncateText(getRecentSessionReference(latestCloudSession) || latestCloudSession.title, 24)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">适合直接回到上次线程继续补充，不必从头再说。</p>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-700">
+                    继续查看
+                    <ArrowRight size={13} />
+                  </span>
+                </div>
+              </button>
+            )}
 
             {/* Continue last session */}
             {latestSession && (
@@ -716,7 +716,7 @@ export function WelcomeScreen({
                   </div>
                   <p className="mt-3 text-sm font-semibold text-slate-900">{item.title}</p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.description}</p>
-                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-slate-500">
                     预填问题
                     <ArrowRight size={12} />
                   </span>

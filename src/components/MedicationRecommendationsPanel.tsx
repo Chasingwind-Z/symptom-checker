@@ -146,7 +146,7 @@ function AccessTile({
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm font-semibold text-slate-800">{title}</p>
               {badge && (
-                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-500">
                   {badge}
                 </span>
               )}
@@ -428,7 +428,7 @@ export function MedicationRecommendationsPanel({
     <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
             <Pill size={13} className="text-violet-600" />
             服务入口与用药参考
           </div>
@@ -449,7 +449,7 @@ export function MedicationRecommendationsPanel({
             )}
             <ActionButton label="新建问诊" onClick={onStartNewConversation} />
           </div>
-          <p className="text-[11px] text-slate-500">仅供 OTC / 家庭处理参考，不替代处方或线下评估。</p>
+          <p className="text-xs text-slate-500">仅供 OTC / 家庭处理参考，不替代处方或线下评估。</p>
         </div>
       </div>
 
@@ -461,7 +461,7 @@ export function MedicationRecommendationsPanel({
                   <Pill size={16} className="text-violet-700" />
                   <p className="text-sm font-semibold text-slate-800">这次最先该开的入口</p>
                 {currentDiagnosisRiskLabel && (
-                  <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-[10px] text-violet-700">
+                  <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-xs text-violet-700">
                     {currentDiagnosisRiskLabel}
                   </span>
                 )}
@@ -476,19 +476,19 @@ export function MedicationRecommendationsPanel({
             </div>
               <div className="flex flex-wrap gap-2">
                 {preferredRecommendation && (
-                  <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-[10px] text-violet-700">
+                  <span className="rounded-full border border-violet-100 bg-white px-2 py-0.5 text-xs text-violet-700">
                     当前优先：{trimText(preferredRecommendation.title, 18)}
                   </span>
                 )}
                 {recommendedMedicationNames.slice(1).map((name) => (
                   <span
                     key={name}
-                    className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-600"
+                    className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600"
                   >
                     可参考：{trimText(name, 18)}
                   </span>
                 ))}
-                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] text-slate-500">
+                <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-xs text-slate-500">
                   {locationHint}
                 </span>
             </div>
@@ -498,26 +498,26 @@ export function MedicationRecommendationsPanel({
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <Sparkles size={12} />
             可参考场景
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{contextWithGuidanceCount} 个</p>
-          <p className="mt-1 text-[11px] text-slate-500">来自当前问诊、最近线程和已保存摘要。</p>
+          <p className="mt-1 text-xs text-slate-500">来自当前问诊、最近线程和已保存摘要。</p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <ShieldCheck size={12} />
             谨慎提醒
           </div>
           <p className="mt-2 text-sm font-semibold text-slate-800">{cautionCount} 条</p>
-          <p className="mt-1 text-[11px] text-slate-500">优先暴露需要先核对成分或尽快线下评估的点。</p>
+          <p className="mt-1 text-xs text-slate-500">优先暴露需要先核对成分或尽快线下评估的点。</p>
         </div>
       </div>
 
       {recommendationRankingHintVisible && (
-        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
+        <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs text-violet-700">
           <Sparkles size={12} />
           已结合档案与最近记录排序
         </div>
@@ -531,7 +531,7 @@ export function MedicationRecommendationsPanel({
                 <div className="flex items-center gap-2 flex-wrap">
                   <MapPin size={16} className="text-cyan-600" />
                   <p className="text-sm font-semibold text-slate-800">服务入口</p>
-                  <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                  <span className="rounded-full border border-white/80 bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-500">
                     {locationHint}
                   </span>
                 </div>
@@ -558,7 +558,7 @@ export function MedicationRecommendationsPanel({
               ))}
             </div>
 
-            <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            <p className="mt-3 text-xs leading-relaxed text-slate-500">
               {preferredRecommendation
                 ? `当前优先方向：${preferredRecommendation.title}。建议先核对通用名、剂量和禁忌，再决定是否购买。`
                 : '如果暂时没有明确 OTC 优势方向，建议先看线下门诊或回到原问诊补充信息。'}
@@ -573,13 +573,13 @@ export function MedicationRecommendationsPanel({
                   <Pill size={16} className="text-violet-700" />
                   <p className="text-sm font-semibold text-slate-800">当前优先参考</p>
                   <span
-                    className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                    className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
                       getRiskPresentation(featuredContext.riskLevel).tone
                     }`}
                   >
                     {getRiskPresentation(featuredContext.riskLevel).label}
                   </span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-500">
+                  <span className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-500">
                     {featuredContext.sourceLabel}
                   </span>
                 </div>
@@ -587,14 +587,14 @@ export function MedicationRecommendationsPanel({
                 <p className="mt-2 text-sm leading-relaxed text-slate-600">{featuredContext.summary}</p>
               </div>
 
-              <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
                 <Clock3 size={11} />
                 {formatDateTimeLabel(featuredContext.updatedAt)}
               </span>
             </div>
 
             <div
-              className={`mt-3 inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] ${
+              className={`mt-3 inline-flex items-center rounded-full border px-2.5 py-1 text-xs ${
                 profileApplied
                   ? 'border-violet-100 bg-violet-50 text-violet-700'
                   : 'border-amber-200 bg-amber-50 text-amber-700'
@@ -620,7 +620,7 @@ export function MedicationRecommendationsPanel({
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold text-slate-800">{recommendation.title}</p>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                             recommendation.suitable
                               ? 'bg-emerald-50 text-emerald-700'
                               : 'bg-amber-100 text-amber-700'
@@ -636,7 +636,7 @@ export function MedicationRecommendationsPanel({
                     {recommendation.suitable && (
                       <button
                         type="button"
-                        className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+                        className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
                         onClick={() => {
                           trackMedicationClick({
                             medicationName: recommendation.title,
@@ -654,14 +654,14 @@ export function MedicationRecommendationsPanel({
 
                   <div className="mt-3 grid gap-2 md:grid-cols-2">
                     <div className="rounded-xl bg-slate-50 px-3 py-2">
-                      <p className="text-[11px] font-medium text-slate-700">为何提到它</p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                      <p className="text-xs font-medium text-slate-700">为何提到它</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">
                         {recommendation.reason}
                       </p>
                     </div>
                     <div className="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2">
-                      <p className="text-[11px] font-medium text-amber-800">使用前提醒</p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-amber-700">
+                      <p className="text-xs font-medium text-amber-800">使用前提醒</p>
+                      <p className="mt-1 text-xs leading-relaxed text-amber-700">
                         {recommendation.caution}
                       </p>
                     </div>
@@ -694,12 +694,12 @@ export function MedicationRecommendationsPanel({
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold text-slate-800">{context.title}</p>
                         <span
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${riskMeta.tone}`}
+                          className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                         >
                           {riskMeta.label}
                         </span>
                       </div>
-                      <p className="mt-1 text-[11px] text-slate-500">
+                      <p className="mt-1 text-xs text-slate-500">
                         {context.sourceLabel} · {formatDateTimeLabel(context.updatedAt)}
                       </p>
 
@@ -737,7 +737,7 @@ export function MedicationRecommendationsPanel({
                         {primaryRecommendation?.suitable && (
                           <button
                             type="button"
-                            className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+                            className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
                             onClick={() => {
                               trackMedicationClick({
                                 medicationName: primaryRecommendation.title,

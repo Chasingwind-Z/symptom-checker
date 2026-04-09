@@ -219,7 +219,7 @@ export function WorkspaceView({
             </div>
 
             {searchPersonalizationHintVisible && (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-[11px] text-violet-700">
+              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-violet-50 px-3 py-1 text-xs text-violet-700">
                 <Sparkles size={12} />
                 已结合档案与最近记录排序
               </div>
@@ -227,23 +227,23 @@ export function WorkspaceView({
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] text-slate-500">匹配会话</p>
+                <p className="text-xs text-slate-500">匹配会话</p>
                 <p className="mt-2 text-sm font-semibold text-slate-800">
                   {filteredConversationSessions.length} 段
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500">覆盖标题、提问与分诊建议。</p>
+                <p className="mt-1 text-xs text-slate-500">覆盖标题、提问与分诊建议。</p>
               </div>
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] text-slate-500">待跟进</p>
+                <p className="text-xs text-slate-500">待跟进</p>
                 <p className="mt-2 text-sm font-semibold text-slate-800">
                   {filteredRecordsCenterFollowUps.length} 项
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500">适合搜索随访提醒与待补充信息。</p>
+                <p className="mt-1 text-xs text-slate-500">适合搜索随访提醒与待补充信息。</p>
               </div>
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p className="text-[11px] text-slate-500">问诊摘要</p>
+                <p className="text-xs text-slate-500">问诊摘要</p>
                 <p className="mt-2 text-sm font-semibold text-slate-800">{filteredCaseCount} 条</p>
-                <p className="mt-1 text-[11px] text-slate-500">支持按科室、风险和摘要内容查找。</p>
+                <p className="mt-1 text-xs text-slate-500">支持按科室、风险和摘要内容查找。</p>
               </div>
             </div>
           </section>
@@ -433,8 +433,8 @@ export function WorkspaceView({
               {reportRecords.slice(-5).reverse().map(record => (
                 <div key={record.id} className="border-t border-slate-100 py-2 first:border-t-0">
                   <p className="text-xs font-medium text-slate-700">{record.reportType}</p>
-                  <p className="text-[11px] text-slate-500 mt-0.5">{record.summary}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{record.analyzedAt}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{record.summary}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{record.analyzedAt}</p>
                 </div>
               ))}
             </div>

@@ -70,7 +70,7 @@ export function OfficialSourceComparison({
         <ShieldCheck size={15} className={isDark ? 'text-cyan-300' : 'text-emerald-600'} />
         <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>{title}</p>
       </div>
-      <p className={`text-[11px] mt-1 leading-relaxed ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+      <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
         {subtitle}
       </p>
 
@@ -86,13 +86,13 @@ export function OfficialSourceComparison({
                     {record.title}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <p className={`text-[11px] ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
+                    <p className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
                       {record.sourceLabel}
                       {record.sourceType ? ` · ${record.sourceType}` : ''}
                       {dateLabel ? ` · ${dateLabel}` : ''}
                     </p>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         isDark ? scopeMeta.darkClass : scopeMeta.lightClass
                       }`}
                     >
@@ -111,7 +111,7 @@ export function OfficialSourceComparison({
                 {record.summary}
               </p>
               {record.url && (
-                <div className={`mt-2 text-[11px] ${isDark ? 'text-cyan-200' : 'text-emerald-700'}`}>
+                <div className={`mt-2 text-xs ${isDark ? 'text-cyan-200' : 'text-emerald-700'}`}>
                   {record.linkLabel ?? '打开原始页面'} →
                 </div>
               )}

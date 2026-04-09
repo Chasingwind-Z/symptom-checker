@@ -174,7 +174,7 @@ export default function App() {
   const [reportCount, setReportCount] = useState<number>(getReportCount);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [currentPage, setCurrentPage] = useState<'home' | 'chat' | 'workspace' | 'map' | 'b2b'>('home');
-  const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('profile');
+  const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('history');
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [recordSearchQuery, setRecordSearchQuery] = useState('');
   const [connectedWebSearch, setConnectedWebSearch] = useState<ConnectedWebSearchState>({

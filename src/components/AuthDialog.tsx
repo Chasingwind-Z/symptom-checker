@@ -377,7 +377,7 @@ export function AuthDialog({
       <div className="relative w-full max-w-lg rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] text-slate-600">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
               <ShieldCheck size={13} className="text-cyan-600" />
               {isSignedIn ? '账号设置' : '登录 / 注册'}
             </div>
@@ -408,7 +408,7 @@ export function AuthDialog({
                 <p className="mt-2 text-sm font-medium text-slate-900">
                   {maskedSessionEmail || sessionEmail}
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-600">
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
                   新的档案修改和最近问诊会自动同步到云端；退出后，这台设备上的本地缓存仍会保留。
                 </p>
               </div>
@@ -446,7 +446,7 @@ export function AuthDialog({
               <div className="flex items-start gap-3">
                 <Mail size={16} className="mt-0.5 text-cyan-600" />
                 <div className="min-w-0 flex-1">
-                  <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-[10px] text-slate-500">
+                  <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-2.5 py-1 text-xs text-slate-500">
                     <ShieldCheck size={12} className="shrink-0 text-cyan-600" />
                     <span className="truncate">邮件完成后将返回当前产品 · {redirectUrl}</span>
                   </div>
@@ -459,7 +459,7 @@ export function AuthDialog({
                       maskedPendingEmail || pendingEmailAction.email
                     )}
                   </p>
-                  <p className="mt-2 text-[11px] text-slate-500">
+                  <p className="mt-2 text-xs text-slate-500">
                     {pendingEmailAction.hasSentEmail
                       ? `没看到邮件？可检查垃圾邮件，或在 ${
                           resendCountdown > 0 ? `${resendCountdown}s` : '现在'
@@ -522,7 +522,7 @@ export function AuthDialog({
               </div>
 
               <div className="space-y-3">
-                <label className="flex flex-col gap-1 text-[11px] text-slate-500">
+                <label className="flex flex-col gap-1 text-xs text-slate-500">
                   邮箱地址
                   <input
                     type="email"
@@ -539,7 +539,7 @@ export function AuthDialog({
                 </label>
 
                 {authMode !== 'magic-link' && (
-                  <label className="flex flex-col gap-1 text-[11px] text-slate-500">
+                  <label className="flex flex-col gap-1 text-xs text-slate-500">
                     {authMode === 'register' ? '设置密码' : '密码'}
                     <div className="relative">
                       <Lock
@@ -588,7 +588,7 @@ export function AuthDialog({
                 </button>
               </div>
 
-              <p className="text-[11px] leading-relaxed text-slate-500">
+              <p className="text-xs leading-relaxed text-slate-500">
                 {authMode === 'magic-link'
                   ? '推荐：适合在手机和电脑之间快速继续问诊，不需要手机号，也不用记密码。'
                   : authMode === 'register'

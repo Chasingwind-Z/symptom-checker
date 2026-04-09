@@ -61,7 +61,7 @@ function TabButton({ label, icon: Icon, isActive, badge, onClick }: TabButtonPro
         <Icon size={17} />
       </span>
       <span
-        className={`text-[10px] font-medium leading-tight transition-colors ${
+        className={`text-xs font-medium leading-tight transition-colors ${
           isActive ? 'text-blue-600' : 'text-slate-500'
         }`}
       >
@@ -95,7 +95,7 @@ function SheetItem({ label, icon: Icon, badge, onClick }: SheetItemProps) {
       </span>
       <span className="flex-1 text-sm font-medium text-slate-800">{label}</span>
       {badge && (
-        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-500">
+        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
           {badge}
         </span>
       )}

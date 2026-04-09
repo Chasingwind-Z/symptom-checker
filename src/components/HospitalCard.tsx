@@ -144,7 +144,7 @@ export function HospitalCard({ hospital, allHospitals }: HospitalCardProps) {
             <a href={phoneHref} className="text-blue-500 text-sm hover:text-blue-600 transition-colors">
               {hospital.phone}
             </a>
-            <span className="text-[11px] text-slate-400">可先电话确认接诊</span>
+            <span className="text-xs text-slate-400">可先电话确认接诊</span>
           </>
         ) : (
           <span className="text-slate-400 text-sm">暂无电话</span>
@@ -154,8 +154,8 @@ export function HospitalCard({ hospital, allHospitals }: HospitalCardProps) {
       {/* Quick actions */}
       <div className="rounded-xl bg-slate-100/80 p-2.5">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <span className="text-[11px] font-medium text-slate-500">就诊快捷操作</span>
-          <span className="text-[11px] text-slate-400">导航 · 电话 · 地图</span>
+          <span className="text-xs font-medium text-slate-500">就诊快捷操作</span>
+          <span className="text-xs text-slate-400">导航 · 电话 · 地图</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <QuickAction label="一键导航" icon={<Navigation size={14} />} href={navUrl} primary />
@@ -168,11 +168,11 @@ export function HospitalCard({ hospital, allHospitals }: HospitalCardProps) {
             href={mapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[11px] text-slate-500 hover:text-blue-600 transition-colors"
+            className="text-xs text-slate-500 hover:text-blue-600 transition-colors"
           >
             在地图中打开完整路线
           </a>
-          {!hospital.openNow && <span className="text-[11px] text-amber-600">到院前建议先电话确认</span>}
+          {!hospital.openNow && <span className="text-xs text-amber-600">到院前建议先电话确认</span>}
         </div>
       </div>
 

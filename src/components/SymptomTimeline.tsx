@@ -109,7 +109,7 @@ export function SymptomTimeline({ onStartConsultation }: Props) {
                     <Clock size={12} />
                     {formatTimeAgo(entry.timestamp, now)}
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${LEVEL_COLORS[entry.level] ?? 'bg-slate-300'} text-white`}
+                      className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${LEVEL_COLORS[entry.level] ?? 'bg-slate-300'} text-white`}
                     >
                       {LEVEL_LABELS[entry.level] ?? entry.level}
                     </span>
@@ -133,7 +133,7 @@ export function SymptomTimeline({ onStartConsultation }: Props) {
                       {onStartConsultation && (
                         <button
                           onClick={onStartConsultation}
-                          className="ml-2 rounded-full bg-red-500 px-2.5 py-0.5 text-[11px] font-medium text-white transition hover:bg-red-600"
+                          className="ml-2 rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-medium text-white transition hover:bg-red-600"
                         >
                           重新问诊
                         </button>

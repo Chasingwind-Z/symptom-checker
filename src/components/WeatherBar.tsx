@@ -115,7 +115,7 @@ export function InfoBar({ weather, profileCity, chronicConditions, onOpenMap }: 
               {weatherTags.map((tag) => (
                 <span
                   key={tag}
-                  className="flex-shrink-0 rounded-full bg-white/85 px-2 py-0.5 text-[11px] text-slate-600"
+                  className="flex-shrink-0 rounded-full bg-white/85 px-2 py-0.5 text-xs text-slate-600"
                 >
                   {tag}
                 </span>

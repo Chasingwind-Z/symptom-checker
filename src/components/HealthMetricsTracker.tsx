@@ -75,7 +75,7 @@ export function HealthMetricsTracker() {
           alert.severity === 'danger' ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'
         }`}>
           <AlertTriangle size={13} className={alert.severity === 'danger' ? 'text-red-500 mt-0.5' : 'text-amber-500 mt-0.5'} />
-          <p className={`text-[11px] leading-relaxed ${alert.severity === 'danger' ? 'text-red-700' : 'text-amber-700'}`}>{alert.message}</p>
+          <p className={`text-xs leading-relaxed ${alert.severity === 'danger' ? 'text-red-700' : 'text-amber-700'}`}>{alert.message}</p>
         </div>
       ))}
 
@@ -113,7 +113,7 @@ export function HealthMetricsTracker() {
       </div>
 
       {/* Reference */}
-      <p className="text-[10px] text-slate-400 mb-2">{refRange}</p>
+      <p className="text-xs text-slate-400 mb-2">{refRange}</p>
 
       {/* Trend bars */}
       {entries.length > 0 ? (

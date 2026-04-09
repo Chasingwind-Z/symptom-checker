@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -989,7 +989,7 @@ export function ResultCard({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800">本地天气与出门提醒</p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">{weatherSummary.headline}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{weatherSummary.headline}</p>
                     <p className="mt-2 text-xs leading-relaxed text-slate-600">{weatherSummary.description}</p>
                   </div>
                   {onToggleMap && (
@@ -1007,7 +1007,7 @@ export function ResultCard({
                   {weatherSummary.tags.slice(0, 3).map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-[11px] text-slate-600"
+                      className="rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-xs text-slate-600"
                     >
                       {tag}
                     </span>
@@ -1042,7 +1042,7 @@ export function ResultCard({
                         <p className="text-xs text-slate-600 mt-1 leading-relaxed">{insight.summary}</p>
                         <ul className="mt-2 space-y-1.5">
                           {insight.details.map((detail) => (
-                            <li key={detail} className="flex gap-2 text-[11px] text-slate-600 leading-relaxed">
+                            <li key={detail} className="flex gap-2 text-xs text-slate-600 leading-relaxed">
                               <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-400" />
                               <span>{detail}</span>
                             </li>
@@ -1063,11 +1063,11 @@ export function ResultCard({
               <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                 <div>
                   <p className="text-sm font-semibold text-slate-800">为什么这样建议</p>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-1">
                     结论结合分诊规则、相关资料、危险信号和公开来源综合整理
                   </p>
                 </div>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {evidenceUpdatedAt ? `刚刚更新 · ${evidenceUpdatedAt}` : '本次问诊即时生成'}
                 </span>
               </div>
@@ -1090,7 +1090,7 @@ export function ResultCard({
                         </li>
                       ))}
                     </ul>
-                    <p className="text-[11px] mt-2 text-slate-500">来源：{card.source}</p>
+                    <p className="text-xs mt-2 text-slate-500">来源：{card.source}</p>
                   </div>
                 ))}
               </div>
@@ -1103,11 +1103,11 @@ export function ResultCard({
                         <Globe size={14} className="text-emerald-600" />
                         <span className="text-xs font-semibold text-slate-800">外部公开资料摘录</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-1">
+                      <p className="text-xs text-slate-500 mt-1">
                         若已触发联网检索，会在此展示外部来源摘要
                       </p>
                     </div>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-xs text-slate-400">
                       {buildSourceLabel(
                         messages
                           .flatMap((message) => message.toolCalls ?? [])
@@ -1119,7 +1119,7 @@ export function ResultCard({
                   </div>
 
                   {webQuery && (
-                    <p className="text-[11px] text-slate-500 mt-2">检索关键词：{webQuery}</p>
+                    <p className="text-xs text-slate-500 mt-2">检索关键词：{webQuery}</p>
                   )}
 
                   {webSearchNote && (
@@ -1151,7 +1151,7 @@ export function ResultCard({
                                 />
                               )}
                             </div>
-                            <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400 flex-wrap">
+                            <div className="mt-2 flex items-center gap-2 text-xs text-slate-400 flex-wrap">
                               <span className="rounded-full bg-slate-100 px-2 py-0.5">
                                 {source.host}
                               </span>
@@ -1201,17 +1201,17 @@ export function ResultCard({
                       <Pill size={15} className="text-violet-700 mt-0.5" />
                       <div>
                         <p className="text-sm font-semibold text-slate-800">用药支持摘要</p>
-                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                           仅保留更值得优先核对的 1–2 个方向，帮助快速区分相对匹配项与谨慎项。
                         </p>
                       </div>
                     </div>
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] text-slate-500">
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
                       仅作支持参考
                     </span>
                   </div>
                   {hasMedicationProfileContext && (
-                    <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-[11px] text-violet-700 leading-relaxed">
+                    <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-xs text-violet-700 leading-relaxed">
                       已结合年龄、慢病、过敏史和现用药做过筛选，以下仅保留更贴近当前档案的方向。
                     </div>
                   )}
@@ -1223,11 +1223,11 @@ export function ResultCard({
                       >
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${section.badgeClass}`}
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${section.badgeClass}`}
                           >
                             {section.title}
                           </span>
-                          <p className="text-[11px] text-slate-500">{section.hint}</p>
+                          <p className="text-xs text-slate-500">{section.hint}</p>
                         </div>
                         <div className="mt-2 space-y-2">
                           {section.items.map((item, index) => (
@@ -1241,14 +1241,14 @@ export function ResultCard({
                                   <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                                     {trimText(item.useCase, 46)}
                                   </p>
-                                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                                     提醒：{trimText(item.caution, 58)}
                                   </p>
                                 </div>
                                 {item.suitable && (
                                   <button
                                     type="button"
-                                    className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors mt-0.5"
+                                    className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors mt-0.5"
                                     onClick={() => {
                                       trackMedicationClick({
                                         medicationName: item.title,
@@ -1269,7 +1269,7 @@ export function ResultCard({
                       </div>
                     ))}
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-3 leading-relaxed">
+                  <p className="text-xs text-slate-500 mt-3 leading-relaxed">
                     仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
                   </p>
                 </div>
@@ -1279,7 +1279,7 @@ export function ResultCard({
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-slate-800">马上去做</p>
-                      <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                      <p className="mt-1 text-xs leading-relaxed text-slate-500">
                         {result.level === 'red'
                           ? '当前应优先线下急诊 / 急救，不建议把注意力放在购药上。'
                           : '把买药、说明书核对和回问诊复核的入口放在一起，先完成最紧要的一步。'}
@@ -1290,7 +1290,7 @@ export function ResultCard({
                         {medicationPreviewTitles.map((title) => (
                           <span
                             key={title}
-                            className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700"
+                            className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs text-violet-700"
                           >
                             {title}
                           </span>
@@ -1345,7 +1345,7 @@ export function ResultCard({
                             {medicationPreviewTitles.map((title) => (
                               <span
                                 key={title}
-                                className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] text-violet-700"
+                                className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs text-violet-700"
                               >
                                 {title}
                               </span>
@@ -1369,7 +1369,7 @@ export function ResultCard({
                         <ArrowRight size={15} />
                       </button>
                     </div>
-                    <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
+                    <p className="mt-3 text-xs text-slate-500 leading-relaxed">
                       仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
                     </p>
                   </div>
@@ -1379,7 +1379,7 @@ export function ResultCard({
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
                 <Pill size={20} className="mx-auto text-slate-300 mb-2" />
                 <p className="text-sm text-slate-500">暂无用药建议</p>
-                <p className="text-[11px] text-slate-400 mt-1">补充个人档案或更多症状后，可能生成更多方向。</p>
+                <p className="text-xs text-slate-400 mt-1">补充个人档案或更多症状后，可能生成更多方向。</p>
               </div>
             )}
           </div>
@@ -1408,7 +1408,7 @@ export function ResultCard({
                     <span className={`w-1 h-4 rounded-full ${config.bar} inline-block`} />
                     {hospitalSectionTitle}
                   </h3>
-                  <span className="text-[11px] text-slate-400">{hospitalSectionMeta}</span>
+                  <span className="text-xs text-slate-400">{hospitalSectionMeta}</span>
                 </div>
                 <div className="flex flex-col gap-3">
                   {tieredHospitals.map((hospital) => (

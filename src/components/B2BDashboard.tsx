@@ -22,7 +22,7 @@ function FeatureItem({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-      <p className="text-[11px] text-emerald-700">{text}</p>
+      <p className="text-xs text-emerald-700">{text}</p>
     </div>
   );
 }
@@ -84,12 +84,12 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
                     <p className="text-sm font-semibold text-slate-800">{tier.name}</p>
                     <div>
                       <span className="text-base font-bold text-blue-600">{tier.price}</span>
-                      <span className="text-[11px] text-slate-400 ml-1">{tier.limit}</span>
+                      <span className="text-xs text-slate-400 ml-1">{tier.limit}</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {tier.features.map(f => (
-                      <span key={f} className="rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-600">{f}</span>
+                      <span key={f} className="rounded-full bg-slate-50 px-2 py-0.5 text-xs text-slate-600">{f}</span>
                     ))}
                   </div>
                 </div>
@@ -112,7 +112,7 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
               <FeatureItem text="官方背书展示增加用户信任" />
             </div>
             <div className="rounded-lg bg-white/80 px-3 py-2.5">
-              <p className="text-[11px] text-slate-600 mb-2">合作申请</p>
+              <p className="text-xs text-slate-600 mb-2">合作申请</p>
               <input
                 value={partnerNameInput}
                 onChange={e => setPartnerNameInput(e.target.value)}
@@ -157,14 +157,14 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
               <Building2 size={16} className="text-blue-600" />
               <p className="text-sm font-semibold text-slate-800">{data.orgName}</p>
             </div>
-            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] text-blue-600">
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-600">
               邀请码: {org!.inviteCode}
             </span>
           </div>
           <div className="rounded-xl bg-white border border-slate-200 px-6 py-10 text-center">
             <Users size={32} className="mx-auto text-slate-300 mb-3" />
             <p className="text-sm font-medium text-slate-600">暂无员工数据，发送邀请码开始收集</p>
-            <p className="text-[11px] text-slate-400 mt-1">邀请码: {org!.inviteCode}</p>
+            <p className="text-xs text-slate-400 mt-1">邀请码: {org!.inviteCode}</p>
           </div>
         </div>
       </div>
@@ -183,7 +183,7 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
             <Building2 size={16} className="text-blue-600" />
             <p className="text-sm font-semibold text-slate-800">{data.orgName}</p>
           </div>
-          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] text-blue-600">
+          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-600">
             邀请码: {org.inviteCode}
           </span>
         </div>
@@ -193,23 +193,23 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
           <div className="rounded-xl bg-white border border-slate-200 px-3 py-3 text-center">
             <Users size={16} className="mx-auto text-blue-500 mb-1" />
             <p className="text-lg font-bold text-slate-800">{data.totalReports}</p>
-            <p className="text-[10px] text-slate-400">总上报</p>
+            <p className="text-xs text-slate-400">总上报</p>
           </div>
           <div className="rounded-xl bg-white border border-slate-200 px-3 py-3 text-center">
             <TrendingUp size={16} className="mx-auto text-amber-500 mb-1" />
             <p className="text-lg font-bold text-slate-800">+{data.weeklyChange}%</p>
-            <p className="text-[10px] text-slate-400">周环比</p>
+            <p className="text-xs text-slate-400">周环比</p>
           </div>
           <div className="rounded-xl bg-white border border-slate-200 px-3 py-3 text-center">
             <Shield size={16} className="mx-auto text-emerald-500 mb-1" />
             <p className="text-lg font-bold text-slate-800">{data.riskDistribution.green}%</p>
-            <p className="text-[10px] text-slate-400">低风险占比</p>
+            <p className="text-xs text-slate-400">低风险占比</p>
           </div>
         </div>
 
         {/* Risk bar */}
         <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 mb-4">
-          <p className="text-[11px] font-medium text-slate-600 mb-2">风险分布</p>
+          <p className="text-xs font-medium text-slate-600 mb-2">风险分布</p>
           <div className="flex h-3 rounded-full overflow-hidden">
             {Object.entries(data.riskDistribution).map(([level, pct]) => (
               <div key={level} className={`${RISK_COLORS[level] || 'bg-slate-300'}`} style={{ width: `${(pct / totalRisk) * 100}%` }} />
@@ -224,11 +224,11 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
 
         {/* Top symptoms */}
         <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 mb-4">
-          <p className="text-[11px] font-medium text-slate-600 mb-2">Top 症状</p>
+          <p className="text-xs font-medium text-slate-600 mb-2">Top 症状</p>
           <div className="space-y-2">
             {data.topSymptoms.map((s, i) => (
               <div key={s.name} className="flex items-center gap-3">
-                <span className="text-[10px] text-slate-400 w-4">{i + 1}</span>
+                <span className="text-xs text-slate-400 w-4">{i + 1}</span>
                 <span className="flex-1 text-xs text-slate-700">{s.name}</span>
                 <span className="text-xs font-medium text-slate-800">{s.count}</span>
                 {TREND_ICONS[s.trend]}
@@ -241,7 +241,7 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
         <div className="rounded-xl bg-white border border-slate-200 px-4 py-3 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 size={14} className="text-blue-500" />
-            <p className="text-[11px] font-medium text-slate-600">本周趋势</p>
+            <p className="text-xs font-medium text-slate-600">本周趋势</p>
           </div>
           <div className="flex items-end gap-2 h-20">
             {data.weeklyTrend.map((val, i) => (
@@ -256,7 +256,7 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
 
         {/* Pricing */}
         <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
-          <p className="text-[11px] font-medium text-slate-600 mb-3">升级方案</p>
+          <p className="text-xs font-medium text-slate-600 mb-3">升级方案</p>
           <div className="space-y-2">
             {PRICING_TIERS.map(tier => (
               <div key={tier.name} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
@@ -283,7 +283,7 @@ export function B2BDashboard({ onBack }: B2BDashboardProps) {
             <FeatureItem text="官方背书展示增加用户信任" />
           </div>
           <div className="rounded-lg bg-white/80 px-3 py-2.5">
-            <p className="text-[11px] text-slate-600 mb-2">合作申请</p>
+            <p className="text-xs text-slate-600 mb-2">合作申请</p>
             <input
               value={partnerNameInput}
               onChange={e => setPartnerNameInput(e.target.value)}

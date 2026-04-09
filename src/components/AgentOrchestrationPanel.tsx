@@ -60,18 +60,18 @@ export function AgentOrchestrationPanel({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
             {isLive ? <Sparkles className="w-3.5 h-3.5" /> : <GitBranch className="w-3.5 h-3.5" />}
             <span>{isLive ? '正在整理判断' : '分析过程'}</span>
           </div>
-          <p className={`mt-1 font-medium text-slate-700 ${compact ? 'text-[11px]' : 'text-xs'}`}>
+          <p className={`mt-1 font-medium text-slate-700 ${compact ? 'text-xs' : 'text-xs'}`}>
             {headline}
           </p>
-          <p className={`mt-1 text-slate-500 ${compact ? 'text-[11px]' : 'text-xs'}`}>
+          <p className={`mt-1 text-slate-500 ${compact ? 'text-xs' : 'text-xs'}`}>
             {supportingText}
           </p>
         </div>
-        <span className="rounded-full bg-white px-2 py-1 text-[11px] text-slate-500">
+        <span className="rounded-full bg-white px-2 py-1 text-xs text-slate-500">
           当前重点：{primaryLabel}
         </span>
       </div>
@@ -80,7 +80,7 @@ export function AgentOrchestrationPanel({
         {route.activeAgents.filter((agent) => agent.id !== 'orchestrator').map((agent) => (
           <span
             key={agent.id}
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${
               BADGE_STYLES[agent.tone]
             }`}
           >
