@@ -21,11 +21,15 @@ interface SuggestionCardsProps {
   onSelect: (query: string) => void;
   pendingFollowup?: { title: string; sessionId: string } | null;
   onOpenFollowup?: (sessionId: string) => void;
+  explanation?: string;
 }
 
-export function SuggestionCards({ suggestions, onSelect, pendingFollowup, onOpenFollowup }: SuggestionCardsProps) {
+export function SuggestionCards({ suggestions, onSelect, pendingFollowup, onOpenFollowup, explanation }: SuggestionCardsProps) {
   return (
     <div>
+      {explanation && (
+        <p className="text-xs text-slate-400 mb-3">{explanation}</p>
+      )}
       <div className="grid grid-cols-2 gap-4">
         {suggestions.map((s) => (
           <button

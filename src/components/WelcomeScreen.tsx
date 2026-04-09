@@ -9,7 +9,7 @@ import {
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
-import { generateSuggestions } from '../services/suggestions/generator'
+import { generateSuggestions, generateExplanation } from '../services/suggestions/generator'
 import { StatusStrip } from './StatusStrip'
 import { PopulationTabs } from './PopulationTabs'
 import { SuggestionCards } from './SuggestionCards'
@@ -108,14 +108,35 @@ export function WelcomeScreen({
 
   const currentPopulation = MODE_TO_POPULATION[selectedModeId || 'self'] || 'self';
 
-  const smartSuggestions = useMemo(() => {
-    return generateSuggestions({
+  const [smartSuggestions, setSmartSuggestions] = useState(() =>
+    generateSuggestions({
       population: currentPopulation,
       hour: timeContext.hour,
       month: timeContext.month,
       recentQueries: [],
-    });
-  }, [currentPopulation, timeContext]);
+    })
+  );
+
+  // Re-generate when population changes
+  const [prevPopulation, setPrevPopulation] = useState(currentPopulation);
+  if (prevPopulation !== currentPopulation) {
+    setPrevPopulation(currentPopulation);
+    setSmartSuggestions(
+      generateSuggestions({
+        population: currentPopulation,
+        hour: timeContext.hour,
+        month: timeContext.month,
+        recentQueries: [],
+      })
+    );
+  }
+
+  const explanation = useMemo(() => generateExplanation({
+    population: currentPopulation,
+    hour: timeContext.hour,
+    month: timeContext.month,
+    recentQueries: [],
+  }), [currentPopulation, timeContext]);
 
   const normalizedProfileCity = normalizeText(profile?.city)
   const localCityLabel =
@@ -161,6 +182,7 @@ export function WelcomeScreen({
           }}
           pendingFollowup={pendingFollowup}
           onOpenFollowup={(sessionId) => onOpenConversation(sessionId)}
+          explanation={explanation}
         />
       </div>
 
