@@ -386,7 +386,7 @@ export async function executeAgentTool(
         typeof args.query === 'string' && args.query.trim()
           ? args.query.trim()
           : '发烧 咳嗽';
-      const knowledge = searchMedicalKnowledge(query, { limit: 4 });
+      const knowledge = await searchMedicalKnowledge(query, { limit: 4 });
       const matches = knowledge.symptomMatches.slice(0, 3);
 
       return {

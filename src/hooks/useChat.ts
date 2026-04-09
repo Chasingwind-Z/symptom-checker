@@ -687,7 +687,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       setIsSearchingKB(true);
       setActiveToolCalls([]);
 
-        const knowledgeSearch = searchMedicalKnowledge(displayText, { limit: 6 });
+        const knowledgeSearch = await searchMedicalKnowledge(displayText, { limit: 6 });
         const kbResults = knowledgeSearch.symptomMatches.slice(0, 2);
         const orchestration = createAgentOrchestration({
           userText: displayText,

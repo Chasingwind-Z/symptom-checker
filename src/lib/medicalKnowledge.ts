@@ -1,5 +1,5 @@
 import type { RiskLevel, SymptomInfo } from '../types';
-import { isSupabaseConfigured } from './supabase';
+import { isSupabaseConfigured, getSupabaseClient } from './supabase';
 import {
   getCloudMedicalKnowledgeSnapshot,
   primeCloudMedicalKnowledgeDocuments,
@@ -528,6 +528,166 @@ const CURATED_DOCUMENTS: MedicalKnowledgeDocument[] = [
     sourceLabel: SOURCE_LABEL,
     updatedAt: KNOWLEDGE_UPDATED_AT,
   },
+  {
+    id: 'child-acute-abdomen',
+    title: '儿童急性腹痛',
+    category: 'symptom_guidance',
+    audience: '儿童',
+    triageLevel: 'orange',
+    summary:
+      '儿童突发腹痛需鉴别阑尾炎、肠套叠、肠系膜淋巴结炎等。持续加重、伴呕吐、不让触碰腹部是危险信号。',
+    guidance: [
+      '观察腹痛部位和性质，注意是否伴随呕吐、发热、血便。',
+      '不要自行给止痛药以免掩盖病情，持续加重应尽快就医。',
+      '小儿腹痛不让碰、蜷缩体位、面色苍白应按急症处理。',
+    ],
+    dangerSigns: ['持续加重不缓解', '伴高热呕吐', '腹部拒按', '血便', '面色苍白'],
+    departments: ['小儿外科', '儿科急诊'],
+    tags: ['儿童', '腹痛', '阑尾炎', '肠套叠'],
+    keywords: ['孩子肚子痛', '小孩腹痛', '儿童急腹症', '阑尾炎', '肠套叠'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
+  {
+    id: 'child-allergy',
+    title: '儿童过敏反应',
+    category: 'symptom_guidance',
+    audience: '儿童',
+    triageLevel: 'orange',
+    summary:
+      '荨麻疹多为轻症可口服氯雷他定。若出现唇舌肿胀、呼吸困难、面色青紫则为严重过敏（过敏性休克），需立即急诊。',
+    guidance: [
+      '轻度荨麻疹可口服抗组胺药物（如氯雷他定），避免接触过敏原。',
+      '观察是否有呼吸急促、声音嘶哑、口唇肿胀等进展。',
+      '严重过敏反应需立即拨打120，有肾上腺素笔的应立即使用。',
+    ],
+    dangerSigns: ['唇舌肿胀', '呼吸困难', '喉头水肿', '血压下降', '意识改变'],
+    departments: ['儿科', '急诊'],
+    tags: ['过敏', '荨麻疹', '过敏性休克', '儿童'],
+    keywords: ['孩子过敏', '荨麻疹', '风团', '过敏性休克', '呼吸困难'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
+  {
+    id: 'elderly-fall',
+    title: '老人跌倒后处理',
+    category: 'symptom_guidance',
+    audience: '老年人',
+    triageLevel: 'orange',
+    summary:
+      '老人跌倒后应先评估意识和疼痛部位。头部着地需警惕颅内出血（症状可延迟24-72小时），髋部疼痛不敢动考虑骨折。',
+    guidance: [
+      '跌倒后不要急于扶起，先评估意识、疼痛部位和肢体活动。',
+      '头部着地需观察24-72小时，注意嗜睡、呕吐、头痛加重。',
+      '髋部剧痛不敢活动高度怀疑骨折，不要强行移动，等待急救。',
+    ],
+    dangerSigns: ['头部着地后嗜睡', '呕吐', '肢体无法活动', '髋部剧痛', '口鼻出血'],
+    departments: ['急诊', '骨科', '神经外科'],
+    tags: ['跌倒', '摔伤', '骨折', '颅内出血', '老人'],
+    keywords: ['老人摔倒', '跌倒', '髋骨骨折', '颅内出血', '头部外伤'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
+  {
+    id: 'elderly-confusion',
+    title: '老人意识模糊',
+    category: 'symptom_guidance',
+    audience: '老年人',
+    triageLevel: 'red',
+    summary:
+      '突发意识模糊需排除脑卒中、低血糖、感染（尿路感染常见）、药物副作用。发病时间和用药史是关键信息。',
+    guidance: [
+      '记录意识改变的起始时间，收集目前正在使用的药物清单。',
+      '先测血糖排除低血糖，若有血糖仪可立即检测。',
+      '突发口角歪斜、肢体无力提示脑卒中，立即拨打120。',
+    ],
+    dangerSigns: ['突发口角歪斜', '肢体无力', '言语不清', '高热', '大小便失禁'],
+    departments: ['急诊', '神经内科'],
+    tags: ['意识模糊', '谵妄', '老年', '脑卒中', '低血糖'],
+    keywords: ['老人糊涂', '意识不清', '突然认不出人', '谵妄', '嗜睡'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
+  {
+    id: 'hypertensive-crisis',
+    title: '高血压急性升高',
+    category: 'symptom_guidance',
+    audience: '慢病患者',
+    triageLevel: 'red',
+    summary:
+      '收缩压>180或舒张压>110伴头痛/视物模糊/胸闷为高血压急症，需立即就医。无症状的高血压升高可先休息后复测。',
+    guidance: [
+      '立即安静休息，补服漏服的降压药（如有），15-30分钟后复测。',
+      '伴剧烈头痛、视物模糊、胸痛、鼻出血不止应立即就医。',
+      '切勿短时间内快速大幅降压，避免脑灌注不足。',
+    ],
+    dangerSigns: ['剧烈头痛', '视物模糊', '胸痛', '呼吸困难', '鼻出血不止'],
+    departments: ['急诊', '心内科'],
+    tags: ['高血压', '血压高', '高血压急症', '高血压危象'],
+    keywords: ['血压突然升高', '收缩压180', '高血压急症', '头痛血压高'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
+  {
+    id: 'hypoglycemia',
+    title: '低血糖处理',
+    category: 'symptom_guidance',
+    audience: '慢病患者',
+    triageLevel: 'orange',
+    summary:
+      '出现手抖、冷汗、心慌、饥饿感时考虑低血糖。清醒时立即口服15g糖（3-4块糖/半杯果汁），15分钟后复测。意识不清禁止喂食，立即急诊。',
+    guidance: [
+      '清醒时立即口服15g速效糖（葡萄糖片、糖块、半杯果汁均可）。',
+      '15分钟后复测血糖，仍低于3.9mmol/L可再次补糖。',
+      '意识不清或抽搐时禁止经口喂食，保持侧卧位并立即拨打120。',
+    ],
+    dangerSigns: ['意识模糊', '抽搐', '昏迷', '反复发作'],
+    departments: ['急诊', '内分泌科'],
+    tags: ['低血糖', '血糖低', '糖尿病', '手抖冷汗'],
+    keywords: ['低血糖', '手抖冷汗', '心慌饥饿', '血糖3.9', '糖尿病急症'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
+  {
+    id: 'chronic-cough-ddx',
+    title: '慢性咳嗽鉴别',
+    category: 'symptom_guidance',
+    audience: '通用',
+    triageLevel: 'yellow',
+    summary:
+      '咳嗽>3周需鉴别：咳嗽变异性哮喘（夜间/晨起加重）、胃食管反流（平躺加重）、感染后咳嗽（感冒后持续）、ACE抑制剂副作用。',
+    guidance: [
+      '记录咳嗽发作时间、加重因素（如夜间、进食后、运动后）和持续时长。',
+      '若正在服用ACE抑制剂类降压药（如依那普利），可咨询医生是否需换药。',
+      '咯血、体重下降、夜间盗汗需尽快排除肺部器质性疾病。',
+    ],
+    dangerSigns: ['咯血', '体重下降', '夜间盗汗', '呼吸困难加重'],
+    departments: ['呼吸内科'],
+    tags: ['慢性咳嗽', '咳嗽', '哮喘', '反流', '感染后咳嗽'],
+    keywords: ['咳嗽三周', '长期咳嗽', '夜间咳嗽', '咳嗽变异性哮喘', '胃食管反流'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
+  {
+    id: 'skin-rash-ddx',
+    title: '皮肤科常见皮疹识别',
+    category: 'symptom_guidance',
+    audience: '通用',
+    triageLevel: 'yellow',
+    summary:
+      '湿疹（对称分布、瘙痒、反复）、荨麻疹（突发风团、来去迅速）、带状疱疹（单侧沿神经分布、疼痛）各有特点。带状疱疹72小时内用药效果最好。',
+    guidance: [
+      '记录皮疹出现时间、分布范围、是否瘙痒或疼痛、有无新发药物或食物接触。',
+      '带状疱疹起病72小时内使用抗病毒药物效果最佳，尽早就医。',
+      '大面积水疱、伴高热、面部三叉神经区带状疱疹需紧急处理。',
+    ],
+    dangerSigns: ['大面积水疱', '伴高热', '面部三叉神经区带状疱疹', '全身扩散'],
+    departments: ['皮肤科'],
+    tags: ['皮疹', '湿疹', '荨麻疹', '带状疱疹', '皮肤'],
+    keywords: ['皮疹', '红疹', '风团', '水疱', '带状疱疹', '湿疹'],
+    sourceLabel: SOURCE_LABEL,
+    updatedAt: KNOWLEDGE_UPDATED_AT,
+  },
 ];
 
 const KNOWLEDGE_CORPUS: MedicalKnowledgeDocument[] = [
@@ -1003,12 +1163,63 @@ function getActiveKnowledgeSource() {
   };
 }
 
-export function searchMedicalKnowledge(
+export async function searchMedicalKnowledge(
   query: string,
   options: { limit?: number } = {}
-): MedicalKnowledgeSearchResult {
+): Promise<MedicalKnowledgeSearchResult> {
   const trimmedQuery = query.trim();
   const normalizedQuery = normalizeChineseText(trimmedQuery);
+
+  // Supabase cloud-first path
+  try {
+    const client = getSupabaseClient();
+    if (client && trimmedQuery) {
+      const { data } = await client
+        .from('symptom_knowledge')
+        .select('*')
+        .or(`title.ilike.%${trimmedQuery}%,category.ilike.%${trimmedQuery}%`)
+        .limit(3);
+      if (data && data.length > 0) {
+        const cloudDocuments: MedicalKnowledgeMatch[] = data.map((item: Record<string, unknown>) => ({
+          document: {
+            id: (item.id as string) ?? '',
+            title: (item.title as string) ?? '',
+            category: ((item.category as MedicalKnowledgeCategory) ?? 'symptom_guidance'),
+            audience: ((item.audience as MedicalKnowledgeAudience) ?? '通用'),
+            triageLevel: ((item.triage_level as RiskLevel) ?? 'yellow'),
+            summary: (item.summary as string) ?? '',
+            guidance: (Array.isArray(item.guidance) ? item.guidance : []) as string[],
+            dangerSigns: (Array.isArray(item.danger_signs) ? item.danger_signs : []) as string[],
+            departments: (Array.isArray(item.departments) ? item.departments : []) as string[],
+            tags: (Array.isArray(item.tags) ? item.tags : []) as string[],
+            keywords: (Array.isArray(item.keywords) ? item.keywords : []) as string[],
+            sourceLabel: SOURCE_LABEL,
+            updatedAt: (item.updated_at as string) ?? KNOWLEDGE_UPDATED_AT,
+          },
+          score: 1,
+          matchedTerms: [trimmedQuery],
+          reasons: ['Supabase 云端匹配'],
+          snippet: (item.summary as string) ?? '',
+        }));
+        return {
+          query: trimmedQuery,
+          sourceLabel: SOURCE_LABEL,
+          storageMode: 'supabase-public',
+          retrievalMode: 'hybrid-cloud',
+          retrievalLabel: getRetrievalModeLabel('hybrid-cloud'),
+          supabaseTable: 'symptom_knowledge',
+          lastUpdated: KNOWLEDGE_UPDATED_AT,
+          focusPopulation: null,
+          queryExpansions: [],
+          symptomMatches: [],
+          chunkMatches: [],
+          documents: cloudDocuments,
+        };
+      }
+    }
+  } catch {
+    // Fall through to local search
+  }
   const symptomMatches = trimmedQuery ? searchSymptomKB(trimmedQuery).slice(0, 4) : [];
   const population = normalizedQuery ? detectPopulation(normalizedQuery) : null;
   const intentTags = normalizedQuery ? detectIntentTags(normalizedQuery) : new Set<string>();
