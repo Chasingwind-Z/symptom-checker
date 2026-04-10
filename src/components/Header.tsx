@@ -1,9 +1,9 @@
 import {
+  Activity,
   CheckCircle2,
   Download,
   LayoutGrid,
   LogIn,
-  MapPin,
   Menu,
   Plus,
   Settings2,
@@ -108,10 +108,10 @@ export function Header({
           {onToggleMap && (
             <button
               onClick={onToggleMap}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-700 transition-colors hover:bg-emerald-100 lg:hidden"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              <MapPin size={14} />
-              <span className="hidden sm:inline">地图</span>
+              <Activity size={14} />
+              <span className="hidden sm:inline">健康趋势</span>
             </button>
           )}
           {onOpenAuth && !isSignedIn && (

@@ -198,9 +198,7 @@ export function ConversationHistoryPanel({
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <ConversationMenu
                       onRename={() => { setEditingId(session.id); setEditTitle(getDisplayTitle(session)); }}
-                      onDelete={() => {
-                        if (window.confirm('确定删除这条记录？')) onDeleteSession?.(session.id);
-                      }}
+                      onDelete={() => onDeleteSession?.(session.id)}
                     />
                   </div>
                 </div>
@@ -291,9 +289,7 @@ export function ConversationHistoryPanel({
                 <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   <ConversationMenu
                     onRename={() => { setEditingId(session.id); setEditTitle(getDisplayTitle(session)); }}
-                    onDelete={() => {
-                      if (window.confirm('确定删除这条记录？')) onDeleteSession?.(session.id);
-                    }}
+                    onDelete={() => onDeleteSession?.(session.id)}
                   />
                 </div>
               </div>
@@ -377,10 +373,8 @@ export function ConversationHistoryPanel({
                   <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <ConversationMenu
                       onRename={() => { setEditingId(session.id); setEditTitle(getDisplayTitle(session)); }}
-                      onDelete={() => {
-                        if (window.confirm('确定删除这条记录？')) onDeleteSession?.(session.id);
-                      }}
-                    />
+                      onDelete={() => onDeleteSession?.(session.id)}
+                  />
                   </div>
                 </div>
               );
