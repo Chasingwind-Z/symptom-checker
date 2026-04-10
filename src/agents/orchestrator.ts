@@ -1,4 +1,4 @@
-import { loadSkills } from '../lib/skillLoader';
+﻿import { loadSkills } from '../lib/skillLoader';
 import { getHistoryContextForAI, detectFamilyCrossInfection } from '../lib/symptomTracking';
 import { getMedicineBoxSummary } from '../lib/familyMedicineBox';
 import { getMetricsSummaryForAI, getMetricsTrendSummary } from '../lib/healthMetrics';
@@ -482,13 +482,22 @@ export function createAgentOrchestration(context: AgentPromptContext): AgentOrch
       ? `当前用户消息：“${sanitizeSnippet(context.userText, 48)}”`
       : '当前任务：继续上一轮问诊或回访。';
 
+  const urgencyContext = context.urgencyLevel || 'green';
+  const maxRounds = context.maxFollowups ?? 5;
+  const currentRound = context.followupCount ?? 0;
+  const roundsLeft = Math.max(0, maxRounds - currentRound);
+
+  const antiLoopRules = urgencyContext === 'red'
+    ? `【紧急模式】用户描述的是紧急情况。不要追问，立即给出行动建议：\n- "请立刻去急诊或拨打120"\n- 给出具体的紧急处理步骤\n- 不要说"建议就医"，说"现在立刻去最近的急诊"`
+    : `【追问限制】\n- 每次只问1个问题\n- 最多还能追问${roundsLeft}轮（已问${currentRound}/${maxRounds}轮）\n- ${roundsLeft <= 1 ? '下一轮必须给出建议，不管信息够不够' : ''}\n- 每次追问前先给一句阶段性判断："目前初步判断是[绿色/黄色/需关注]，为了更准确，请问[一个问题]？"\n- 到达上限后必须给出建议，可以说"根据目前信息初步判断..."\n- 禁止重复询问用户已经回答过的任何信息\n- 用户选择快捷回答后，视为明确回答，不得要求澄清\n- 天气工具在第一条消息时已自动调用，后续不要再问用户「您在哪个城市」`;
+
   const systemPrompt = [
-    `你正在以“健康助手”多 Agent 产品形态对外服务用户。请把多个专职 Agent 的意见整合成一次自然、可信、中文优先的回复。`,
-    `【绝对禁止】\n- 禁止在同一条回复中提问两个问题\n- 禁止重复询问用户已经回答过的任何信息\n- 用户选择快捷回答后，视为明确回答，不得要求澄清\n- 基础问诊4轮内完成；用户继续追问时可自由延伸对话，不设上限\n- 天气工具在第一条消息时已自动调用，后续不要再问用户「您在哪个城市」`,
+    `你正在以"健康助手"多 Agent 产品形态对外服务用户。请把多个专职 Agent 的意见整合成一次自然、可信、中文优先的回复。`,
+    antiLoopRules,
     `【本轮路由】\n- 主责 Agent：${AGENT_REGISTRY[primaryAgent].label}\n- 激活协作 Agent：${activeIds
       .map((agentId) => AGENT_REGISTRY[agentId].label)
       .join('、')}\n- 路由原因：${reasoning}`,
-    `【产品要求】\n- 回复保持医疗谨慎，不做确定性诊断\n- 不要暴露内部推理链，但可以自然体现“已结合分诊/证据/导航/公共卫生/记忆信息”\n- 优先保证安全性与可执行性\n- 与现有前端兼容：问诊阶段保留 suggestions JSON，结论阶段保留 diagnosis JSON 结构`,
+    `【产品要求】\n- 回复保持医疗谨慎，不做确定性诊断\n- 不要暴露内部推理链，但可以自然体现"已结合分诊/证据/导航/公共卫生/记忆信息"\n- 优先保证安全性与可执行性\n- 与现有前端兼容：问诊阶段保留 suggestions JSON，结论阶段保留 diagnosis JSON 结构`,
     currentTask,
     ...contextNotes,
     specialistPrompts,

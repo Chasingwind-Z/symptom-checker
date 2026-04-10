@@ -54,6 +54,9 @@ export interface AgentPromptContext {
     }>;
     empty: boolean;
   };
+  urgencyLevel?: 'red' | 'yellow' | 'green';
+  maxFollowups?: number;
+  followupCount?: number;
 }
 
 export interface SpecialistAgentDefinition {

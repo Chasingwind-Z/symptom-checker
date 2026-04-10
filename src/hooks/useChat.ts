@@ -13,6 +13,7 @@ import {
 } from '../lib/agentTools';
 import { createAgentOrchestration } from '../agents/orchestrator';
 import type { AgentMemoryContext } from '../agents/types';
+import { quickTriage, getMaxFollowups, type UrgencyLevel } from '../lib/quickTriage';
 import { primeMedicalKnowledgeCorpus, searchMedicalKnowledge } from '../lib/medicalKnowledge';
 import { requestGeolocation, fetchWeather } from '../lib/geolocation';
 import { loadCloudConversationSessions, persistCaseRecord } from '../lib/healthData';
@@ -429,6 +430,9 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   );
   const [pendingFollowUp, setPendingFollowUp] = useState<{ date: string; note: string } | null>(null);
   const [activeAgentRoute, setActiveAgentRoute] = useState<AgentRoute | null>(null);
+  const [urgencyLevel, setUrgencyLevel] = useState<UrgencyLevel>('green');
+  const [followupCount, setFollowupCount] = useState(0);
+  const maxFollowups = getMaxFollowups(urgencyLevel);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeSessionStorage, setActiveSessionStorage] = useState<ConversationSession['storage'] | null>(
     null
@@ -656,6 +660,12 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
       if (!displayText.trim() && attachments.length === 0) return;
 
+      // Quick triage on first message to determine urgency and followup limits
+      if (messages.length === 0) {
+        const urgency = quickTriage(displayText);
+        setUrgencyLevel(urgency);
+      }
+
       const isFollowUpReply = isFollowUpResponseOption(displayText);
 
       if (activeFollowUpRecord && isFollowUpReply) {
@@ -718,6 +728,10 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           latestRagCitations.current = [];
         }
 
+        // Compute urgency for this turn (use latest state for first message, or current state)
+        const currentUrgency = messages.length === 0 ? quickTriage(displayText) : urgencyLevel;
+        const currentMaxFollowups = getMaxFollowups(currentUrgency);
+
         const orchestration = createAgentOrchestration({
           userText: displayText,
           messages,
@@ -729,6 +743,9 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           pendingFollowUpSummary: activeFollowUpRecord?.summary ?? null,
           memoryContext,
           ragResults,
+          urgencyLevel: currentUrgency,
+          maxFollowups: currentMaxFollowups,
+          followupCount,
         });
         const scopedTools = getAgentToolsByNames(orchestration.allowedToolNames);
 
@@ -754,6 +771,13 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       const finalizeAssistantMessage = (content: string) => {
         const suggestions = extractSuggestions(content);
         const result = extractDiagnosis(content);
+
+        // Track followup count: if AI asks a question (has suggestions, no diagnosis), increment
+        const isAiQuestion = !result && (suggestions != null || content.includes('？') || content.includes('?'));
+        if (isAiQuestion) {
+          setFollowupCount((prev) => prev + 1);
+        }
+
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -934,6 +958,8 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       diagnosisResult,
       activeFollowUpRecord,
       memoryContext,
+      urgencyLevel,
+      followupCount,
       applyFollowUpResponse,
       persistConversationSession,
       promoteConversationSessionToCloud,
@@ -1023,6 +1049,8 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     setActiveFollowUpId(null);
     setActiveSessionId(null);
     setActiveSessionStorage(null);
+    setUrgencyLevel('green');
+    setFollowupCount(0);
   }, []);
 
   return {
@@ -1042,6 +1070,9 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     completedFollowUpRecords,
     activeFollowUpRecord,
     followUpResponseOptions: FOLLOW_UP_RESPONSE_OPTIONS,
+    urgencyLevel,
+    followupCount,
+    maxFollowups,
     sendMessage,
     respondToFollowUp,
     openFollowUpRecord,

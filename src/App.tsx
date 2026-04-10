@@ -153,6 +153,9 @@ export default function App() {
     resetChat,
     pendingFollowUp,
     setPendingFollowUp,
+    urgencyLevel,
+    followupCount,
+    maxFollowups,
   } = useChat(chatMemoryContext);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -999,6 +1002,9 @@ export default function App() {
                         diagnosisResult={!!diagnosisResult}
                         density={experienceSettings.chatDensity}
                         assistantMessageIndex={msg.role === 'assistant' ? assistantCount : undefined}
+                        urgencyLevel={urgencyLevel}
+                        followupCount={followupCount}
+                        maxFollowups={maxFollowups}
                       />
                     );
                   });
@@ -1017,6 +1023,9 @@ export default function App() {
                     onQuickReply={handleSendMessage}
                     diagnosisResult={!!diagnosisResult}
                     density={experienceSettings.chatDensity}
+                    urgencyLevel={urgencyLevel}
+                    followupCount={followupCount}
+                    maxFollowups={maxFollowups}
                   />
                 )}
 

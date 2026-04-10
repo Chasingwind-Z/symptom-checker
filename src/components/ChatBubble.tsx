@@ -8,6 +8,7 @@ import { useGuardianTheme } from '../hooks/useGuardianTheme';
 import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
 import { readLocalProfileDraft } from '../lib/healthData';
 import { checkNewDrugVsProfile } from '../lib/medicationSafety';
+import type { UrgencyLevel } from '../lib/quickTriage';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { CitationCard } from './CitationCard';
@@ -36,6 +37,21 @@ interface ChatBubbleProps {
   diagnosisResult?: boolean;
   density?: ChatDensityPreference;
   assistantMessageIndex?: number;
+  urgencyLevel?: UrgencyLevel;
+  followupCount?: number;
+  maxFollowups?: number;
+}
+
+function Step({ done, active, label }: { done?: boolean; active?: boolean; label: string }) {
+  return (
+    <span className={`text-xs ${done ? 'text-emerald-600' : active ? 'text-blue-600' : 'text-slate-400'}`}>
+      {done ? '✓ ' : ''}{label}
+    </span>
+  );
+}
+
+function StepConnector() {
+  return <span className="text-slate-300 text-xs">→</span>;
 }
 
 function formatTime(date: Date): string {
@@ -245,7 +261,10 @@ export function ChatBubble({
   onQuickReply,
   diagnosisResult,
   density = 'comfortable',
-  assistantMessageIndex,
+  assistantMessageIndex: _assistantMessageIndex,
+  urgencyLevel,
+  followupCount = 0,
+  maxFollowups = 5,
 }: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const guardianTheme = useGuardianTheme();
@@ -452,19 +471,17 @@ export function ChatBubble({
               {getQuestionIcon(displayContent)}
             </div>
             <div className={`text-slate-700 ${bubbleTextClass}`}>
-              {isQuestionPhase && assistantMessageIndex != null && assistantMessageIndex > 0 && (
-                <div className="flex items-center gap-1.5 mb-2">
-                  {[1, 2, 3].map(i => (
-                    <div
-                      key={i}
-                      className={`h-1 rounded-full transition-all ${
-                        i <= assistantMessageIndex ? 'w-5 bg-blue-400' : 'w-2 bg-slate-200'
-                      }`}
-                    />
-                  ))}
-                  <span className="text-xs text-slate-400 ml-1">
-                    {assistantMessageIndex < 3 ? `还有约${3 - assistantMessageIndex}个问题` : '即将给出建议'}
-                  </span>
+              {isQuestionPhase && (
+                <div className="flex items-center gap-2 mb-2">
+                  <Step done label="描述症状" />
+                  <StepConnector />
+                  <Step
+                    done={followupCount >= maxFollowups}
+                    active={followupCount < maxFollowups}
+                    label={urgencyLevel === 'red' ? '已跳过(紧急)' : `补充信息 ${followupCount}/${maxFollowups}`}
+                  />
+                  <StepConnector />
+                  <Step active={followupCount >= maxFollowups} label="给出建议" />
                 </div>
               )}
               {agentSummary}
