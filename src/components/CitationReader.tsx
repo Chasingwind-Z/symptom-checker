@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ExternalLink, AlertTriangle } from 'lucide-react';
 
@@ -7,6 +7,7 @@ interface CitationReaderProps {
   onClose: () => void;
   title: string;
   content: string;
+  zhSummary?: string;
   sourceType: string;
   sourceRef: string;
   sourceDate?: string;
@@ -19,7 +20,9 @@ const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
   cdc: { label: 'CDC', className: 'bg-violet-50 text-violet-700' },
 };
 
-export function CitationReader({ open, onClose, title, content, sourceType, sourceRef, sourceDate, reviewStatus }: CitationReaderProps) {
+export function CitationReader({ open, onClose, title, content, zhSummary, sourceType, sourceRef, sourceDate, reviewStatus }: CitationReaderProps) {
+  const [showOriginal, setShowOriginal] = useState(false);
+
   // Disable body scroll when open
   useEffect(() => {
     if (open) {
@@ -89,14 +92,45 @@ export function CitationReader({ open, onClose, title, content, sourceType, sour
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-5 py-4">
+              {/* Language toggle — only for non-curated (English) sources */}
+              {sourceType !== 'curated' && zhSummary && (
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
+                  <button
+                    onClick={() => setShowOriginal(false)}
+                    className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                      !showOriginal ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    中文要点
+                  </button>
+                  <button
+                    onClick={() => setShowOriginal(true)}
+                    className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                      showOriginal ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    英文原文
+                  </button>
+                </div>
+              )}
+
               <div className="prose prose-sm prose-slate max-w-none">
-                {content.split('\n').map((paragraph, i) => (
-                  paragraph.trim() ? (
-                    <p key={i} className="text-sm text-slate-700 leading-relaxed mb-3">
-                      {paragraph}
-                    </p>
-                  ) : null
-                ))}
+                {!showOriginal && zhSummary ? (
+                  <>
+                    {zhSummary.split('\n').map((p, i) => (
+                      p.trim() ? <p key={i} className="text-sm text-slate-700 leading-relaxed mb-3">{p}</p> : null
+                    ))}
+                    <p className="text-xs text-slate-400 mt-2">⚠ 中文为编译要点，仅供快速参考</p>
+                  </>
+                ) : (
+                  content.split('\n').map((paragraph, i) => (
+                    paragraph.trim() ? (
+                      <p key={i} className="text-sm text-slate-700 leading-relaxed mb-3">
+                        {paragraph}
+                      </p>
+                    ) : null
+                  ))
+                )}
               </div>
             </div>
 

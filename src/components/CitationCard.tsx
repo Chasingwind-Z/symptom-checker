@@ -5,6 +5,7 @@ import { CitationReader } from './CitationReader';
 interface CitationCardProps {
   title: string;
   content?: string;
+  zhSummary?: string;
   sourceType: string;
   sourceRef: string;
   sourceDate?: string;
@@ -17,7 +18,7 @@ const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
   cdc: { label: 'CDC', className: 'bg-violet-50 text-violet-700' },
 };
 
-export function CitationCard({ title, content, sourceType, sourceRef, sourceDate, reviewStatus }: CitationCardProps) {
+export function CitationCard({ title, content, zhSummary, sourceType, sourceRef, sourceDate, reviewStatus }: CitationCardProps) {
   const [readerOpen, setReaderOpen] = useState(false);
   const badge = SOURCE_BADGE[sourceType] || { label: sourceType, className: 'bg-slate-50 text-slate-600' };
 
@@ -65,6 +66,7 @@ export function CitationCard({ title, content, sourceType, sourceRef, sourceDate
         onClose={() => setReaderOpen(false)}
         title={title}
         content={content || title}
+        zhSummary={zhSummary}
         sourceType={sourceType}
         sourceRef={sourceRef}
         sourceDate={sourceDate}

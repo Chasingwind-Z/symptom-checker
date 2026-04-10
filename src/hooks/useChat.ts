@@ -442,7 +442,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   );
   const [cloudConversationSessions, setCloudConversationSessions] = useState<ConversationSession[]>([]);
   const keepFollowUpPromptMessageRef = useRef(false);
-  const latestRagCitations = useRef<Array<{ title: string; content?: string; sourceType: string; sourceRef: string; sourceDate?: string; reviewStatus: string }>>([]);
+  const latestRagCitations = useRef<Array<{ title: string; content?: string; zhSummary?: string; sourceType: string; sourceRef: string; sourceDate?: string; reviewStatus: string }>>([]);
   const latestRagHint = useRef<string>('');
   const conversationSessions = useMemo(
     () => mergeConversationSessions(localConversationSessions, cloudConversationSessions),
@@ -721,6 +721,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           latestRagCitations.current = ragResult.chunks.map(c => ({
             title: c.title,
             content: c.content || undefined,
+            zhSummary: (c as unknown as Record<string, unknown>).zhSummary as string | undefined,
             sourceType: c.sourceType,
             sourceRef: c.sourceRef,
             sourceDate: c.sourceDate || undefined,

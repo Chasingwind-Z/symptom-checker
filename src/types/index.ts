@@ -44,6 +44,7 @@ export interface Message {
   ragCitations?: Array<{
     title: string;
     content?: string;
+    zhSummary?: string;
     sourceType: string;
     sourceRef: string;
     sourceDate?: string;

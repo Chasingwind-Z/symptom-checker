@@ -10,6 +10,7 @@ export interface KnowledgeChunk {
   sourceDate: string;
   reviewStatus: string;
   similarity: number;
+  zhSummary?: string;
 }
 
 export interface RetrievalResult {

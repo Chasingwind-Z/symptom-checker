@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertOctagon,
@@ -14,7 +14,6 @@ import {
   Phone,
   Pill,
   ShieldCheck,
-  Share2,
   ShoppingCart,
   UserRoundSearch,
 } from 'lucide-react';
@@ -23,6 +22,7 @@ import { filterHospitalsByRisk } from '../lib/mockHospitals';
 import { OfficialSourceComparison } from './OfficialSourceComparison';
 import { ReportExport } from './ReportExport';
 import { VisitSummaryCard } from './VisitSummaryCard';
+import { ShareMenu } from './ShareMenu';
 import { AftercareTimeline } from './AftercareTimeline';
 import { buildAftercarePlan } from '../lib/aftercarePlan';
 import * as officialSourceHelpers from '../lib/officialSources';
@@ -676,33 +676,7 @@ export function ResultCard({
     }
   }, [result.level]);
 
-  const handleShareToFamily = useCallback(async () => {
-    const riskEmoji = { green: '🟢', yellow: '🟡', orange: '🟠', red: '🔴' }[result.level];
-    const summaryText = [
-      `【健康助手 · 问诊摘要】`,
-      `${riskEmoji} ${result.level === 'green' ? '低风险' : result.level === 'yellow' ? '中风险' : result.level === 'orange' ? '较高风险' : '紧急'}`,
-      ``,
-      `症状：${result.reason}`,
-      `建议：${result.action}`,
-      `科室：${result.departments.join('、')}`,
-      ``,
-      `⚠️ ${result.disclaimer}`,
-    ].join('\n');
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: '健康助手问诊摘要', text: summaryText });
-        return;
-      } catch { /* user cancelled or share failed */ }
-    }
-
-    // Fallback: copy to clipboard
-    try {
-      await navigator.clipboard.writeText(summaryText);
-      setShareCopied(true);
-      window.setTimeout(() => setShareCopied(false), 2000);
-    } catch { /* clipboard unavailable */ }
-  }, [result]);
+  // handleShareToFamily removed — replaced by ShareMenu component
 
   const secondaryCTA = useMemo(() => {
     switch (result.level) {
@@ -834,16 +808,11 @@ export function ResultCard({
           </button>
         </div>
         <div className="flex items-center gap-2 mt-3">
-          <button
-            onClick={handleShareToFamily}
-            className="flex items-center gap-1.5 rounded-xl bg-white/20 border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/30 transition-colors"
-          >
-            <Share2 size={14} />
-            发给家人
-          </button>
-          {shareCopied && (
-            <span className="text-xs text-white font-medium animate-pulse">已复制，可粘贴发送</span>
-          )}
+          <ShareMenu
+            result={result}
+            messages={messages}
+            consultationModeId={consultationModeId ?? undefined}
+          />
         </div>
       </div>
 
