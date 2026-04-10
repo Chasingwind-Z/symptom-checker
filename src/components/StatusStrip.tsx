@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronUp, CloudSun, Check, Bell, MapPin } from 'lucide-react';
+import { ChevronUp, CloudSun, Check, Bell, MapPin, Activity } from 'lucide-react';
 
 interface StatusStripProps {
   weatherText?: string;
@@ -9,7 +9,7 @@ interface StatusStripProps {
   onOpenMap?: () => void;
 }
 
-export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, locationText }: StatusStripProps) {
+export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, locationText, onOpenMap }: StatusStripProps) {
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem('statusStrip.collapsed') === 'true';
   });
@@ -51,10 +51,19 @@ export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, location
         </span>
       )}
       {locationText && (
-        <span className="flex items-center gap-1 shrink-0">
+        <span className="flex items-center gap-1 shrink-0 whitespace-nowrap">
           <MapPin size={12} />
           {locationText}
         </span>
+      )}
+      {onOpenMap && (
+        <button
+          onClick={onOpenMap}
+          className="flex items-center gap-1 shrink-0 text-blue-500 hover:text-blue-600 transition-colors whitespace-nowrap"
+        >
+          <Activity size={11} />
+          健康趋势
+        </button>
       )}
       <button
         onClick={toggleCollapse}
