@@ -160,10 +160,10 @@ export function WelcomeScreen({
     <div className="space-y-2 sm:space-y-4">
       {/* Compact status strip */}
       <StatusStrip
-        weatherText={weather ? `${weather.temp}℃ ${weather.text}` : weatherSummary?.tags?.[0]}
+        weatherText={weather ? `${weather.temp}℃ ${weather.text}` : (weatherSummary?.tags?.[0] || '天气加载中')}
         checkedIn={checkedInToday}
         pendingFollowUps={pendingFollowUpCount > 0 ? pendingFollowUpCount : undefined}
-        locationText={localCityLabel || undefined}
+        locationText={localCityLabel || '定位中'}
         onOpenMap={_onToggleMap}
       />
 
