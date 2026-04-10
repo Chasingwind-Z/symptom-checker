@@ -33,6 +33,7 @@ import {
 } from '../lib/personalization';
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience';
 import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
+import { findDrugByName } from '../lib/otcDrugDB';
 import type { OfficialSourcePreference } from '../lib/experienceSettings';
 import type { MedicationAdvice } from '../lib/personalization';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
@@ -1177,7 +1178,7 @@ export function ResultCard({
                                     提醒：{trimText(item.caution, 58)}
                                   </p>
                                 </div>
-                                {item.suitable && (
+                                {item.suitable && findDrugByName(item.title) && (
                                   <button
                                     type="button"
                                     className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors mt-0.5"

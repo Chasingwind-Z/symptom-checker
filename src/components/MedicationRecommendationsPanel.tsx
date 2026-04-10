@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData';
 import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
+import { findDrugByName } from '../lib/otcDrugDB';
 import { buildMedicationHubContexts } from '../lib/medicationHub';
 import { checkMedicationSafety } from '../lib/medicationSafety';
 import {
@@ -633,7 +634,7 @@ export function MedicationRecommendationsPanel({
                         {recommendation.useCase}
                       </p>
                     </div>
-                    {recommendation.suitable && (
+                    {recommendation.suitable && findDrugByName(recommendation.title) && (
                       <button
                         type="button"
                         className="flex shrink-0 items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
@@ -734,7 +735,7 @@ export function MedicationRecommendationsPanel({
                           }
                           tone={context.conversationId ? 'secondary' : 'primary'}
                         />
-                        {primaryRecommendation?.suitable && (
+                        {primaryRecommendation?.suitable && findDrugByName(primaryRecommendation.title) && (
                           <button
                             type="button"
                             className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
