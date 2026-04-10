@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronUp, CloudSun, Check, Bell, MapPin, Navigation } from 'lucide-react';
+import { ChevronUp, CloudSun, Check, Bell, MapPin } from 'lucide-react';
 
 interface StatusStripProps {
   weatherText?: string;
@@ -9,7 +9,7 @@ interface StatusStripProps {
   onOpenMap?: () => void;
 }
 
-export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, locationText, onOpenMap }: StatusStripProps) {
+export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, locationText }: StatusStripProps) {
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem('statusStrip.collapsed') === 'true';
   });
@@ -31,7 +31,7 @@ export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, location
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-1.5 text-xs text-slate-500 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+    <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-1.5 text-xs text-slate-500 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: 'none' }}>
       {weatherText && (
         <span className="flex items-center gap-1 shrink-0">
           <CloudSun size={12} />
@@ -51,22 +51,10 @@ export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, location
         </span>
       )}
       {locationText && (
-        <button
-          onClick={onOpenMap}
-          className="flex items-center gap-1 shrink-0 hover:text-blue-600 transition-colors"
-        >
+        <span className="flex items-center gap-1 shrink-0">
           <MapPin size={12} />
           {locationText}
-        </button>
-      )}
-      {onOpenMap && (
-        <button
-          onClick={onOpenMap}
-          className="flex items-center gap-1 shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-blue-600 hover:bg-blue-100 transition-colors"
-        >
-          <Navigation size={11} />
-          附近医院
-        </button>
+        </span>
       )}
       <button
         onClick={toggleCollapse}

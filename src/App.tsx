@@ -274,9 +274,6 @@ export default function App() {
 
   const handleSelectConsultationMode = useCallback((modeId: ConsultationModeId) => {
     setSelectedConsultationModeId(modeId);
-    window.setTimeout(() => {
-      setWelcomeFocusSignal((current) => current + 1);
-    }, 320);
   }, []);
 
   const handleSelectHouseholdProfile = useCallback(

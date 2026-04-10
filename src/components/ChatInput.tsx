@@ -295,7 +295,7 @@ export function ChatInput({
 
   useEffect(() => {
     if (focusSignal === undefined) return
-    textareaRef.current?.focus()
+    textareaRef.current?.focus({ preventScroll: true })
   }, [focusSignal])
 
   const handleSend = () => {

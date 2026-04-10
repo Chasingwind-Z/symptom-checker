@@ -157,7 +157,7 @@ export function WelcomeScreen({
     : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 sm:space-y-4">
       {/* Compact status strip */}
       <StatusStrip
         weatherText={weatherSummary?.tags?.[0]}
@@ -168,9 +168,9 @@ export function WelcomeScreen({
       />
 
       {/* Compact header */}
-      <div className="text-center pt-2">
-        <h1 className="text-xl font-bold text-slate-800">现在谁不舒服？</h1>
-        <p className="text-xs text-slate-500 mt-1">30秒告诉你严不严重、要不要去医院</p>
+      <div className="text-center pt-1">
+        <h1 className="text-lg sm:text-xl font-bold text-slate-800">现在谁不舒服？</h1>
+        <p className="text-xs text-slate-500 mt-0.5">30秒告诉你严不严重、要不要去医院</p>
       </div>
 
       {/* Population tabs — horizontal filter */}
@@ -183,7 +183,7 @@ export function WelcomeScreen({
       />
 
       {/* Smart suggestion cards — hero section */}
-      <div className="mt-3">
+      <div className="mt-1 sm:mt-3">
         <SuggestionCards
           suggestions={smartSuggestions}
           onSelect={(query) => {
@@ -197,7 +197,7 @@ export function WelcomeScreen({
 
       {/* Recent session chips */}
       {recentConversationChips.length > 0 && (
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-2 mt-1.5 sm:mt-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {recentConversationChips.map((session) => (
             <button
               key={session.id}
@@ -212,7 +212,7 @@ export function WelcomeScreen({
       )}
 
       {/* Bottom padding for mobile nav */}
-      <div className="h-4" />
+      <div className="h-2 sm:h-4" />
     </div>
   )
 }

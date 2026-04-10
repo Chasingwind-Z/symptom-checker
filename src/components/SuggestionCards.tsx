@@ -28,18 +28,18 @@ export function SuggestionCards({ suggestions, onSelect, pendingFollowup, onOpen
   return (
     <div>
       {explanation && (
-        <p className="text-xs text-slate-400 mb-3">{explanation}</p>
+        <p className="text-xs text-slate-400 mb-2 sm:mb-3">{explanation}</p>
       )}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
         {suggestions.map((s) => (
           <button
             key={s.id}
             onClick={() => onSelect(s.query)}
-            className="group rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-sm hover:border-blue-400 hover:shadow-lg transition-all"
+            className="group rounded-2xl border border-slate-200 bg-white p-3 sm:p-5 text-left shadow-sm hover:border-blue-400 hover:shadow-lg transition-all min-h-[44px]"
           >
-            <div className="mb-3">{ICON_MAP[s.icon] || <Brain size={28} className="text-blue-600" />}</div>
+            <div className="mb-2 sm:mb-3">{ICON_MAP[s.icon] || <Brain size={28} className="text-blue-600" />}</div>
             <p className="text-sm font-semibold text-slate-900 leading-snug">{s.title}</p>
-            <p className="text-xs text-slate-400 mt-1.5">{s.subtitle}</p>
+            <p className="text-xs text-slate-400 mt-1">{s.subtitle}</p>
           </button>
         ))}
       </div>
