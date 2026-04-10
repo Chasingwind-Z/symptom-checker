@@ -93,16 +93,13 @@ export default function App() {
   );
   const [welcomeDraftValue, setWelcomeDraftValue] = useState('');
   const [welcomeFocusSignal, setWelcomeFocusSignal] = useState(0);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(() =>
+    localStorage.getItem('onboarding.completed') === 'true'
+  );
   const [showShareBanner, setShowShareBanner] = useState(false);
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(
     () => localStorage.getItem('guest_banner_dismissed') === 'true'
   );
-
-  useEffect(() => {
-    const id = window.setTimeout(() => setShowOnboarding(!localStorage.getItem('onboarding_done')), 0);
-    return () => window.clearTimeout(id);
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1222,7 +1219,9 @@ export default function App() {
 
       <FollowUpReminder onStartConsultation={handleResetChat} />
 
-      {showOnboarding && <OnboardingFlow onComplete={() => { localStorage.setItem('onboarding_done', '1'); setShowOnboarding(false); const savedMode = localStorage.getItem('selected_guardian_mode') as ConsultationModeId | null; if (savedMode) setSelectedConsultationModeId(savedMode); }} />}
+      {!onboardingDone && (
+        <OnboardingFlow onComplete={() => setOnboardingDone(true)} />
+      )}
     </div>
     </GuardianThemeProvider>
   );
