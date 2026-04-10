@@ -1146,7 +1146,7 @@ export function ResultCard({
                               <span className="rounded-full bg-slate-100 px-2 py-0.5">
                                 {source.host}
                               </span>
-                              <span>仅作背景参考，不替代医生诊断</span>
+                              <span>仅供参考，不替代医生诊断或处方</span>
                             </div>
                           </>
                         );
@@ -1193,12 +1193,12 @@ export function ResultCard({
                       <div>
                         <p className="text-sm font-semibold text-slate-800">用药支持摘要</p>
                         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                          仅保留更值得优先核对的 1–2 个方向，帮助快速区分相对匹配项与谨慎项。
+                          仅供参考，不替代医生诊断或处方
                         </p>
                       </div>
                     </div>
                     <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
-                      仅作支持参考
+                      仅供参考
                     </span>
                   </div>
                   {hasMedicationProfileContext && (
@@ -1261,7 +1261,7 @@ export function ResultCard({
                     ))}
                   </div>
                   <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-                    仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
+                    仅供参考，不替代医生诊断或处方
                   </p>
                 </div>
 
@@ -1361,7 +1361,7 @@ export function ResultCard({
                       </button>
                     </div>
                     <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-                      仅作对症支持参考，不替代医生诊断或处方；若症状加重，请优先按上方行动清单处理。
+                      仅供参考，不替代医生诊断或处方
                     </p>
                   </div>
                 )}
@@ -1449,7 +1449,7 @@ export function ResultCard({
                     `判断依据: ${result.reason}`,
                     `行动建议: ${result.action}`,
                     `推荐科室: ${result.departments.join('、')}`,
-                    '⚠️ 本建议仅供参考，不构成医疗诊断',
+                    '⚠️ 仅供参考，不替代医生诊断或处方',
                   ].join('\n');
                   const shareUrl = `${window.location.origin}?share=1&level=${result.level}&reason=${encodeURIComponent(result.reason.slice(0, 50))}`;
                   if (navigator.share) {

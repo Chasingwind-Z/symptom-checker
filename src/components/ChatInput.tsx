@@ -146,9 +146,11 @@ function buildHelperText(attachmentCount: number): string {
     : `已附加 ${attachmentCount} 张图片（文件名已作为文字上下文）；请继续描述部位、持续时间和症状以便更准确分析。`;
 }
 
-function buildPlaceholder(attachmentCount: number): string {
+function buildPlaceholder(attachmentCount: number, messagesCount?: number, hasDiagnosis?: boolean): string {
   if (attachmentCount === 0) {
-    return '描述您的症状、持续时间，以及是否发热、疼痛或呼吸不适…';
+    if (hasDiagnosis) return '继续提问，或开始新的问诊';
+    if (messagesCount && messagesCount > 0) return '回答上面的问题，或补充新症状';
+    return '描述症状，例如：孩子发烧38.5度';
   }
 
   return AI_VISION_ENABLED
@@ -210,7 +212,7 @@ export function ChatInput({
     : buildHelperText(attachmentCount);
   const placeholder = isListening
     ? '正在将语音实时转成文字…'
-    : placeholderOverride || buildPlaceholder(attachmentCount);
+    : placeholderOverride || buildPlaceholder(attachmentCount, messagesCount, hasDiagnosis);
 
   const notifyLayoutChange = useCallback(() => {
     if (!onLayoutChange || !containerRef.current) return;
@@ -540,7 +542,7 @@ export function ChatInput({
                       <div className="px-2.5 py-2">
                         <p className="truncate text-xs font-medium text-slate-700">{attachment.name}</p>
                         <p className="mt-0.5 text-xs text-slate-500">
-                          {formatFileSize(attachment.sizeBytes)} · 仅作辅助参考
+                          {formatFileSize(attachment.sizeBytes)} · 仅供参考，不替代医生诊断或处方
                         </p>
                       </div>
                     </div>
@@ -678,7 +680,7 @@ export function ChatInput({
             {!isInline && (
               <div className="flex items-center justify-center gap-1.5 mt-1">
                 <p className="text-xs text-slate-400 text-center">
-                  仅供参考，不构成诊断
+                  仅供参考，不替代医生诊断或处方
                   {AI_VISION_ENABLED && (
                     <>
                       {' · '}

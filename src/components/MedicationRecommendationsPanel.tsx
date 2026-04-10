@@ -449,7 +449,7 @@ export function MedicationRecommendationsPanel({
             )}
             <ActionButton label="新建问诊" onClick={onStartNewConversation} />
           </div>
-          <p className="text-xs text-slate-500">仅供 OTC / 家庭处理参考，不替代处方或线下评估。</p>
+          <p className="text-xs text-slate-500">仅供参考，不替代医生诊断或处方</p>
         </div>
       </div>
 
@@ -793,7 +793,7 @@ export function MedicationRecommendationsPanel({
                 ))}
                 <li className="flex gap-2 text-xs leading-relaxed text-slate-600">
                   <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  <span>这里只做 OTC / 家庭处理参考，不替代医生诊断、处方或线下评估。</span>
+                  <span>仅供参考，不替代医生诊断或处方</span>
                 </li>
                 {!profileApplied && (
                   <li className="flex gap-2 text-xs leading-relaxed text-slate-600">

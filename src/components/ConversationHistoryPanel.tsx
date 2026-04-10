@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
-import { ArrowRight, Clock3, MessageSquareText, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, Clock3, MessageSquareText, Plus } from 'lucide-react';
 import { getRiskPresentation } from '../lib/riskPresentation';
 import type { ConversationSession } from '../types';
+import { ConversationMenu } from './ConversationMenu';
 
 const RENAMED_SESSIONS_KEY = 'session_custom_titles';
 
@@ -101,18 +102,6 @@ export function ConversationHistoryPanel({
   const hiddenCount = Math.max(0, sessions.length - visibleSessions.length);
   const isShelf = variant === 'shelf';
   const isSidebar = variant === 'sidebar';
-  const renderDeleteButton = (sessionId: string, sessionTitle: string) =>
-    onDeleteSession ? (
-      <button
-        type="button"
-        onClick={() => onDeleteSession(sessionId)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
-        aria-label={`删除会话 ${sessionTitle}`}
-        title="删除会话"
-      >
-        <Trash2 size={14} />
-      </button>
-    ) : null;
 
   return (
     <section
@@ -157,86 +146,56 @@ export function ConversationHistoryPanel({
         </div>
       ) : isSidebar ? (
         <>
-          <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+          <div className="mt-3 min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
             {visibleSessions.map((session) => {
               const riskMeta = getRiskPresentation(session.riskLevel ?? 'pending');
               const isActive = activeSessionId === session.id;
 
               return (
-                <div key={session.id} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => onOpenSession(session.id)}
-                    className={`w-full rounded-2xl border px-3 py-3 pr-12 text-left transition-colors ${
-                      isActive
-                        ? 'border-cyan-300 bg-cyan-50/80 shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-cyan-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {editingId === session.id ? (
-                            <input
-                              autoFocus
-                              value={editTitle}
-                              onChange={(e) => setEditTitle(e.target.value)}
-                              onBlur={() => {
-                                if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
-                                setEditingId(null);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
-                                  setEditingId(null);
-                                }
-                                if (e.key === 'Escape') setEditingId(null);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-full rounded bg-white border border-blue-300 px-2 py-0.5 text-sm font-semibold text-slate-800 outline-none"
-                            />
-                          ) : (
-                            <p
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                setEditingId(session.id);
-                                setEditTitle(getDisplayTitle(session));
-                              }}
-                              className="truncate text-sm font-semibold text-slate-800 cursor-text"
-                              title="双击重命名"
-                            >
-                              {getDisplayTitle(session)}
-                            </p>
-                          )}
-                          {isActive && (
-                            <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
-                              当前
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                          {getPreviewText(session)}
-                        </p>
-                      </div>
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
-                      >
-                        {riskMeta.label}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-slate-400">
-                      <span>{formatUpdatedAt(session.updatedAt)}</span>
-                      <div className="flex items-center gap-2">
-                        <span>{session.messages.length} 条</span>
-                        <span>{getStorageLabel(session.storage)}</span>
-                      </div>
-                    </div>
-                  </button>
-                  {onDeleteSession && (
-                    <div className="absolute right-3 top-3">
-                      {renderDeleteButton(session.id, session.title)}
-                    </div>
+                <div
+                  key={session.id}
+                  className={`group flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 rounded-lg cursor-pointer ${
+                    isActive ? 'border-l-2 border-blue-500 bg-blue-50' : ''
+                  }`}
+                  onClick={() => onOpenSession(session.id)}
+                >
+                  {isActive && <div className="w-0.5 h-4 rounded-full bg-blue-500 shrink-0" />}
+
+                  {editingId === session.id ? (
+                    <input
+                      autoFocus
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onBlur={() => {
+                        if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                        setEditingId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                          setEditingId(null);
+                        }
+                        if (e.key === 'Escape') setEditingId(null);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 min-w-0 rounded border border-blue-300 px-1.5 py-0.5 text-xs outline-none"
+                    />
+                  ) : (
+                    <span className="flex-1 min-w-0 text-xs text-slate-700 truncate">
+                      {getDisplayTitle(session)}
+                    </span>
                   )}
+
+                  <span className={`shrink-0 inline-block h-2 w-2 rounded-full ${riskMeta.tone.includes('red') || riskMeta.tone.includes('rose') ? 'bg-red-400' : riskMeta.tone.includes('amber') || riskMeta.tone.includes('yellow') ? 'bg-amber-400' : riskMeta.tone.includes('emerald') || riskMeta.tone.includes('green') ? 'bg-emerald-400' : 'bg-slate-300'}`} title={riskMeta.label} />
+
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <ConversationMenu
+                      onRename={() => { setEditingId(session.id); setEditTitle(getDisplayTitle(session)); }}
+                      onDelete={() => {
+                        if (window.confirm('确定删除这条记录？')) onDeleteSession?.(session.id);
+                      }}
+                    />
+                  </div>
                 </div>
               );
             })}
@@ -254,7 +213,7 @@ export function ConversationHistoryPanel({
             const isActive = activeSessionId === session.id;
 
             return (
-              <div key={session.id} className="relative min-w-[260px] max-w-[300px] flex-1">
+              <div key={session.id} className="group relative min-w-[260px] max-w-[300px] flex-1">
                 <button
                   type="button"
                   onClick={() => onOpenSession(session.id)}
@@ -287,15 +246,7 @@ export function ConversationHistoryPanel({
                             className="w-full rounded bg-white border border-blue-300 px-2 py-0.5 text-sm font-semibold text-slate-800 outline-none"
                           />
                         ) : (
-                          <p
-                            onDoubleClick={(e) => {
-                              e.stopPropagation();
-                              setEditingId(session.id);
-                              setEditTitle(getDisplayTitle(session));
-                            }}
-                            className="truncate text-sm font-semibold text-slate-800 cursor-text"
-                            title="双击重命名"
-                          >
+                          <p className="truncate text-sm font-semibold text-slate-800">
                             {getDisplayTitle(session)}
                           </p>
                         )}
@@ -304,11 +255,6 @@ export function ConversationHistoryPanel({
                         >
                           {riskMeta.label}
                         </span>
-                        {isActive && (
-                          <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
-                            当前
-                          </span>
-                        )}
                       </div>
                       <p className="mt-2 text-xs leading-relaxed text-slate-600">
                         {getPreviewText(session)}
@@ -330,11 +276,14 @@ export function ConversationHistoryPanel({
                     </span>
                   </div>
                 </button>
-                {onDeleteSession && (
-                  <div className="absolute right-3 top-3">
-                    {renderDeleteButton(session.id, session.title)}
-                  </div>
-                )}
+                <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ConversationMenu
+                    onRename={() => { setEditingId(session.id); setEditTitle(getDisplayTitle(session)); }}
+                    onDelete={() => {
+                      if (window.confirm('确定删除这条记录？')) onDeleteSession?.(session.id);
+                    }}
+                  />
+                </div>
               </div>
             );
           })}
@@ -347,7 +296,7 @@ export function ConversationHistoryPanel({
               const isActive = activeSessionId === session.id;
 
               return (
-                <div key={session.id} className="relative">
+                <div key={session.id} className="group relative">
                   <button
                     type="button"
                     onClick={() => onOpenSession(session.id)}
@@ -380,15 +329,7 @@ export function ConversationHistoryPanel({
                               className="w-full rounded bg-white border border-blue-300 px-2 py-0.5 text-sm font-semibold text-slate-800 outline-none"
                             />
                           ) : (
-                            <p
-                              onDoubleClick={(e) => {
-                                e.stopPropagation();
-                                setEditingId(session.id);
-                                setEditTitle(getDisplayTitle(session));
-                              }}
-                              className="truncate text-sm font-semibold text-slate-800 cursor-text"
-                              title="双击重命名"
-                            >
+                            <p className="truncate text-sm font-semibold text-slate-800">
                               {getDisplayTitle(session)}
                             </p>
                           )}
@@ -397,11 +338,6 @@ export function ConversationHistoryPanel({
                           >
                             {riskMeta.label}
                           </span>
-                          {isActive && (
-                            <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
-                              当前会话
-                            </span>
-                          )}
                         </div>
                         <p className="mt-2 text-xs leading-relaxed text-slate-600">
                           {getPreviewText(session)}
@@ -421,11 +357,14 @@ export function ConversationHistoryPanel({
                       </span>
                     </div>
                   </button>
-                  {onDeleteSession && (
-                    <div className="absolute right-3 top-3">
-                      {renderDeleteButton(session.id, session.title)}
-                    </div>
-                  )}
+                  <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ConversationMenu
+                      onRename={() => { setEditingId(session.id); setEditTitle(getDisplayTitle(session)); }}
+                      onDelete={() => {
+                        if (window.confirm('确定删除这条记录？')) onDeleteSession?.(session.id);
+                      }}
+                    />
+                  </div>
                 </div>
               );
             })}

@@ -9,6 +9,7 @@ import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
 import { readLocalProfileDraft } from '../lib/healthData';
 import { checkNewDrugVsProfile } from '../lib/medicationSafety';
 import type { UrgencyLevel } from '../lib/quickTriage';
+import { sanitizeForDisplay } from '../lib/textUtils';
 import type { Message } from '../types';
 import { AgentOrchestrationPanel } from './AgentOrchestrationPanel';
 import { CitationCard } from './CitationCard';
@@ -269,7 +270,7 @@ export function ChatBubble({
   const isUser = message.role === 'user';
   const guardianTheme = useGuardianTheme();
   const isElderlyMode = guardianTheme.id === 'elderly';
-  const displayContent = isUser ? message.content : stripJsonBlock(message.content);
+  const displayContent = isUser ? message.content : sanitizeForDisplay(stripJsonBlock(message.content));
   const animatedStreamingContent = useAnimatedStreamingText(displayContent, Boolean(!isUser && isStreaming));
   const hasJsonBlock = message.content.includes('```json');
   // During active consultation (no diagnosis yet), hide decorations on non-diagnosis bubbles

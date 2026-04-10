@@ -45,7 +45,7 @@ export function AftercareTimeline({ plan }: AftercareTimelineProps) {
 
       <div className="mt-4 flex items-start gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs leading-relaxed text-slate-600">
         <ShieldAlert size={14} className="mt-0.5 shrink-0 text-slate-500" />
-        这份计划用于帮助你安排接下来几步，不替代医生面诊；一旦出现明显加重或新的危险信号，应及时升级处理。
+        仅供参考，不替代医生诊断或处方
       </div>
     </section>
   )

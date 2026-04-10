@@ -166,7 +166,7 @@ export function ReportExport({ result, messages, medicationRecommendations, drug
           {/* 免责声明 */}
           <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '10px', padding: '12px 16px', fontSize: '12px', color: '#92400E', marginBottom: '28px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
-            <span>本报告由 AI 辅助生成，仅供参考，不构成医疗诊断。实际情况请以医生面诊为准。</span>
+            <span>仅供参考，不替代医生诊断或处方</span>
           </div>
 
           {/* 两列信息卡 */}
@@ -250,7 +250,7 @@ export function ReportExport({ result, messages, medicationRecommendations, drug
 
           {/* 用药参考 */}
           {medicationRecommendations && medicationRecommendations.length > 0 && (
-            <SectionBlock title="💊 用药参考（仅供 OTC 参考，不替代处方）" icon="" color={color}>
+            <SectionBlock title="💊 用药参考（仅供参考，不替代医生诊断或处方）" icon="" color={color}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {medicationRecommendations.map((med, i) => (
                   <div
