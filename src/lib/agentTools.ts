@@ -203,10 +203,6 @@ function summarizeToolPayload(toolName: string, payload?: Record<string, unknown
     const documentCount = Array.isArray(payload.documents) ? payload.documents.length : 0;
     const focusPopulation =
       typeof payload.focusPopulation === 'string' ? ` · ${payload.focusPopulation}` : '';
-    const retrievalLabel =
-      typeof payload.retrievalLabel === 'string' && payload.retrievalLabel.trim()
-        ? ` · ${payload.retrievalLabel}`
-        : '';
     const storageLabel =
       typeof payload.storageMode === 'string'
         ? payload.storageMode.includes('supabase')
@@ -215,10 +211,10 @@ function summarizeToolPayload(toolName: string, payload?: Record<string, unknown
         : '';
 
     if (documentCount > 0 || matchCount > 0) {
-      return `已连接医学知识库 · 展示 ${documentCount || matchCount} 条相关资料${focusPopulation}${storageLabel}${retrievalLabel}`;
+      return `✅ 已参考医学知识库${focusPopulation}${storageLabel}`;
     }
 
-    return '已返回基础分诊规则';
+    return 'ℹ️ 知识库未覆盖此问题，以下为通用建议';
   }
 
   if (toolName === 'get_weather') {

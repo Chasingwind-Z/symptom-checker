@@ -1,6 +1,21 @@
+import { useState, useCallback, useMemo } from 'react';
 import { ArrowRight, Clock3, MessageSquareText, Plus, Trash2 } from 'lucide-react';
 import { getRiskPresentation } from '../lib/riskPresentation';
 import type { ConversationSession } from '../types';
+
+const RENAMED_SESSIONS_KEY = 'session_custom_titles';
+
+function getRenamedTitles(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(RENAMED_SESSIONS_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function saveRenamedTitle(sessionId: string, title: string): void {
+  const titles = getRenamedTitles();
+  titles[sessionId] = title;
+  localStorage.setItem(RENAMED_SESSIONS_KEY, JSON.stringify(titles));
+}
 
 interface ConversationHistoryPanelProps {
   sessions: ConversationSession[];
@@ -65,6 +80,22 @@ export function ConversationHistoryPanel({
   showStartButton = true,
   startButtonLabel = '新建对话',
 }: ConversationHistoryPanelProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [renameVersion, setRenameVersion] = useState(0);
+
+  const renamedTitles = useMemo(() => getRenamedTitles(), [renameVersion]);
+
+  const handleRenameSession = useCallback((id: string, title: string) => {
+    saveRenamedTitle(id, title);
+    setRenameVersion((v) => v + 1);
+  }, []);
+
+  const getDisplayTitle = useCallback(
+    (session: ConversationSession) => renamedTitles[session.id] || session.title,
+    [renamedTitles],
+  );
+
   const visibleSessions =
     typeof maxItems === 'number' && maxItems > 0 ? sessions.slice(0, maxItems) : sessions;
   const hiddenCount = Math.max(0, sessions.length - visibleSessions.length);
@@ -145,7 +176,38 @@ export function ConversationHistoryPanel({
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
+                          {editingId === session.id ? (
+                            <input
+                              autoFocus
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              onBlur={() => {
+                                if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                                setEditingId(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                                  setEditingId(null);
+                                }
+                                if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full rounded bg-white border border-blue-300 px-2 py-0.5 text-sm font-semibold text-slate-800 outline-none"
+                            />
+                          ) : (
+                            <p
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(session.id);
+                                setEditTitle(getDisplayTitle(session));
+                              }}
+                              className="truncate text-sm font-semibold text-slate-800 cursor-text"
+                              title="双击重命名"
+                            >
+                              {getDisplayTitle(session)}
+                            </p>
+                          )}
                           {isActive && (
                             <span className="rounded-full bg-white px-2 py-0.5 text-xs text-cyan-700">
                               当前
@@ -205,7 +267,38 @@ export function ConversationHistoryPanel({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="truncate text-sm font-semibold text-slate-800">{session.title}</p>
+                        {editingId === session.id ? (
+                          <input
+                            autoFocus
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            onBlur={() => {
+                              if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                              setEditingId(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                                setEditingId(null);
+                              }
+                              if (e.key === 'Escape') setEditingId(null);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full rounded bg-white border border-blue-300 px-2 py-0.5 text-sm font-semibold text-slate-800 outline-none"
+                          />
+                        ) : (
+                          <p
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setEditingId(session.id);
+                              setEditTitle(getDisplayTitle(session));
+                            }}
+                            className="truncate text-sm font-semibold text-slate-800 cursor-text"
+                            title="双击重命名"
+                          >
+                            {getDisplayTitle(session)}
+                          </p>
+                        )}
                         <span
                           className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                         >
@@ -267,9 +360,38 @@ export function ConversationHistoryPanel({
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="truncate text-sm font-semibold text-slate-800">
-                            {session.title}
-                          </p>
+                          {editingId === session.id ? (
+                            <input
+                              autoFocus
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              onBlur={() => {
+                                if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                                setEditingId(null);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  if (editTitle.trim()) handleRenameSession(session.id, editTitle.trim());
+                                  setEditingId(null);
+                                }
+                                if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full rounded bg-white border border-blue-300 px-2 py-0.5 text-sm font-semibold text-slate-800 outline-none"
+                            />
+                          ) : (
+                            <p
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setEditingId(session.id);
+                                setEditTitle(getDisplayTitle(session));
+                              }}
+                              className="truncate text-sm font-semibold text-slate-800 cursor-text"
+                              title="双击重命名"
+                            >
+                              {getDisplayTitle(session)}
+                            </p>
+                          )}
                           <span
                             className={`rounded-full border px-2 py-0.5 text-xs font-medium ${riskMeta.tone}`}
                           >

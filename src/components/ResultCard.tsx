@@ -427,11 +427,6 @@ export function ResultCard({
     const symptomCardMeta = TOOL_EVIDENCE_META.search_symptom_knowledge;
     const focusPopulation =
       typeof symptomPayload?.focusPopulation === 'string' ? symptomPayload.focusPopulation : '';
-    const retrievalLabel =
-      typeof symptomPayload?.retrievalLabel === 'string' ? symptomPayload.retrievalLabel : '';
-    const retrievalMode =
-      typeof symptomPayload?.retrievalMode === 'string' ? symptomPayload.retrievalMode : '';
-    const retrievalTerms = toStringArray(symptomPayload?.queryExpansions).slice(0, 5);
     const symptomDetails = [
       `当前为「${RISK_LABELS[result.level]}」分级，主要基于你的症状描述、持续情况与危险信号判断。`,
       trimText(result.reason, 96),
@@ -455,24 +450,10 @@ export function ResultCard({
       symptomDetails.push(`已额外套用「${focusPopulation}」保守阈值提示。`);
     }
 
-    if (retrievalLabel) {
-      symptomDetails.push(`检索方式：${retrievalLabel}`);
-    }
-
-    if (
-      retrievalMode === 'keyword' ||
-      retrievalMode === 'hybrid-local' ||
-      retrievalMode === 'hybrid-cloud'
-    ) {
-      symptomDetails.push('当前知识检索仍以关键词扩展 + chunk 混合召回为主，并非完整向量 RAG。');
-    } else if (retrievalMode === 'hybrid-cloud-vector-ready') {
-      symptomDetails.push(
-        '即使已有向量字段，当前仍会优先保留人工可读的 chunk 证据，不会跳过可解释依据。'
-      );
-    }
-
-    if (retrievalTerms.length > 0) {
-      symptomDetails.push(`扩展召回词：${retrievalTerms.join('、')}`);
+    if (symptomNames.length > 0 || rankedChunks.length > 0 || knowledgeDocuments.length > 0) {
+      symptomDetails.push('✅ 已参考医学知识库');
+    } else {
+      symptomDetails.push('ℹ️ 知识库未覆盖此问题，以下为通用建议');
     }
 
     if (selfCareTips.length > 0 && (result.level === 'green' || result.level === 'yellow')) {
@@ -517,7 +498,7 @@ export function ResultCard({
         tint: symptomCardMeta.tint,
         icon: symptomCardMeta.icon,
         summary:
-          retrievalLabel || '来自 chunk 级混合召回结果，便于解释“为什么这样建议”。',
+          '✅ 已参考医学知识库',
         details: guidanceSnippets,
       });
     }

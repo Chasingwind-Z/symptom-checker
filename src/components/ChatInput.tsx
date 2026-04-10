@@ -34,6 +34,8 @@ interface ChatInputProps {
   focusSignal?: number;
   /** When true, hide image upload and mode selector to reduce visual noise */
   isConsulting?: boolean;
+  /** When true, diagnosis has been given — mode bar should be hidden or minimal */
+  hasDiagnosis?: boolean;
   /** 'floating' (default) – fixed overlay used in active chat.
    *  'inline' – normal-flow card used on the home/welcome screen. */
   variant?: 'floating' | 'inline';
@@ -169,6 +171,7 @@ export function ChatInput({
   focusSignal,
   variant = 'floating',
   isConsulting = false,
+  hasDiagnosis = false,
   messagesCount,
 }: ChatInputProps) {
   const isInline = variant === 'inline';
@@ -464,7 +467,7 @@ export function ChatInput({
               </div>
             )}
 
-            {selectedModeLabel && !isConsulting && (
+            {selectedModeLabel && !isConsulting && !hasDiagnosis && (
               <div className="mb-3 flex flex-wrap items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 py-2 text-xs text-blue-700">
                 <span className="rounded-full bg-white px-2.5 py-1 font-medium text-blue-700">
                   已选模式：{selectedModeLabel}

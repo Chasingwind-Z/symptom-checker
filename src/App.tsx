@@ -1151,6 +1151,7 @@ export default function App() {
             selectedModeSummary={selectedConsultationMode?.summary}
             onClearSelectedMode={handleClearSelectedConsultationMode}
             isConsulting={isConsulting}
+            hasDiagnosis={!!diagnosisResult}
             messagesCount={messages.length}
           />
         )}
