@@ -173,6 +173,7 @@ export default function App() {
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [switchingHouseholdProfileId, setSwitchingHouseholdProfileId] = useState<string | null>(null);
+  const [sidebarOverlayOpen, setSidebarOverlayOpen] = useState(false);
   const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
     height: 148,
     keyboardOffset: 0,
@@ -838,6 +839,7 @@ export default function App() {
           onToggleMap={handleOpenMap}
           onOpenAuth={handleOpenAuthDialog}
           onOpenSettings={handleOpenSettings}
+          onOpenMenu={isConsulting ? () => setSidebarOverlayOpen(true) : undefined}
           sessionEmail={workspace.sessionEmail}
           currentView={showWorkspace ? 'workspace' : effectivePage === 'home' ? 'home' : 'chat'}
           canInstallApp={pwa.canInstall}
@@ -1166,6 +1168,37 @@ export default function App() {
           onSelectRecords={() => handleOpenWorkspaceSection('records')}
           onSelectProfile={() => handleOpenWorkspaceSection('profile')}
         />
+      )}
+
+      {sidebarOverlayOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+            onClick={() => setSidebarOverlayOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl overflow-y-auto">
+            <AppSidebar
+              activeSection={showWorkspace ? workspaceSection : (effectivePage === 'chat' || effectivePage === 'home' ? 'chat' : null)}
+              sessions={filteredConversationSessions}
+              activeSessionId={activeSessionId}
+              onOpenSession={(id) => { handleOpenConversation(id); setSidebarOverlayOpen(false); }}
+              onDeleteSession={handleDeleteConversation}
+              onStartNewSession={() => { handleResetChat(); setSidebarOverlayOpen(false); }}
+              onSelectChat={() => { setCurrentPage(messages.length > 0 ? 'chat' : 'home'); setSidebarOverlayOpen(false); }}
+              onSelectProfile={() => { handleOpenWorkspaceSection('profile'); setSidebarOverlayOpen(false); }}
+              onSelectRecords={() => { handleOpenWorkspaceSection('records'); setSidebarOverlayOpen(false); }}
+              isCollapsed={false}
+              onToggleCollapse={handleToggleSidebarCollapse}
+              onOpenAuth={handleOpenAuthDialog}
+              authActionLabel={authActionLabel}
+              sessionEmail={workspace.sessionEmail}
+              statusLabel={workspace.statusLabel}
+              statusHelperText={workspace.helperText}
+              profileCompletion={profileCompletion}
+              pendingFollowUpCount={pendingFollowUpRecords.length}
+            />
+          </div>
+        </>
       )}
 
       <AuthDialog

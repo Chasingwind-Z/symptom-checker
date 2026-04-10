@@ -13,7 +13,7 @@ interface VisitSummaryCardProps {
 
 const LEVEL_CONFIG: Record<RiskLevel, { emoji: string; label: string; bg: string }> = {
   green:  { emoji: '🟢', label: '低风险 · 居家观察',   bg: 'bg-emerald-50 text-emerald-800' },
-  yellow: { emoji: '🟡', label: '中风险 · 建议就医',   bg: 'bg-amber-50 text-amber-800' },
+  yellow: { emoji: '🟡', label: '中风险 · 尽快门诊',   bg: 'bg-amber-50 text-amber-800' },
   orange: { emoji: '🟠', label: '较高风险 · 今日就医', bg: 'bg-orange-50 text-orange-800' },
   red:    { emoji: '🔴', label: '紧急 · 立即急诊',     bg: 'bg-red-50 text-red-800' },
 };

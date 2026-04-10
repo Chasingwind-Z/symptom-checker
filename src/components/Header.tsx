@@ -4,6 +4,7 @@ import {
   LayoutGrid,
   LogIn,
   MapPin,
+  Menu,
   Plus,
   Settings2,
   Stethoscope,
@@ -25,6 +26,7 @@ interface HeaderProps {
   onToggleMap?: () => void;
   onOpenAuth?: () => void;
   onOpenSettings?: () => void;
+  onOpenMenu?: () => void;
   sessionEmail?: string | null;
   currentView?: 'home' | 'chat' | 'workspace';
   onInstallApp?: () => void;
@@ -41,6 +43,7 @@ export function Header({
   onToggleMap,
   onOpenAuth,
   onOpenSettings,
+  onOpenMenu,
   sessionEmail,
   currentView = 'home',
   onInstallApp,
@@ -56,7 +59,17 @@ export function Header({
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur-md">
       <div className="flex h-16 items-center justify-between gap-4 px-4 lg:px-6">
-        <div className="min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          {onOpenMenu && (
+            <button
+              onClick={onOpenMenu}
+              className="flex-shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+              aria-label="打开菜单"
+            >
+              <Menu size={20} />
+            </button>
+          )}
+          <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <div className="rounded-lg bg-blue-500 p-1 text-white lg:hidden">
               <Stethoscope size={12} />
@@ -65,6 +78,7 @@ export function Header({
           </div>
           <h1 className="mt-0.5 max-w-[180px] truncate text-base font-semibold text-slate-900 sm:max-w-none">{title}</h1>
           {subtitle && <p className="hidden truncate text-xs text-slate-500 md:block">{subtitle}</p>}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
