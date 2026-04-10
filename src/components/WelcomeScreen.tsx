@@ -156,6 +156,7 @@ export function WelcomeScreen({
         checkedIn={checkedInToday}
         pendingFollowUps={pendingFollowUpCount > 0 ? pendingFollowUpCount : undefined}
         locationText={localCityLabel || undefined}
+        onOpenMap={_onToggleMap}
       />
 
       {/* Compact header */}
