@@ -18,6 +18,10 @@ export interface RetrievalResult {
   population: Population;
   empty: boolean;
   fallbackUsed: boolean;
+  stats: {
+    total: number;
+    bySource: Record<string, number>;
+  };
 }
 
 const POPULATION_TO_AUDIENCE: Record<string, string[]> = {
@@ -88,7 +92,14 @@ export async function retrieveKnowledge(
         .slice(0, 5);
 
       if (chunks.length > 0) {
-        return { chunks, query, population, empty: false, fallbackUsed: false };
+        const stats = {
+          total: chunks.length,
+          bySource: chunks.reduce((acc, c) => {
+            acc[c.sourceType] = (acc[c.sourceType] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+        };
+        return { chunks, query, population, empty: false, fallbackUsed: false, stats };
       }
     }
 
@@ -121,7 +132,14 @@ export async function retrieveKnowledge(
           };
         });
 
-        return { chunks, query, population, empty: false, fallbackUsed: false };
+        const stats = {
+          total: chunks.length,
+          bySource: chunks.reduce((acc, c) => {
+            acc[c.sourceType] = (acc[c.sourceType] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>),
+        };
+        return { chunks, query, population, empty: false, fallbackUsed: false, stats };
       }
     }
   } catch {
@@ -130,11 +148,31 @@ export async function retrieveKnowledge(
 
   // Local fallback
   const localResults = localKeywordSearch(query, population);
+  const stats = {
+    total: localResults.length,
+    bySource: localResults.reduce((acc, c) => {
+      acc[c.sourceType] = (acc[c.sourceType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+  };
   return {
     chunks: localResults,
     query,
     population,
     empty: localResults.length === 0,
     fallbackUsed: true,
+    stats,
   };
+}
+
+export function formatRetrievalHint(stats: { total: number; bySource: Record<string, number> }): string {
+  if (stats.total === 0) return 'ℹ️ 知识库未覆盖此问题，以下为通用建议';
+
+  const parts: string[] = [];
+  if (stats.bySource.curated) parts.push(`${stats.bySource.curated} 条策展卡片`);
+  if (stats.bySource.medlineplus) parts.push(`${stats.bySource.medlineplus} 条 MedlinePlus`);
+  if (stats.bySource.cdc) parts.push(`${stats.bySource.cdc} 条 CDC`);
+
+  if (parts.length === 1) return `✅ 已参考 ${parts[0]}`;
+  return `✅ 已参考 ${stats.total} 条医学知识（${parts.join(' + ')}）`;
 }

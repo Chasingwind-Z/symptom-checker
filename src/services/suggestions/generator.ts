@@ -11,19 +11,19 @@ export interface Suggestion {
 }
 
 const SUGGESTION_POOL: Suggestion[] = [
-  // self (12)
-  { id: 's-headache', icon: 'Brain', title: '突然头痛是怎么回事', subtitle: '判断是否需要就医', query: '突然头痛，想知道严不严重', tags: ['self', 'headache'], weight: 1.0 },
-  { id: 's-cold-week', icon: 'Thermometer', title: '感冒一周还没好', subtitle: '需要换药还是去医院', query: '感冒一周了还没好，需要去医院吗', tags: ['self', 'cold', 'flu'], weight: 1.0 },
-  { id: 's-insomnia', icon: 'Moon', title: '失眠两周影响生活', subtitle: '了解可能原因', query: '连续失眠两周了，白天很疲惫', tags: ['self', 'night', 'insomnia'], weight: 1.0 },
-  { id: 's-stomach', icon: 'Stethoscope', title: '胃痛反复发作', subtitle: '是否需要检查', query: '胃痛反复发作，不确定要不要去查', tags: ['self', 'stomach'], weight: 1.0 },
-  { id: 's-allergy', icon: 'Flower2', title: '鼻子痒眼睛痒像过敏', subtitle: '如何缓解过敏', query: '鼻子和眼睛痒，像是过敏了', tags: ['self', 'allergy', 'spring'], weight: 1.0 },
-  { id: 's-back-pain', icon: 'Activity', title: '腰酸背痛好几天', subtitle: '需要检查吗', query: '腰酸背痛好几天了，需要去看吗', tags: ['self', 'pain'], weight: 1.0 },
-  { id: 's-sore-throat', icon: 'Wind', title: '嗓子疼吞咽困难', subtitle: '是不是扁桃体发炎', query: '嗓子很疼，吞口水都疼', tags: ['self', 'cold', 'flu'], weight: 1.0 },
-  { id: 's-eye-strain', icon: 'Sparkles', title: '眼睛干涩看不清', subtitle: '用眼过度还是其他', query: '眼睛干涩模糊，是用眼过度吗', tags: ['self'], weight: 1.0 },
-  { id: 's-chest-tight', icon: 'HeartPulse', title: '胸口闷闷的', subtitle: '紧急程度判断', query: '最近胸口闷闷的，有点担心', tags: ['self', 'chest'], weight: 1.0 },
-  { id: 's-skin-itch', icon: 'Sparkles', title: '身上起红疹很痒', subtitle: '过敏还是皮肤病', query: '身上突然起了红疹子很痒', tags: ['self', 'allergy', 'spring'], weight: 1.0 },
-  { id: 's-fatigue', icon: 'Moon', title: '总觉得很累没力气', subtitle: '需要做检查吗', query: '最近总是很累没力气，是什么原因', tags: ['self', 'fatigue'], weight: 1.0 },
-  { id: 's-diarrhea', icon: 'Droplets', title: '拉肚子一天好几次', subtitle: '要吃什么药', query: '拉肚子一天好几次了', tags: ['self', 'diarrhea', 'heatstroke'], weight: 1.0 },
+  // self — decision voice, first person
+  { id: 's-headache-work', icon: 'Brain', title: '头痛三天，今天上不上班', subtitle: '判断能不能扛', query: '我头痛三天了，今天还能上班吗？需要去医院吗？', tags: ['self', 'headache'], weight: 1.0 },
+  { id: 's-cold-change', icon: 'Thermometer', title: '感冒一周没好，要不要换药', subtitle: '继续吃 vs 去看医生', query: '我感冒一周了还没好，是继续吃药还是该去医院？', tags: ['self', 'cold', 'flu'], weight: 1.0 },
+  { id: 's-stomach-check', icon: 'Stethoscope', title: '胃痛反复了，要不要做胃镜', subtitle: '扛一扛 vs 查一下', query: '我胃痛反复发作好几次了，要不要去做个胃镜？', tags: ['self', 'stomach'], weight: 1.0 },
+  { id: 's-sleep-adjust', icon: 'Moon', title: '睡眠差两周，先调整还是去医院', subtitle: '自己调 vs 看医生', query: '我失眠两周了，是先自己调整还是该去看医生？', tags: ['self', 'night', 'insomnia'], weight: 1.0 },
+  { id: 's-back-work', icon: 'Activity', title: '腰背酸两天，是工伤还是自愈', subtitle: '休息就好 vs 要拍片', query: '腰背酸了两天，是肌肉问题自己会好还是要去查？', tags: ['self', 'pain'], weight: 1.0 },
+  { id: 's-throat-wait', icon: 'Wind', title: '嗓子发炎，扛一扛还是吃药', subtitle: '喝水够不够', query: '嗓子发炎疼得厉害，扛一扛能好还是要吃药？', tags: ['self', 'cold'], weight: 1.0 },
+  { id: 's-dizzy-urgent', icon: 'AlertCircle', title: '突然头晕，是不是要紧', subtitle: '等一等 vs 马上去', query: '突然头晕了一下，是不是什么要紧的事？', tags: ['self', 'dizzy'], weight: 1.0 },
+  { id: 's-heart-check', icon: 'HeartPulse', title: '心慌一下，要不要查一查', subtitle: '正常 vs 该看心内科', query: '偶尔心慌一下，要不要去查个心电图？', tags: ['self', 'chest'], weight: 1.0 },
+  { id: 's-allergy-season', icon: 'Flower2', title: '鼻子眼睛痒，吃药还是扛', subtitle: '过敏季怎么办', query: '鼻子眼睛都痒，是过敏吗？吃药还是先观察？', tags: ['self', 'allergy', 'spring'], weight: 1.0 },
+  { id: 's-fatigue-check', icon: 'Activity', title: '最近总没力气，该不该查', subtitle: '太累了 vs 要体检', query: '最近总是没力气，是太累还是身体有问题？', tags: ['self', 'fatigue'], weight: 1.0 },
+  { id: 's-diarrhea-eat', icon: 'Droplets', title: '拉肚子一天，吃药还是等', subtitle: '药 vs 补水就行', query: '拉肚子一天好几次，需要吃药还是多喝水就行？', tags: ['self', 'diarrhea', 'heatstroke'], weight: 1.0 },
+  { id: 's-skin-itch', icon: 'Sparkles', title: '身上起疹子，过敏还是皮肤病', subtitle: '吃抗过敏药 vs 看皮肤科', query: '身上突然起了疹子很痒，是过敏还是该看皮肤科？', tags: ['self', 'allergy', 'spring'], weight: 1.0 },
 
   // pediatric (12)
   { id: 'p-fever-night', icon: 'Thermometer', title: '孩子半夜发烧38.5℃', subtitle: '今晚要不要去急诊', query: '孩子半夜发烧38.5度，要去急诊吗', tags: ['pediatric', 'fever', 'night'], weight: 1.0 },
@@ -73,6 +73,12 @@ export interface GeneratorInput {
   hour: number;
   month: number;
   recentQueries: string[];
+  userProfile?: {
+    children?: string[];      // ages as strings from onboarding
+    elderConditions?: string[];
+    chronicTypes?: string[];
+    roles?: string[];
+  };
 }
 
 function weightedSample(candidates: Suggestion[], k: number): Suggestion[] {
@@ -122,6 +128,32 @@ export function generateSuggestions(input: GeneratorInput): Suggestion[] {
       }
     }
 
+    // Profile matching
+    if (input.userProfile) {
+      const profile = input.userProfile;
+
+      // Children age boost
+      if (s.tags.includes('pediatric') && profile.children && profile.children.length > 0) {
+        score += 0.5;
+        const hasInfant = profile.children.some(age => parseInt(age) <= 3);
+        if (hasInfant && (s.tags.includes('infant') || s.tags.includes('fever'))) score += 0.3;
+      }
+
+      // Elder condition boost
+      if (s.tags.includes('geriatric') && profile.elderConditions && profile.elderConditions.length > 0) {
+        if (profile.elderConditions.includes('高血压') && s.tags.some(t => t.includes('bp') || t.includes('stroke'))) score += 0.4;
+        if (profile.elderConditions.includes('糖尿病') && s.tags.some(t => t.includes('sugar') || t.includes('dizzy'))) score += 0.4;
+        if (profile.elderConditions.includes('心脏病') && s.tags.some(t => t.includes('chest') || t.includes('heart'))) score += 0.4;
+      }
+
+      // Chronic type boost
+      if (s.tags.includes('chronic') && profile.chronicTypes && profile.chronicTypes.length > 0) {
+        if (profile.chronicTypes.includes('高血压') && s.tags.includes('bp')) score += 0.5;
+        if (profile.chronicTypes.includes('糖尿病') && s.tags.includes('sugar')) score += 0.5;
+        if (profile.chronicTypes.includes('冠心病') && s.tags.includes('heart')) score += 0.4;
+      }
+    }
+
     return { ...s, weight: score };
   });
 
@@ -152,6 +184,23 @@ export function generateExplanation(input: GeneratorInput): string {
   const isNight = input.hour >= 21 || input.hour <= 5;
   const isMorning = input.hour >= 6 && input.hour <= 9;
   const popLabel = { self: '个人', pediatric: '孩子', geriatric: '老人', chronic: '慢病' }[input.population];
+  const profile = input.userProfile;
+
+  // Profile-specific explanations take priority
+  if (profile) {
+    if (input.population === 'pediatric' && profile.children?.length) {
+      const youngest = Math.min(...profile.children.map(a => parseInt(a) || 99));
+      if (youngest <= 3) return `💡 已根据你家 ${youngest} 岁宝宝的情况调整推荐`;
+      return `💡 已根据你家 ${youngest} 岁孩子的情况调整推荐`;
+    }
+    if (input.population === 'geriatric' && profile.elderConditions?.length) {
+      const cond = profile.elderConditions.filter(c => c !== '无')[0];
+      if (cond) return `💡 已根据有${cond}的老人情况调整推荐`;
+    }
+    if (input.population === 'chronic' && profile.chronicTypes?.length) {
+      return `💡 已根据${profile.chronicTypes[0]}管理需求调整推荐`;
+    }
+  }
 
   if (isNight) return `💡 现在是夜里，已优先显示${popLabel}相关紧急问题`;
   if (isMorning) return `💡 早上好，已为${popLabel}推荐晨间常见问题`;

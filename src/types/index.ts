@@ -49,6 +49,7 @@ export interface Message {
     sourceDate?: string;
     reviewStatus: string;
   }>;
+  ragHint?: string;
 }
 
 export interface ChatImageAttachment {

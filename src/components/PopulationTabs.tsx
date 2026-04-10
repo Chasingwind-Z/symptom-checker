@@ -1,7 +1,7 @@
 import type { Population } from '../types';
 
-const TABS: { id: Population; emoji: string; label: string }[] = [
-  { id: 'self', emoji: '👤', label: '我自己' },
+const TABS: { id: Population; emoji: string; label: string; subtitle?: string }[] = [
+  { id: 'self', emoji: '👤', label: '我自己', subtitle: '成年人独立判断' },
   { id: 'pediatric', emoji: '👶', label: '孩子' },
   { id: 'geriatric', emoji: '🧓', label: '老人' },
   { id: 'chronic', emoji: '💊', label: '慢病家属' },
@@ -26,7 +26,12 @@ export function PopulationTabs({ value, onChange }: PopulationTabsProps) {
           }`}
         >
           <span className="text-base">{tab.emoji}</span>
-          {tab.label}
+          <span className="flex flex-col items-start">
+            <span>{tab.label}</span>
+            {tab.subtitle && value === tab.id && (
+              <span className="text-[10px] opacity-75 leading-tight">{tab.subtitle}</span>
+            )}
+          </span>
         </button>
       ))}
     </div>

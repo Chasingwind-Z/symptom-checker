@@ -55,6 +55,14 @@ function StepConnector() {
   return <span className="text-slate-300 text-xs">→</span>;
 }
 
+function getProgressText(followupCount: number, maxFollowups: number): string {
+  const remaining = maxFollowups - followupCount;
+  if (followupCount === 0) return '开始补充信息';
+  if (remaining <= 0) return '信息已收集';
+  if (remaining === 1) return '最后一个问题';
+  return `已回答 ${followupCount} 个，还有约 ${remaining} 个问题`;
+}
+
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
@@ -479,7 +487,7 @@ export function ChatBubble({
                   <Step
                     done={followupCount >= maxFollowups}
                     active={followupCount < maxFollowups}
-                    label={urgencyLevel === 'red' ? '已跳过(紧急)' : `补充信息 ${followupCount}/${maxFollowups}`}
+                    label={urgencyLevel === 'red' ? '已跳过（紧急）' : getProgressText(followupCount, maxFollowups)}
                   />
                   <StepConnector />
                   <Step active={followupCount >= maxFollowups} label="给出建议" />

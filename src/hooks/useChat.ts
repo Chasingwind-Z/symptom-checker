@@ -19,7 +19,7 @@ import { requestGeolocation, fetchWeather } from '../lib/geolocation';
 import { loadCloudConversationSessions, persistCaseRecord } from '../lib/healthData';
 import { saveTrackingEntry } from '../lib/symptomTracking';
 import { submitAnonymousReport } from '../lib/epidemicDataEngine';
-import { retrieveKnowledge } from '../services/rag/retrieve';
+import { retrieveKnowledge, formatRetrievalHint } from '../services/rag/retrieve';
 import {
   FOLLOW_UP_RESPONSE_OPTIONS,
   getCompletedFollowUpRecords,
@@ -443,6 +443,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   const [cloudConversationSessions, setCloudConversationSessions] = useState<ConversationSession[]>([]);
   const keepFollowUpPromptMessageRef = useRef(false);
   const latestRagCitations = useRef<Array<{ title: string; content?: string; sourceType: string; sourceRef: string; sourceDate?: string; reviewStatus: string }>>([]);
+  const latestRagHint = useRef<string>('');
   const conversationSessions = useMemo(
     () => mergeConversationSessions(localConversationSessions, cloudConversationSessions),
     [cloudConversationSessions, localConversationSessions]
@@ -725,8 +726,10 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
             sourceDate: c.sourceDate || undefined,
             reviewStatus: c.reviewStatus,
           }));
+          latestRagHint.current = formatRetrievalHint(ragResult.stats);
         } catch {
           latestRagCitations.current = [];
+          latestRagHint.current = '';
         }
 
         // Compute urgency for this turn (use latest state for first message, or current state)
@@ -788,6 +791,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           toolCalls: Array.from(toolCallMap.values()).filter((item) => item.status !== 'running'),
           agentRoute: orchestration.route,
           ragCitations: latestRagCitations.current.length > 0 ? latestRagCitations.current : undefined,
+          ragHint: latestRagHint.current || undefined,
         };
 
         setMessages((prev) => {

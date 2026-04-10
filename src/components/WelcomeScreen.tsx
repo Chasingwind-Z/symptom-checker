@@ -101,6 +101,11 @@ export function WelcomeScreen({
     } catch { return false; }
   });
 
+  const [userProfile] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user.profile') || '{}'); }
+    catch { return {}; }
+  });
+
   const [timeContext] = useState(() => {
     const now = new Date();
     return { hour: now.getHours(), month: now.getMonth() + 1 };
@@ -114,6 +119,7 @@ export function WelcomeScreen({
       hour: timeContext.hour,
       month: timeContext.month,
       recentQueries: [],
+      userProfile,
     })
   );
 
@@ -127,6 +133,7 @@ export function WelcomeScreen({
         hour: timeContext.hour,
         month: timeContext.month,
         recentQueries: [],
+        userProfile,
       })
     );
   }
@@ -136,7 +143,8 @@ export function WelcomeScreen({
     hour: timeContext.hour,
     month: timeContext.month,
     recentQueries: [],
-  }), [currentPopulation, timeContext]);
+    userProfile,
+  }), [currentPopulation, timeContext, userProfile]);
 
   const normalizedProfileCity = normalizeText(profile?.city)
   const localCityLabel =
