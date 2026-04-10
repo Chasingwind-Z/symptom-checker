@@ -136,6 +136,17 @@ export function HealthSettingsPanel(
             </div>
         </div>
       </section>
+
+      <button
+        onClick={() => {
+          localStorage.removeItem('onboarding.completed');
+          localStorage.removeItem('user.profile');
+          window.location.reload();
+        }}
+        className="text-xs text-slate-400 hover:text-slate-600 mt-4"
+      >
+        重新运行引导流程
+      </button>
     </div>
   );
 }
