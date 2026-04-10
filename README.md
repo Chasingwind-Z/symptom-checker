@@ -1,163 +1,172 @@
-# 健康助手 · AI 症状自查与公共卫生预警平台
+# 健康助手 · Symptom Checker
 
-[![在线体验](https://img.shields.io/badge/🌐_在线体验-立即使用-blue?style=for-the-badge)](https://symptom-checker-git-main-chasingwinds-projects.vercel.app/)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat&logo=react&logoColor=white)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-Auth+DB-3ECF8E?style=flat&logo=supabase&logoColor=white)](https://supabase.com/)
-[![Vercel](https://img.shields.io/badge/Vercel-deployed-000000?style=flat&logo=vercel&logoColor=white)](https://vercel.com/)
+> 不说"建议就医"，说"今晚不需要去急诊，明天上午挂神经内科"。
 
-> 为照料者设计：帮你判断家人严不严重、要不要去医院、今晚还是明天去
+为照料者设计的健康决策助手——服务那些替别人做健康决策的人：半夜被孩子发烧吵醒的父母、独居老人突然说话不清楚时焦虑的远方子女、帮慢病家属管药的照料者。
+
+🔗 **线上体验：[symptom-checker-git-main-chasingwinds-projects.vercel.app](https://symptom-checker-git-main-chasingwinds-projects.vercel.app/)**
 
 ---
 
-## 🌐 在线体验
+## 为什么做这个
 
-**地址：** https://symptom-checker-git-main-chasingwinds-projects.vercel.app/
+市面上的 AI 健康工具有一个共同的问题：它们像医生一样说话——"建议就医""请咨询专业医生"。但照料者需要的不是又一个让他去看医生的提醒，而是在去医院之前的那 30 秒里，有人帮他判断"现在到底严不严重、要不要今晚就去"。
 
-推荐使用 Chrome / Edge / Safari，支持语音输入与 PWA 安装到桌面。
-
----
-
-## ✨ 核心功能
-
-### 🩺 智能 AI 问诊
-- 每次只问一个问题，不重复追问已知信息
-- 四级风险分级：🟢 居家观察 / 🟡 尽快就诊 / 🟠 今日就医 / 🔴 立即急诊
-- 照料者决策语言（不说"建议就医"，说"今晚不用去，明天带去社区诊所"）
-- 动态快捷回答词条，由 AI 根据当前问题实时生成
-- 支持语音输入和图片辅助说明
-
-### 👥 守护模式
-| 模式 | 适用场景 | AI 特殊处理 |
-|------|---------|-----------|
-| 本人 | 成年人自查 | 标准分诊流程 |
-| 儿童守护 | 14岁以下 | 夜间场景特殊处理，安抚焦虑家长，推荐儿科 |
-| 老人守护 | 60岁以上 | 独居风险评估，家属行动指南，建议陪同就医 |
-| 慢病守护 | 有基础疾病 | 血压血糖趋势 + 用药冲突实时检查 |
-
-### 📋 就诊报告导出
-AI 生成结构化就诊摘要（患者信息 + 主诉 + AI评估 + 推荐科室），
-导出 PDF 可直接带去医院给医生参考。
-
-### 💊 用药安全检查
-自动检测推荐药品与用户现用药物的潜在相互作用，
-高风险情况给出明确警告，避免用药风险。
-
-### 📍 附近医院推荐
-基于高德地图按分级结果推荐对应类型医院，
-支持地图查看位置和一键导航前往。
-
-### 📊 公共卫生预警大屏
-区域疾病风险监测，展示各区域主要症状和购药行为趋势，
-AI 自动生成预警分析报告。
-
-### 🔄 症状连续追踪
-跨会话记录症状历史，AI 下次问诊时自动参考历史记录，
-48小时后智能推送回访提醒。
+这个工具试图回答这个问题。
 
 ---
 
-## 🏗️ 技术架构
+## 核心能力
 
-```
-用户界面（React 18 + TypeScript + Tailwind CSS）
-         ↓
-AI Agent 层（Function Calling + Skill 系统）
-  ├── 症状知识库检索（本地 RAG）
-  ├── 天气工具（和风天气 API）
-  ├── 医院搜索工具（高德 POI API）
-  ├── 用药安全检查（22条相互作用规则）
-  └── 联网搜索（Tavily API）
-         ↓
-数据层（Supabase PostgreSQL + localStorage 降级）
-  ├── 用户认证（Email + Magic Link）
-  ├── 健康档案与家庭成员管理
-  ├── 历史问诊记录
-  └── 症状追踪时间线
-```
+### 30 秒紧急分级
+
+输入症状后，系统先做紧急度预判（红/黄/绿），决定追问策略：
+- **红色**（抽搐/意识不清/大量出血）直接给急诊建议，**0 轮追问**
+- **黄色**（发烧/呕吐/胸闷）最多追问 **3 轮**
+- **绿色**（鼻塞/轻微头痛）最多 **5 轮**
+
+照料者不会被问 20 个问题后还拿不到答案。
+
+### 照料者视角的决策语言
+
+所有建议都面向"做决策的人"而不是"生病的人"。不说"您需要休息"，说"今晚给孩子量一次体温，如果超过 39℃ 或精神明显变差，去最近有儿科的急诊"。每条建议都有具体的时间窗口、科室、行动步骤。
+
+### 四种照料角色
+
+首页让用户先选"为谁做判断"（我自己 / 孩子 / 老人 / 慢病家属），不同角色触发不同的追问策略、知识库检索范围和建议语言。孩子的问题永远拿不到成人剂量的内容。
+
+### 智能建议卡片
+
+首页推荐的问题不是写死的——会根据当前角色、时间（夜间优先显示"孩子半夜发烧"）、季节（春季优先过敏相关）、用户历史问诊记录动态调整，每次刷新都有变化。
 
 ---
 
-## 🚀 本地运行
+## 技术架构
+
+- **前端**：React 18 + TypeScript + Vite + Tailwind CSS，Vercel 部署
+- **后端**：Supabase（PostgreSQL + pgvector + Edge Functions），匿名上报 + 跨会话记忆
+- **RAG 知识库**：367 条，两层架构：
+
+| 层级 | 来源 | 条数 | 语言 | 许可证 |
+|------|------|------|------|--------|
+| 自策展核心层 | 原创照料者决策卡片 | 50 | 中文 | 自有 |
+| 公共域补充层 | MedlinePlus (NLM) | 211 | 英文 | US Public Domain |
+| 公共域补充层 | CDC Health Topics | 106 | 英文 | US Public Domain |
+
+- **检索流程**：用户输入 → BGE-M3 embedding → pgvector cosine similarity（阈值 0.75）→ population 强制过滤 → top 5 chunks 注入 LLM context。三级降级：Supabase RPC → text search → 本地匹配 → 空结果（明确告知"知识库未覆盖"）
+- **开发方式**：Claude Code vibe coding，约 50 波迭代
+
+---
+
+## 知识库说明
+
+### 覆盖范围
+
+自策展层覆盖 5 个核心场景，每个场景 10 条决策卡片（红/黄/绿分级 + 具体行动）：
+- 儿童发烧
+- 儿童咳嗽
+- 老人胸闷气短
+- 老人跌倒
+- 慢病血压波动
+
+MedlinePlus 和 CDC 层覆盖常见疾病的科普和家庭护理建议，作为 LLM 回答的参考背景。
+
+### 不覆盖的范围
+
+本知识库**不覆盖**以下场景，相关问题 AI 会明确说"知识库未覆盖"：
+- 肿瘤治疗方案
+- 罕见病诊断
+- 精神科诊断与用药
+- 妊娠期用药安全
+- 急救操作流程（CPR 等）
+- 手术方案选择
+
+### 数据源合规
+
+- **MedlinePlus** 仅使用 NLM 自产的 Health Topic 摘要（US public domain），严格排除 A.D.A.M. Medical Encyclopedia 和 ASHP 药品专论（第三方授权，不可再分发）
+- **CDC** 内容为 US Government public domain
+- **WHO** 内容因 CC BY-NC-SA 协议（非商用）未使用
+- 中文自策展层参考了公开诊疗规范的分级方法和决策逻辑，但全部用原创语言重写，不直接复制任何指南原文
+
+详见 [docs/data-sources.md](docs/data-sources.md)。
+
+### ⚠️ 待医学审核
+
+自策展层全部 50 条卡片当前标记为 `pending_medical_review`。这意味着这些内容尚未经过具有医学背景的专业人员审核。UI 上每条引用都会显示"待医学审核"标记。
+
+如果你有医学背景并愿意参与审核，请通过 [医学错误反馈模板](https://github.com/Chasingwind-Z/symptom-checker/issues/new?template=medical-error.md) 提交意见。
+
+审核日志见 [docs/medical-review-log.md](docs/medical-review-log.md)。
+
+---
+
+## 安全设计
+
+- **人群隔离**：儿童 query 只能命中 pediatric 或 general 的知识条目，永远拿不到成人剂量内容
+- **阈值兜底**：similarity < 0.75 时返回空结果，AI 明确说"知识库未覆盖此问题，以下为通用建议"
+- **紧急快速通道**：RED 场景 0 轮追问直接给急诊建议 + 120 电话
+- **引用强制展示**：每条 AI 建议下方都有 CitationCard 显示来源、类型、日期
+- **免责声明**：独立 Disclaimer 页面 + 输入框底部常驻提示
+
+---
+
+## 功能清单
+
+- 四角色问诊（我自己/孩子/老人/慢病家属）
+- 紧急度三级分诊（RED/YELLOW/GREEN）
+- RAG 知识库检索 + 引用展示
+- 智能建议卡片（时间/季节/历史感知）
+- 问诊进度条（3 步制）
+- 会话管理（重命名/删除/三点菜单）
+- 跨会话记忆
+- 结果分级卡片（红/黄/绿）
+- 就诊准备卡（科室+时间建议）
+- 用药支持摘要
+- 附近药房/门诊定位（高德地图）
+- 家庭交叉感染预警
+- 慢病指标记录 + 趋势解读
+- 复诊追踪
+- 每日健康打卡
+- 天气健康提醒
+- Supabase 匿名上报
+- Web Push 通知
+- 照料者分享（发给另一半/其他家属）
+
+---
+
+## 本地开发
 
 ```bash
 git clone https://github.com/Chasingwind-Z/symptom-checker.git
 cd symptom-checker
 npm install
-cp .env.example .env
-# 在 .env 中填入必要的 API Key
 npm run dev
 ```
 
-浏览器打开 http://localhost:5173
-
----
-
-## ⚙️ 环境变量
-
-| 变量 | 必需 | 说明 |
-|------|------|------|
-| `VITE_AI_BASE_URL` | ✅ | AI API 接口地址 |
-| `VITE_AI_API_KEY` | ✅ | AI API Key |
-| `VITE_AI_MODEL` | ✅ | 模型名称（如 deepseek-chat） |
-| `VITE_SUPABASE_URL` | ✅ | Supabase 项目地址 |
-| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase 前端公钥 |
-| `VITE_AMAP_JS_KEY` | 推荐 | 高德地图 Web JS Key |
-| `VITE_AMAP_WEB_KEY` | 推荐 | 高德 Web 服务 Key（POI 搜索） |
-| `VITE_QWEATHER_KEY` | 推荐 | 和风天气 API Key |
-| `VITE_TAVILY_API_KEY` | 可选 | 联网搜索增强，未配置则搜索功能静默降级 |
-
----
-
-## 📚 知识库
-
-### 数据来源
-
-| 层级 | 来源 | 许可 | 条数 | 语言 |
-|------|------|------|------|------|
-| 自策展核心层 | 原创照料者决策卡片 | 原创 | 50+ | 中文 |
-| MedlinePlus | NLM 自产 Health Topics | US Public Domain | 210+ | 英文 |
-| CDC | Health Topics A-Z | US Public Domain | 100+ | 英文 |
-
-### 覆盖范围
-- ✅ 儿童发热/咳嗽、老年胸痛/跌倒、血压波动、常见感冒/头痛/胃痛
-- ❌ **不覆盖**：肿瘤治疗、罕见病、精神科诊断、妊娠用药、急救操作流程
-
-### 审核状态
-自策展层当前全部为 `pending_medical_review`（待医学审核），表示：
-- 内容由开发者基于公共分级方法论编写
-- 尚未经过执业医师逐条审核
-- 使用时 AI 回答和引用卡片均会标注此状态
-
-### 严格排除的来源
-- WHO 内容（CC BY-NC-SA 非商用限制）
-- UpToDate / 默沙东 / DynaMed（商业付费数据库）
-- A.D.A.M. / ASHP 授权内容（即使出现在 MedlinePlus 页面上）
-
-详细来源文档见 [docs/data-sources.md](docs/data-sources.md)
-
----
-
-## 💡 商业模式
+环境变量（`.env.local`）：
 
 ```
-C 端用户（免费使用）
-    ↓ 产生数据
-平台数据层
-    ├── 药品购买导流 → 联盟佣金（京东/美团）
-    ├── 匿名症状数据聚合 → 区域疾病趋势报告 → 药企/疾控采购
-    └── 医院导流合作 → 预约分成
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_AMAP_KEY=your_amap_key
+```
+
+知识库 seed（需要 Supabase 已配置 pgvector）：
+
+```bash
+npx ts-node scripts/seed-all.ts
 ```
 
 ---
 
-## ⚠️ 免责声明
+## 免责声明
 
-本项目用于医疗预检辅助，不构成医疗诊断。
-出现胸痛、呼吸困难、意识改变等危险信号时，请立即就医或拨打 120。
+本工具是健康决策辅助工具，不是医疗诊断系统。所有建议仅供参考，不替代医生诊断或处方。红色预警一定去急诊，不要等。知识库内容可能过时，自策展层尚未经过医学专业审核。
+
+详见 [免责声明页面](https://symptom-checker-git-main-chasingwinds-projects.vercel.app/)。
 
 ---
 
-## 📄 License
+## 许可证
 
-MIT © 2026 Chasingwind-Z
+MIT
