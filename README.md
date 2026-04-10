@@ -116,8 +116,8 @@ npm run dev
 | 层级 | 来源 | 许可 | 条数 | 语言 |
 |------|------|------|------|------|
 | 自策展核心层 | 原创照料者决策卡片 | 原创 | 50+ | 中文 |
-| MedlinePlus | NLM 自产 Health Topics | US Public Domain | 28+ | 英文 |
-| CDC | Health Topics A-Z | US Public Domain | 16+ | 英文 |
+| MedlinePlus | NLM 自产 Health Topics | US Public Domain | 210+ | 英文 |
+| CDC | Health Topics A-Z | US Public Domain | 100+ | 英文 |
 
 ### 覆盖范围
 - ✅ 儿童发热/咳嗽、老年胸痛/跌倒、血压波动、常见感冒/头痛/胃痛
