@@ -791,10 +791,6 @@ export function MedicationRecommendationsPanel({
                     <span>{note}</span>
                   </li>
                 ))}
-                <li className="flex gap-2 text-xs leading-relaxed text-slate-600">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  <span>仅供参考，不替代医生诊断或处方</span>
-                </li>
                 {!profileApplied && (
                   <li className="flex gap-2 text-xs leading-relaxed text-slate-600">
                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-amber-500" />

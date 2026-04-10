@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowRight,
   AlertOctagon,
   AlertTriangle,
   CheckCircle,
@@ -27,12 +26,10 @@ import { VisitSummaryCard } from './VisitSummaryCard';
 import { AftercareTimeline } from './AftercareTimeline';
 import { buildAftercarePlan } from '../lib/aftercarePlan';
 import * as officialSourceHelpers from '../lib/officialSources';
-import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import type { WeatherData } from '../lib/geolocation';
 import {
   getMedicationGuidance,
   getPersonalizedInsights,
-  hasMedicationProfileContext as hasMedicationProfileContextData,
 } from '../lib/personalization';
 import { buildWeatherExperienceSummary } from '../lib/weatherExperience';
 import { buildJDSearchUrl, trackMedicationClick } from '../lib/jdAffiliate';
@@ -193,7 +190,7 @@ function buildMedicationSummarySections(advice: MedicationAdvice[]): MedicationS
     matchedSummary.length > 0
       ? {
           key: 'matched',
-          title: '相对匹配',
+          title: '可参考',
           hint: '可先核对的支持方向',
           containerClass: 'border-emerald-100 bg-emerald-50/80',
           badgeClass: 'bg-emerald-100 text-emerald-700',
@@ -204,7 +201,7 @@ function buildMedicationSummarySections(advice: MedicationAdvice[]): MedicationS
     cautionSummary.length > 0
       ? {
           key: 'caution',
-          title: '谨慎项',
+          title: '需谨慎',
           hint: '当前不适合作为优先选择',
           containerClass: 'border-amber-100 bg-amber-50/80',
           badgeClass: 'bg-amber-100 text-amber-700',
@@ -660,27 +657,11 @@ export function ResultCard({
     () => buildMedicationSummarySections(medicationAdvice),
     [medicationAdvice]
   );
-  const hasMedicationProfileContext = useMemo(
-    () => hasMedicationProfileContextData(profile),
-    [profile]
-  );
   const hasMedicationSummary = medicationSummarySections.length > 0;
   const medicationPreviewTitles = useMemo(
     () => medicationAdvice.filter((item) => item.suitable).slice(0, 2).map((item) => item.title),
     [medicationAdvice]
   );
-  const latestImageAttachmentCount = useMemo(
-    () =>
-      [...messages]
-        .reverse()
-        .find((message) => message.role === 'user' && (message.attachments?.length ?? 0) > 0)
-        ?.attachments?.length ?? 0,
-    [messages]
-  );
-  const medicationHubCtaTitle =
-    result.level === 'green' || result.level === 'yellow'
-      ? '想继续找 OTC / 附近药房？'
-      : '如需补基础用品或复核现用药，可打开用药中心';
   const weatherSummary = useMemo(() => buildWeatherExperienceSummary(weather), [weather]);
   const primaryCTA = useMemo(() => {
     switch (result.level) {
@@ -783,7 +764,7 @@ export function ResultCard({
               ? `已优先把 ${officialCityLabel} 本地官方入口与国家级公开资料排在前面，方便先核对正式建议。`
               : '已优先展示与当前分诊最相关的官方 / 公共来源，方便先核对正式建议。'
             : officialSourcePreference === 'brief'
-              ? '仅保留最值得先看的权威公开资料，帮助快速完成最后核对。'
+              ? '精选权威公开资料，方便快速核对。'
               : '以下资料来源于疾控中心、卫健委及 WHO 等公开渠道，供对照参考。'
         }
       />
@@ -1146,7 +1127,6 @@ export function ResultCard({
                               <span className="rounded-full bg-slate-100 px-2 py-0.5">
                                 {source.host}
                               </span>
-                              <span>仅供参考，不替代医生诊断或处方</span>
                             </div>
                           </>
                         );
@@ -1185,28 +1165,20 @@ export function ResultCard({
           <div className="space-y-5">
             {hasMedicationSummary ? (
               <>
-                {/* Medication summary */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Pill size={15} className="text-violet-700 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">用药支持摘要</p>
-                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                          仅供参考，不替代医生诊断或处方
-                        </p>
-                      </div>
-                    </div>
-                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
-                      仅供参考
-                    </span>
+                {/* Single unified medication section */}
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Pill size={16} className="text-violet-600" />
+                    <p className="text-sm font-semibold text-slate-800">用药与就近药房</p>
                   </div>
-                  {hasMedicationProfileContext && (
-                    <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/80 px-3 py-2 text-xs text-violet-700 leading-relaxed">
-                      已结合年龄、慢病、过敏史和现用药做过筛选，以下仅保留更贴近当前档案的方向。
-                    </div>
+
+                  {medicationPreviewTitles.length > 0 && (
+                    <p className="text-xs text-slate-600 mb-3">
+                      推荐：{medicationPreviewTitles.join('、')}
+                    </p>
                   )}
-                  <div className="mt-3 space-y-2.5">
+
+                  <div className="space-y-2.5 mb-3">
                     {medicationSummarySections.map((section) => (
                       <div
                         key={section.key}
@@ -1260,111 +1232,32 @@ export function ResultCard({
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-                    仅供参考，不替代医生诊断或处方
-                  </p>
-                </div>
 
-                {/* Quick medication actions */}
-                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-800">马上去做</p>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                        {result.level === 'red'
-                          ? '当前应优先线下急诊 / 急救，不建议把注意力放在购药上。'
-                          : '把买药、说明书核对和回问诊复核的入口放在一起，先完成最紧要的一步。'}
-                      </p>
-                    </div>
-                    {medicationPreviewTitles.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {medicationPreviewTitles.map((title) => (
-                          <span
-                            key={title}
-                            className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs text-violet-700"
-                          >
-                            {title}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex gap-2">
                     {onOpenMedicationHub && result.level !== 'red' && (
                       <button
                         type="button"
                         onClick={onOpenMedicationHub}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-violet-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-violet-700"
+                        className="flex-1 rounded-xl border border-blue-200 bg-blue-50 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
                       >
-                        <Pill size={14} />
-                        打开买药 / 复核入口
-                        <ArrowRight size={13} />
+                        查看用药详情 →
                       </button>
                     )}
                     {onToggleMap && (
                       <button
                         type="button"
                         onClick={onToggleMap}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                        className="flex-1 rounded-xl border border-emerald-200 bg-emerald-50 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
                       >
-                        <MapPin size={14} />
-                        {result.level === 'red'
-                          ? '查看急诊 / 医院入口'
-                          : result.level === 'orange'
-                            ? '去找今日就医入口'
-                            : '去找附近门诊 / 药房'}
+                        附近药房 📍
                       </button>
                     )}
                   </div>
-                </div>
 
-                {/* Medication hub CTA */}
-                {onOpenMedicationHub && (
-                  <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/80 px-4 py-4">
-                    <div className="flex items-start gap-4 flex-wrap">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Pill size={16} className="text-blue-600 shrink-0" />
-                          <p className="text-sm font-semibold text-slate-800">{medicationHubCtaTitle}</p>
-                        </div>
-                        <p className="text-xs leading-relaxed text-slate-600">
-                          打开用药建议中心后，可继续看附近药房、搜推荐方向、查说明书，或回对话继续核对药盒 / 报告。
-                        </p>
-                        {medicationPreviewTitles.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {medicationPreviewTitles.map((title) => (
-                              <span
-                                key={title}
-                                className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs text-violet-700"
-                              >
-                                {title}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {latestImageAttachmentCount > 0 && (
-                          <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-                            {AI_VISION_ENABLED
-                              ? `本次已上传并发送了 ${latestImageAttachmentCount} 张图片给视觉模型；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`
-                              : `本次已上传 ${latestImageAttachmentCount} 张图片（以文字上下文辅助分析）；如需继续核对药盒、现用药或检查单，可在入口里回到原对话继续传图。`}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={onOpenMedicationHub}
-                        className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                      >
-                        查看用药建议
-                        <ArrowRight size={15} />
-                      </button>
-                    </div>
-                    <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-                      仅供参考，不替代医生诊断或处方
-                    </p>
-                  </div>
-                )}
+                  <p className="text-xs text-slate-400 mt-2 text-center">
+                    仅供参考，不替代医生诊断或处方
+                  </p>
+                </div>
               </>
             ) : (
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-6 text-center">

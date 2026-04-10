@@ -1,4 +1,4 @@
-import { Clock3, ShieldAlert } from 'lucide-react'
+import { Clock3 } from 'lucide-react'
 import type { AftercarePlan } from '../lib/aftercarePlan'
 
 const STEP_TONE_CLASS = {
@@ -41,11 +41,6 @@ export function AftercareTimeline({ plan }: AftercareTimelineProps) {
             <p className="mt-2 text-xs leading-relaxed text-slate-600">{step.description}</p>
           </article>
         ))}
-      </div>
-
-      <div className="mt-4 flex items-start gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs leading-relaxed text-slate-600">
-        <ShieldAlert size={14} className="mt-0.5 shrink-0 text-slate-500" />
-        仅供参考，不替代医生诊断或处方
       </div>
     </section>
   )

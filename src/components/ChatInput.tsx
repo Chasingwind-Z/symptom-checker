@@ -542,7 +542,7 @@ export function ChatInput({
                       <div className="px-2.5 py-2">
                         <p className="truncate text-xs font-medium text-slate-700">{attachment.name}</p>
                         <p className="mt-0.5 text-xs text-slate-500">
-                          {formatFileSize(attachment.sizeBytes)} · 仅供参考，不替代医生诊断或处方
+                          {formatFileSize(attachment.sizeBytes)}
                         </p>
                       </div>
                     </div>
