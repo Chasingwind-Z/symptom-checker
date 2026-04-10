@@ -43,6 +43,7 @@ export interface Message {
   agentRoute?: AgentRoute;
   ragCitations?: Array<{
     title: string;
+    content?: string;
     sourceType: string;
     sourceRef: string;
     sourceDate?: string;

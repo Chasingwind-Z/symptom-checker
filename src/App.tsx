@@ -53,6 +53,8 @@ import {
 } from './lib/personalization';
 import { saveAppointment } from './lib/followUpRecords';
 import { requestPushPermission, scheduleFollowUpNotification } from './lib/pushNotification';
+import { saveFeedback, hasGivenFeedback } from './lib/sessionFeedback';
+import { SessionFeedback } from './components/SessionFeedback';
 import {
   findMatchingCase,
   findMatchingConversation,
@@ -1134,6 +1136,15 @@ export default function App() {
                       onToggleMap={handleOpenMap}
                     />
                   </Suspense>
+                )}
+
+                {diagnosisResult && activeSessionId && !hasGivenFeedback(activeSessionId) && (
+                  <SessionFeedback
+                    sessionId={activeSessionId}
+                    onFeedback={(id, outcome, note) => {
+                      saveFeedback({ sessionId: id, outcome, outcomeNote: note, feedbackAt: Date.now() });
+                    }}
+                  />
                 )}
               </div>
             )}

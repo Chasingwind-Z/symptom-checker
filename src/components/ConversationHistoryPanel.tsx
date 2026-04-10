@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { ArrowRight, Clock3, MessageSquareText, Plus } from 'lucide-react';
 import { getRiskPresentation } from '../lib/riskPresentation';
+import { getFeedback, OUTCOME_BADGES } from '../lib/sessionFeedback';
 import type { ConversationSession } from '../types';
 import { ConversationMenu } from './ConversationMenu';
 
@@ -188,6 +189,12 @@ export function ConversationHistoryPanel({
 
                   <span className={`shrink-0 inline-block h-2 w-2 rounded-full ${riskMeta.tone.includes('red') || riskMeta.tone.includes('rose') ? 'bg-red-400' : riskMeta.tone.includes('amber') || riskMeta.tone.includes('yellow') ? 'bg-amber-400' : riskMeta.tone.includes('emerald') || riskMeta.tone.includes('green') ? 'bg-emerald-400' : 'bg-slate-300'}`} title={riskMeta.label} />
 
+                  {(() => { const fb = getFeedback(session.id); return fb ? (
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${OUTCOME_BADGES[fb.outcome].className}`}>{OUTCOME_BADGES[fb.outcome].label}</span>
+                  ) : (
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-400">待跟进</span>
+                  ); })()}
+
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <ConversationMenu
                       onRename={() => { setEditingId(session.id); setEditTitle(getDisplayTitle(session)); }}
@@ -255,6 +262,11 @@ export function ConversationHistoryPanel({
                         >
                           {riskMeta.label}
                         </span>
+                        {(() => { const fb = getFeedback(session.id); return fb ? (
+                          <span className={`rounded-full px-2 py-0.5 text-xs ${OUTCOME_BADGES[fb.outcome].className}`}>{OUTCOME_BADGES[fb.outcome].label}</span>
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-400">待跟进</span>
+                        ); })()}
                       </div>
                       <p className="mt-2 text-xs leading-relaxed text-slate-600">
                         {getPreviewText(session)}
@@ -338,6 +350,11 @@ export function ConversationHistoryPanel({
                           >
                             {riskMeta.label}
                           </span>
+                          {(() => { const fb = getFeedback(session.id); return fb ? (
+                            <span className={`rounded-full px-2 py-0.5 text-xs ${OUTCOME_BADGES[fb.outcome].className}`}>{OUTCOME_BADGES[fb.outcome].label}</span>
+                          ) : (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-400">待跟进</span>
+                          ); })()}
                         </div>
                         <p className="mt-2 text-xs leading-relaxed text-slate-600">
                           {getPreviewText(session)}
