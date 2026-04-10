@@ -499,11 +499,17 @@ export function ChatBubble({
               {attachmentGallery}
               {message.ragCitations && message.ragCitations.length > 0 && (
                 <div className="mt-2 space-y-1.5">
+                  {message.ragHint && (
+                    <p className="text-xs text-slate-400 mt-1">{message.ragHint}</p>
+                  )}
                   <p className="text-xs text-slate-400">📚 参考来源</p>
                   {message.ragCitations.map((citation, i) => (
                     <CitationCard key={i} {...citation} />
                   ))}
                 </div>
+              )}
+              {!message.ragCitations && message.ragHint && (
+                <p className="text-xs text-slate-400 mt-1">{message.ragHint}</p>
               )}
             </div>
           </div>
@@ -627,11 +633,17 @@ export function ChatBubble({
           {!isUser && drugChips}
           {!isUser && message.ragCitations && message.ragCitations.length > 0 && (
             <div className="mt-2 space-y-1.5">
+              {message.ragHint && (
+                <p className="text-xs text-slate-400 mt-1">{message.ragHint}</p>
+              )}
               <p className="text-xs text-slate-400">📚 参考来源</p>
               {message.ragCitations.map((citation, i) => (
                 <CitationCard key={i} {...citation} />
               ))}
             </div>
+          )}
+          {!isUser && !message.ragCitations && message.ragHint && (
+            <p className="text-xs text-slate-400 mt-1">{message.ragHint}</p>
           )}
         </div>
         {!(isQuestionPhase) && (
