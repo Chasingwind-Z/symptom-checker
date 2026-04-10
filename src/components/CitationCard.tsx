@@ -18,6 +18,12 @@ const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
   cdc: { label: 'CDC', className: 'bg-violet-50 text-violet-700' },
 };
 
+const REVIEW_BADGES: Record<string, { label: string; className: string }> = {
+  pending_medical_review: { label: '待医学审核', className: 'bg-slate-100 text-slate-500' },
+  community_reviewed: { label: '社区已审', className: 'bg-blue-50 text-blue-600' },
+  expert_approved: { label: '专家已审', className: 'bg-emerald-50 text-emerald-600' },
+};
+
 export function CitationCard({ title, content, zhSummary, sourceType, sourceRef, sourceDate, reviewStatus }: CitationCardProps) {
   const [readerOpen, setReaderOpen] = useState(false);
   const badge = SOURCE_BADGE[sourceType] || { label: sourceType, className: 'bg-slate-50 text-slate-600' };
@@ -36,9 +42,9 @@ export function CitationCard({ title, content, zhSummary, sourceType, sourceRef,
               <span className={`rounded-full px-2 py-0.5 text-xs ${badge.className}`}>
                 {badge.label}
               </span>
-              {reviewStatus === 'pending_medical_review' && (
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                  待医学审核
+              {REVIEW_BADGES[reviewStatus] && (
+                <span className={`rounded-full px-2 py-0.5 text-xs ${REVIEW_BADGES[reviewStatus].className}`}>
+                  {REVIEW_BADGES[reviewStatus].label}
                 </span>
               )}
             </div>

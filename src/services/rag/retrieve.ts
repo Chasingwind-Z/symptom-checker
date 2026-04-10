@@ -114,6 +114,7 @@ export async function retrieveKnowledge(
           medical_knowledge_documents!inner(id, title, audience, source_label, source_url, updated_at)
         `)
         .textSearch('content', queryTerms, { type: 'plain' })
+        .eq('is_active', true)
         .in('medical_knowledge_documents.audience', allowedAudiences)
         .limit(5);
 

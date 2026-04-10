@@ -32,5 +32,9 @@ PLAN.md
 # Claude Code local settings
 .claude/
 
+# Playwright
+test-results/
+playwright-report/
+
 # Environment (secrets)
 .env

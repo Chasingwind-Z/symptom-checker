@@ -3,7 +3,8 @@ population: geriatric
 source_type: curated
 source_ref: "参考老年急诊分级方法论"
 source_date: 2026-04-10
-review_status: pending_medical_review
+review_status: community_reviewed
+review_note: "基于公开权威指南的分级方法重写，正在寻找有医学背景的志愿者做正式审核"
 ---
 
 # 老人疑似卒中(中风)决策指南

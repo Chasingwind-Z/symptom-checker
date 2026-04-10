@@ -132,6 +132,7 @@ Top 5 chunks 注入 LLM context
 ### ⚠️ 待医学审核
 
 自策展层 50 条卡片标记为 `pending_medical_review`，尚未经过执业医师审核。UI 上每条引用都显示"待医学审核"标记。
+其中 20 条高频卡片已标记为 `community_reviewed`（项目维护者自审），其余仍为 `pending_medical_review`。
 
 👨‍⚕️ 如果你有医学背景，欢迎通过 [医学错误反馈模板](https://github.com/Chasingwind-Z/symptom-checker/issues/new?template=medical-error.md) 参与审核。
 

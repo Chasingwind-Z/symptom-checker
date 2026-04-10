@@ -3,7 +3,8 @@ population: chronic
 source_type: curated
 source_ref: "参考慢性病急症处理方法论"
 source_date: 2026-04-10
-review_status: pending_medical_review
+review_status: community_reviewed
+review_note: "基于公开权威指南的分级方法重写，正在寻找有医学背景的志愿者做正式审核"
 ---
 
 # 糖尿病低血糖决策指南

@@ -86,7 +86,19 @@ export function CitationReader({ open, onClose, title, content, zhSummary, sourc
             {reviewStatus === 'pending_medical_review' && (
               <div className="flex items-center gap-2 bg-amber-50 border-b border-amber-100 px-5 py-2.5">
                 <AlertTriangle size={14} className="text-amber-500 shrink-0" />
-                <p className="text-xs text-amber-700">本条尚未经过医学专业审核，仅供参考</p>
+                <p className="text-xs text-amber-700">本条尚未经过医学审核</p>
+              </div>
+            )}
+            {reviewStatus === 'community_reviewed' && (
+              <div className="flex items-center gap-2 bg-blue-50 border-b border-blue-100 px-5 py-2.5">
+                <AlertTriangle size={14} className="text-blue-500 shrink-0" />
+                <p className="text-xs text-blue-700">本条已经过社区自审，正在寻找医学专业审核</p>
+              </div>
+            )}
+            {reviewStatus === 'expert_approved' && (
+              <div className="flex items-center gap-2 bg-emerald-50 border-b border-emerald-100 px-5 py-2.5">
+                <AlertTriangle size={14} className="text-emerald-500 shrink-0" />
+                <p className="text-xs text-emerald-700">本条已经过医学专家审核</p>
               </div>
             )}
 
