@@ -67,6 +67,8 @@ export function DisclaimerView({ onBack }: DisclaimerViewProps) {
             </p>
           </Section>
         </div>
+
+        <p className="text-xs text-slate-400 mt-2">人体图：医学插图风格原创设计</p>
       </div>
     </div>
   );

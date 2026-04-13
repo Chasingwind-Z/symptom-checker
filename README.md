@@ -230,6 +230,10 @@ npx tsx scripts/seed-all.ts    # 需要 Supabase + pgvector
 
 ---
 
+## 致谢
+
+- 人体选择器采用医学插图风格设计
+
 ## 📄 License
 
 MIT © 2026 [Chasingwind-Z](https://github.com/Chasingwind-Z)

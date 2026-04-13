@@ -79,6 +79,8 @@ export function WelcomeScreen({
   sessionEmail: _sessionEmail,
   profile,
   weather,
+  weatherTemp,
+  weatherCondition,
   pendingFollowUpCount = 0,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   householdProfiles: _householdProfiles = [],
