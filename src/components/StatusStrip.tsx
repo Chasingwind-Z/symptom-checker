@@ -37,13 +37,13 @@ export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, location
 
   return (
     <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-1.5 text-xs text-slate-500 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: 'none' }}>
-      {(locationText || weatherText) && (
+      {locationText && (
         <span className="flex items-center gap-1 shrink-0 whitespace-nowrap">
           <MapPin size={12} />
           {locationText}{weatherText ? ` · ${weatherText}` : ''}
         </span>
       )}
-      {!locationText && !weatherText && onRetryLocation && (
+      {!locationText && onRetryLocation && (
         <button
           onClick={onRetryLocation}
           className="flex items-center gap-1 shrink-0 text-blue-500 hover:text-blue-600 transition-colors whitespace-nowrap"
