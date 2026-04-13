@@ -30,7 +30,7 @@ export function useWeather(lat?: number, lon?: number, city?: string) {
     debugLog('Fetching weather for', { lat, lon, city, locationParam });
 
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 5000);
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
 
     // Use Vercel serverless proxy to avoid CORS issues with QWeather API
     const url = `/api/weather?location=${encodeURIComponent(locationParam)}`;

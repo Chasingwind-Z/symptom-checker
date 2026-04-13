@@ -97,26 +97,16 @@ export function requestGeolocation(): Promise<LocationData> {
   return getLocation()
 }
 
-/** 直接获取天气（不通过 AI 工具调用），5 s 超时 */
+/** 通过 serverless proxy 获取天气，5 s 超时 */
 export async function fetchWeather(
   lat: number,
   lon: number
 ): Promise<WeatherData | null> {
-  const key = import.meta.env.VITE_QWEATHER_KEY as string | undefined
-  const host = (import.meta.env.VITE_QWEATHER_HOST as string | undefined) || 'devapi.qweather.com'
-  if (!key) {
-    return null
-  }
-
   const lonStr = lon.toFixed(2)
   const latStr = lat.toFixed(2)
-  const params = `location=${lonStr},${latStr}&key=${key}`
+  const location = `${lonStr},${latStr}`
 
-  // In dev mode, use Vite proxy to avoid browser CORS/proxy issues
-  const baseUrl = import.meta.env.DEV
-    ? `/api/qweather`
-    : `https://${host}`
-  const url = `${baseUrl}/v7/weather/now?${params}`
+  const url = `/api/weather?location=${encodeURIComponent(location)}`
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 5000)

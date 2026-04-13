@@ -2,28 +2,30 @@ import { useState, useMemo, useCallback } from 'react';
 import Model, { type IExerciseData, type IMuscleStats } from 'react-body-highlighter';
 
 const BODY_REGIONS = {
-  head:    { label: '头颈', muscles: ['head', 'neck'] as const },
-  chest:   { label: '胸部', muscles: ['chest'] as const },
-  abdomen: { label: '腹部', muscles: ['abs', 'obliques'] as const },
-  arms:    { label: '手臂', muscles: ['biceps', 'triceps', 'forearm', 'front-deltoids', 'back-deltoids'] as const },
-  back:    { label: '背部', muscles: ['trapezius', 'upper-back', 'lower-back'] as const },
-  legs:    { label: '腿部', muscles: ['quadriceps', 'hamstring', 'adductor', 'abductors', 'calves', 'gluteal'] as const },
+  head:    { label: '头颈', muscles: ['head', 'neck'] as const, emoji: '🧠', hint: '头痛、头晕、耳鸣、视力' },
+  throat:  { label: '咽喉', muscles: ['neck'] as const, emoji: '🫁', hint: '喉咙痛、吞咽困难、声音嘶哑' },
+  chest:   { label: '胸部', muscles: ['chest'] as const, emoji: '💗', hint: '胸闷、心慌、呼吸不畅' },
+  abdomen: { label: '腹部', muscles: ['abs', 'obliques'] as const, emoji: '🫃', hint: '腹痛、恶心、消化不良' },
+  arms:    { label: '手臂', muscles: ['biceps', 'triceps', 'forearm', 'front-deltoids', 'back-deltoids'] as const, emoji: '💪', hint: '手臂酸痛、手指麻木、关节痛' },
+  hands:   { label: '手部', muscles: ['forearm'] as const, emoji: '🤚', hint: '手指麻木、手腕疼、手掌出汗' },
+  back:    { label: '背部', muscles: ['trapezius', 'upper-back', 'lower-back'] as const, emoji: '🦴', hint: '腰酸、背痛、脊椎不适' },
+  hips:    { label: '臀髋', muscles: ['gluteal', 'adductor'] as const, emoji: '🦵', hint: '髋关节痛、坐骨神经痛' },
+  legs:    { label: '腿部', muscles: ['quadriceps', 'hamstring', 'calves'] as const, emoji: '🦿', hint: '膝盖痛、小腿抽筋、走路困难' },
+  feet:    { label: '足部', muscles: ['calves'] as const, emoji: '🦶', hint: '脚底痛、脚踝扭伤、脚趾发麻' },
+  skin:    { label: '皮肤', muscles: [] as const, emoji: '👋', hint: '全身或局部皮疹、瘙痒、红肿、水疱' },
+  eyes:    { label: '眼睛', muscles: [] as const, emoji: '👁️', hint: '眼痛、视力模糊、红眼、干涩' },
+  ears:    { label: '耳朵', muscles: [] as const, emoji: '👂', hint: '耳痛、耳鸣、听力下降' },
+  mouth:   { label: '口腔', muscles: [] as const, emoji: '👄', hint: '牙痛、口腔溃疡、嘴唇干裂' },
+  private: { label: '私密部位', muscles: [] as const, emoji: '🔒', hint: '生殖泌尿系统不适（隐私保护）' },
+  other:   { label: '其他', muscles: [] as const, emoji: '❓', hint: '以上未覆盖的部位' },
 } as const;
 
 type RegionId = keyof typeof BODY_REGIONS;
 
-const PART_EMOJI: Record<string, string> = {
-  head: '🧠', chest: '💗', abdomen: '🫃', arms: '💪', back: '🦴', legs: '🦵',
-};
-
-const PART_HINT: Record<string, string> = {
-  head: '头痛、头晕、耳鸣、视力',
-  chest: '胸闷、心慌、呼吸不畅',
-  abdomen: '腹痛、恶心、消化不良',
-  arms: '手臂酸痛、手指麻木',
-  back: '腰酸、背痛、脊椎不适',
-  legs: '腿疼、膝盖痛、走路困难',
-};
+// Parts that map to the body model
+const MAIN_PARTS: RegionId[] = ['head', 'throat', 'chest', 'abdomen', 'arms', 'hands', 'back', 'hips', 'legs', 'feet'];
+// Parts not on the body model
+const OTHER_PARTS: RegionId[] = ['skin', 'eyes', 'ears', 'mouth', 'private', 'other'];
 
 interface BodyPartSelectorProps {
   selected: string[];
@@ -52,11 +54,28 @@ export function BodyPartSelector({ selected, onToggle }: BodyPartSelectorProps) 
   }, [onToggle]);
 
   const partBtnClass = (id: string) =>
-    `flex items-center gap-2 w-full rounded-lg px-3 py-2 text-left text-xs transition-all ${
+    `flex items-center gap-2 w-full rounded-lg px-2.5 py-1.5 text-left text-xs transition-all ${
       selected.includes(id)
         ? 'bg-blue-50 border border-blue-300 text-blue-700'
         : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-200'
     }`;
+
+  const renderPartButton = (id: RegionId) => {
+    const region = BODY_REGIONS[id];
+    return (
+      <button
+        key={id}
+        onClick={() => onToggle(id)}
+        className={partBtnClass(id)}
+      >
+        <span className="text-sm">{region.emoji}</span>
+        <div>
+          <p className="font-medium">{region.label}</p>
+          <p className="text-slate-400 text-[11px]">{region.hint}</p>
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="flex flex-col items-center">
@@ -104,38 +123,13 @@ export function BodyPartSelector({ selected, onToggle }: BodyPartSelectorProps) 
         </div>
 
         {/* Right: Part selection list */}
-        <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[340px]">
-          {Object.entries(BODY_REGIONS).map(([id, region]) => (
-            <button
-              key={id}
-              onClick={() => onToggle(id)}
-              className={partBtnClass(id)}
-            >
-              <span className="text-sm">{PART_EMOJI[id] || '📍'}</span>
-              <div>
-                <p className="font-medium">{region.label}</p>
-                <p className="text-slate-400 text-[11px]">{PART_HINT[id] || ''}</p>
-              </div>
-            </button>
-          ))}
+        <div className="flex-1 space-y-1 overflow-y-auto" style={{ maxHeight: '420px' }}>
+          <p className="text-xs text-slate-400 px-1 mb-1">身体部位</p>
+          {MAIN_PARTS.map(renderPartButton)}
 
-          {/* Non-body parts */}
-          <div className="pt-1 border-t border-slate-100 mt-1 space-y-1.5">
-            <button onClick={() => onToggle('skin')} className={partBtnClass('skin')}>
-              <span className="text-sm">👋</span>
-              <div>
-                <p className="font-medium">皮肤（全身）</p>
-                <p className="text-slate-400 text-[11px]">皮疹、瘙痒、红肿</p>
-              </div>
-            </button>
-            <button onClick={() => onToggle('other')} className={partBtnClass('other')}>
-              <span className="text-sm">❓</span>
-              <div>
-                <p className="font-medium">其他部位</p>
-                <p className="text-slate-400 text-[11px]">以上未覆盖的部位</p>
-              </div>
-            </button>
-          </div>
+          <div className="border-t border-slate-100 my-2" />
+          <p className="text-xs text-slate-400 px-1 mb-1">其他部位</p>
+          {OTHER_PARTS.map(renderPartButton)}
         </div>
       </div>
 
@@ -144,8 +138,6 @@ export function BodyPartSelector({ selected, onToggle }: BodyPartSelectorProps) 
         <div className="mt-3 text-xs text-blue-600 bg-blue-50 rounded-full px-3 py-1">
           已选：{selected.map(id => {
             if (id in BODY_REGIONS) return BODY_REGIONS[id as RegionId].label;
-            if (id === 'skin') return '皮肤';
-            if (id === 'other') return '其他';
             return id;
           }).join('、')}
         </div>

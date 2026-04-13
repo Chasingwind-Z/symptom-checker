@@ -11,7 +11,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { location } = req.query;
   const key = process.env.VITE_QWEATHER_KEY;
-  const host = (process.env.VITE_QWEATHER_HOST || 'devapi.qweather.com').trim();
 
   if (!key) {
     return res.status(500).json({ error: 'Weather API key not configured' });
@@ -20,15 +19,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing location param' });
   }
 
-  try {
-    const resp = await fetch(
-      `https://${host}/v7/weather/now?location=${encodeURIComponent(String(location))}&key=${key}`
-    );
-    const data = await resp.json();
-    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    return res.status(resp.status).json(data);
-  } catch (e) {
-    return res.status(500).json({ error: String(e) });
+  // Try both hosts — free tier uses devapi, paid tier uses api
+  const hosts = ['devapi.qweather.com', 'api.qweather.com'];
+
+  for (const host of hosts) {
+    try {
+      const url = `https://${host}/v7/weather/now?location=${encodeURIComponent(String(location))}&key=${key}`;
+      const resp = await fetch(url);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.code === '200') {
+          res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=60');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          return res.status(200).json(data);
+        }
+      }
+      // If 403 or non-200 code, try next host
+    } catch {
+      continue;
+    }
   }
+
+  // Both hosts failed
+  return res.status(502).json({
+    error: 'Weather API unavailable',
+    debug: 'Both devapi and api hosts returned errors. Check QWeather console for key status.',
+  });
 }
