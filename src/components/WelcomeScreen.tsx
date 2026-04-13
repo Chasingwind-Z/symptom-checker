@@ -164,7 +164,7 @@ export function WelcomeScreen({
     <div className="space-y-2 sm:space-y-4">
       {/* Compact status strip */}
       <StatusStrip
-        weatherText={weather ? `${weather.temp}℃ ${weather.text}` : (weatherSummary?.tags?.[0] || '天气加载中')}
+        weatherText={weather ? `${weather.temp} ${weather.text}` : (weatherSummary?.tags?.[0] || '天气加载中')}
         checkedIn={checkedInToday}
         pendingFollowUps={pendingFollowUpCount > 0 ? pendingFollowUpCount : undefined}
         locationText={locationCity || localCityLabel || undefined}

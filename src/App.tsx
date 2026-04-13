@@ -30,8 +30,10 @@ import { WorkspaceView } from './components/WorkspaceView';
 import { GuardianThemeProvider } from './contexts/GuardianThemeContext';
 import { useChat } from './hooks/useChat';
 import { useHealthWorkspace } from './hooks/useHealthWorkspace';
+import { useLocation } from './hooks/useLocation';
 import { useNetworkStatus } from './hooks/useNetworkStatus';
 import { usePwaInstall } from './hooks/usePwaInstall';
+import { useWeather } from './hooks/useWeather';
 import { deleteCaseHistoryItem } from './lib/healthData';
 import {
   getConsultationModePreset,
@@ -157,13 +159,31 @@ export default function App() {
     loadConversationSession,
     deleteConversationSession,
     resetChat,
-    retryLocation,
+    retryLocation: _retryLocation,
     pendingFollowUp,
     setPendingFollowUp,
     urgencyLevel,
     followupCount,
     maxFollowups,
   } = useChat(chatMemoryContext);
+
+  // Unified location & weather hooks — supplement useChat's weather flow
+  const unifiedLocation = useLocation();
+  const unifiedWeather = useWeather(unifiedLocation.lat, unifiedLocation.lon, unifiedLocation.city);
+
+  // Prefer useChat weatherData (already formatted as WeatherData), fall back to unified hook
+  const mergedWeatherData = weatherData ?? (unifiedWeather.status === 'success'
+    ? {
+        temp: unifiedWeather.temp ? `${unifiedWeather.temp}°C` : '',
+        text: unifiedWeather.text ?? '',
+        humidity: unifiedWeather.humidity ? `${unifiedWeather.humidity}%` : '',
+        suggestion: '',
+      }
+    : null);
+
+  // Prefer useChat locationData, fall back to unified hook
+  const mergedLocationCity = locationData?.city || unifiedLocation.city || undefined;
+  const mergedRetryLocation = unifiedLocation.retry;
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const previousShellStateRef = useRef<{
@@ -876,7 +896,7 @@ export default function App() {
 
         {!showWorkspace && !isConsulting && (
           <InfoBar
-            weather={weatherData}
+            weather={mergedWeatherData}
             profileCity={localCity}
             chronicConditions={workspace.profile.chronicConditions}
             onOpenMap={handleOpenMap}
@@ -942,7 +962,7 @@ export default function App() {
                     onOpenEpidemicDashboard={handleOpenMap}
                     sessionEmail={workspace.sessionEmail}
                     profile={workspace.profile}
-                    weather={weatherData}
+                    weather={mergedWeatherData}
                     pendingFollowUpCount={pendingFollowUpRecords.length}
                     householdProfiles={workspace.householdProfiles}
                     switchingHouseholdProfileId={switchingHouseholdProfileId}
@@ -951,8 +971,8 @@ export default function App() {
                     onOpenConversation={handleOpenConversation}
                     onSelectHouseholdProfile={handleSelectHouseholdProfile}
                     onManageProfiles={() => handleOpenWorkspaceSection('profile')}
-                    locationCity={locationData?.city || undefined}
-                    onRetryLocation={retryLocation}
+                    locationCity={mergedLocationCity}
+                    onRetryLocation={mergedRetryLocation}
                   />
                 </div>
                 <div className="sticky bottom-0 bg-white/80 backdrop-blur-md border-t border-slate-100 px-4 pb-4">
@@ -1129,7 +1149,7 @@ export default function App() {
                       messages={messages}
                       profile={workspace.profile}
                       recentCases={workspace.recentCases}
-                      weather={weatherData}
+                      weather={mergedWeatherData}
                       officialSourceCity={localCity}
                       officialSourcePreference={experienceSettings.officialSourcePreference}
                       hospitalSectionTitle={hospitalSectionTitle}
