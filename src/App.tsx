@@ -963,6 +963,8 @@ export default function App() {
                     sessionEmail={workspace.sessionEmail}
                     profile={workspace.profile}
                     weather={mergedWeatherData}
+                    weatherTemp={unifiedWeather.status === 'success' ? unifiedWeather.temp : undefined}
+                    weatherCondition={unifiedWeather.status === 'success' ? unifiedWeather.text : undefined}
                     pendingFollowUpCount={pendingFollowUpRecords.length}
                     householdProfiles={workspace.householdProfiles}
                     switchingHouseholdProfileId={switchingHouseholdProfileId}

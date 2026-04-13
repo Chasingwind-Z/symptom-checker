@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronUp, CloudSun, Check, Bell, MapPin } from 'lucide-react';
+import { ChevronUp, Check, Bell, MapPin } from 'lucide-react';
 
 interface StatusStripProps {
   weatherText?: string;
@@ -11,6 +11,10 @@ interface StatusStripProps {
 }
 
 export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, locationText, onOpenMap: _onOpenMap, onRetryLocation }: StatusStripProps) {
+  if (localStorage.getItem('debug.location') === 'true') {
+    console.info('[statusstrip] props', { weatherText, locationText, checkedIn, pendingFollowUps });
+  }
+
   const [collapsed, setCollapsed] = useState(() => {
     return localStorage.getItem('statusStrip.collapsed') === 'true';
   });
@@ -33,11 +37,20 @@ export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, location
 
   return (
     <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-1.5 text-xs text-slate-500 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: 'none' }}>
-      {weatherText && (
-        <span className="flex items-center gap-1 shrink-0">
-          <CloudSun size={12} />
-          {weatherText}
+      {(locationText || weatherText) && (
+        <span className="flex items-center gap-1 shrink-0 whitespace-nowrap">
+          <MapPin size={12} />
+          {locationText}{weatherText ? ` · ${weatherText}` : ''}
         </span>
+      )}
+      {!locationText && !weatherText && onRetryLocation && (
+        <button
+          onClick={onRetryLocation}
+          className="flex items-center gap-1 shrink-0 text-blue-500 hover:text-blue-600 transition-colors whitespace-nowrap"
+        >
+          <MapPin size={12} />
+          启用定位
+        </button>
       )}
       {checkedIn !== undefined && (
         <span className="flex items-center gap-1 shrink-0">
@@ -50,21 +63,6 @@ export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, location
           <Bell size={12} />
           {pendingFollowUps}项待跟进
         </span>
-      )}
-      {locationText && (
-        <span className="flex items-center gap-1 shrink-0 whitespace-nowrap">
-          <MapPin size={12} />
-          {locationText}
-        </span>
-      )}
-      {!locationText && onRetryLocation && (
-        <button
-          onClick={onRetryLocation}
-          className="flex items-center gap-1 shrink-0 text-blue-500 hover:text-blue-600 transition-colors whitespace-nowrap"
-        >
-          <MapPin size={12} />
-          启用定位
-        </button>
       )}
       <button
         onClick={toggleCollapse}

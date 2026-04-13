@@ -8,7 +8,6 @@ import {
   type ConsultationModeId,
 } from '../lib/consultationModes'
 import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
-import { buildWeatherExperienceSummary } from '../lib/weatherExperience'
 import { generateSuggestions, generateExplanation } from '../services/suggestions/generator'
 import { StatusStrip } from './StatusStrip'
 import { PopulationTabs } from './PopulationTabs'
@@ -24,6 +23,8 @@ interface WelcomeScreenProps {
   sessionEmail?: string | null
   profile?: ProfileDraft | null
   weather?: WeatherData | null
+  weatherTemp?: string
+  weatherCondition?: string
   pendingFollowUpCount?: number
   householdProfiles?: HouseholdProfileRecord[]
   switchingHouseholdProfileId?: string | null
@@ -155,7 +156,10 @@ export function WelcomeScreen({
   const normalizedProfileCity = normalizeText(profile?.city)
   const localCityLabel =
     normalizedProfileCity && normalizedProfileCity !== DEFAULT_PROFILE_CITY ? normalizedProfileCity : ''
-  const weatherSummary = buildWeatherExperienceSummary(weather ?? null)
+  const weatherChipText = weatherTemp
+    ? `${weatherTemp}°C ${weatherCondition || ''}`.trim()
+    : (weather?.temp ? `${weather.temp} ${weather.text || ''}`.trim() : undefined);
+
   const recentConversationChips = recentSessions.slice(0, 4)
   const latestSession = recentSessions[0] ?? null
   const pendingFollowup = latestSession && (pendingFollowUpCount > 0 || wasUpdatedWithinOneDay(latestSession.updatedAt))
@@ -166,7 +170,7 @@ export function WelcomeScreen({
     <div className="space-y-2 sm:space-y-4">
       {/* Compact status strip */}
       <StatusStrip
-        weatherText={weather ? `${weather.temp} ${weather.text}` : (weatherSummary?.tags?.[0] || '天气加载中')}
+        weatherText={weatherChipText}
         checkedIn={checkedInToday}
         pendingFollowUps={pendingFollowUpCount > 0 ? pendingFollowUpCount : undefined}
         locationText={locationCity || localCityLabel || undefined}
