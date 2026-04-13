@@ -1,22 +1,17 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
+import { BodyPartSelector } from './BodyPartSelector';
 
 interface SymptomDescriptionHelperProps {
   onSubmit: (text: string) => void;
   onClose: () => void;
 }
 
-const BODY_PARTS = [
-  { id: 'head', label: '头部', emoji: '🧠' },
-  { id: 'throat', label: '咽喉', emoji: '🫁' },
-  { id: 'chest', label: '胸部', emoji: '💗' },
-  { id: 'abdomen', label: '腹部', emoji: '🫃' },
-  { id: 'back', label: '腰背', emoji: '🦴' },
-  { id: 'limbs', label: '四肢', emoji: '💪' },
-  { id: 'skin', label: '皮肤', emoji: '🖐️' },
-  { id: 'other', label: '其他', emoji: '❓' },
-];
+const PART_LABELS: Record<string, string> = {
+  head: '头部', throat: '咽喉', chest: '胸部', abdomen: '腹部',
+  back: '腰背', limbs: '四肢', skin: '皮肤', other: '其他',
+};
 
 const SYMPTOM_TYPES = [
   { id: 'pain', label: '疼痛' },
@@ -41,7 +36,7 @@ const DURATION_OPTIONS = [
 ];
 
 export function SymptomDescriptionHelper({ onSubmit, onClose }: SymptomDescriptionHelperProps) {
-  const [selectedPart, setSelectedPart] = useState<string | null>(null);
+  const [selectedParts, setSelectedParts] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [severity, setSeverity] = useState(3);
   const [duration, setDuration] = useState<string | null>(null);
@@ -52,18 +47,18 @@ export function SymptomDescriptionHelper({ onSubmit, onClose }: SymptomDescripti
     );
   }, []);
 
-  const canSubmit = selectedPart && selectedTypes.length > 0 && duration;
+  const canSubmit = selectedParts.length > 0 && selectedTypes.length > 0 && duration;
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
-    const partLabel = BODY_PARTS.find(p => p.id === selectedPart)?.label || '';
+    const partLabel = selectedParts.map(p => PART_LABELS[p] || p).join('、');
     const typeLabels = selectedTypes.map(t => SYMPTOM_TYPES.find(s => s.id === t)?.label || '').join('、');
     const severityLabel = SEVERITY_LABELS[severity - 1];
     const durationLabel = DURATION_OPTIONS.find(d => d.id === duration)?.label || '';
 
     const text = `${partLabel}${typeLabels}，程度${severityLabel}，已持续${durationLabel}`;
     onSubmit(text);
-  }, [canSubmit, selectedPart, selectedTypes, severity, duration, onSubmit]);
+  }, [canSubmit, selectedParts, selectedTypes, severity, duration, onSubmit]);
 
   return (
     <motion.div
@@ -81,21 +76,15 @@ export function SymptomDescriptionHelper({ onSubmit, onClose }: SymptomDescripti
 
       {/* Step 1: Body part */}
       <p className="text-xs text-slate-600 mb-2">哪里不舒服？</p>
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        {BODY_PARTS.map(part => (
-          <button
-            key={part.id}
-            onClick={() => setSelectedPart(part.id)}
-            className={`rounded-xl py-2 text-center transition-all ${
-              selectedPart === part.id
-                ? 'bg-blue-500 text-white shadow-sm'
-                : 'bg-white border border-slate-200 text-slate-700 hover:border-blue-200'
-            }`}
-          >
-            <span className="text-lg block">{part.emoji}</span>
-            <span className="text-xs">{part.label}</span>
-          </button>
-        ))}
+      <div className="mb-4">
+        <BodyPartSelector
+          selected={selectedParts}
+          onToggle={(partId) => {
+            setSelectedParts(prev =>
+              prev.includes(partId) ? prev.filter(p => p !== partId) : [...prev, partId]
+            );
+          }}
+        />
       </div>
 
       {/* Step 2: Symptom type */}

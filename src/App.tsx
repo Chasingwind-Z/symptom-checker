@@ -53,7 +53,7 @@ import {
 } from './lib/personalization';
 import { saveAppointment } from './lib/followUpRecords';
 import { requestPushPermission, scheduleFollowUpNotification } from './lib/pushNotification';
-import { saveFeedback, hasGivenFeedback } from './lib/sessionFeedback';
+import { saveFeedback, hasGivenFeedback, cleanOldPendingFollowups } from './lib/sessionFeedback';
 import { SessionFeedback } from './components/SessionFeedback';
 import {
   findMatchingCase,
@@ -108,6 +108,12 @@ export default function App() {
       return () => window.clearTimeout(id);
     }
   }, []);
+
+  useEffect(() => {
+    const cleaned = cleanOldPendingFollowups();
+    if (cleaned > 0) console.debug(`[cleanup] Auto-archived ${cleaned} old sessions`);
+  }, []);
+
   const selectedConsultationMode = useMemo(
     () => getConsultationModePreset(selectedConsultationModeId),
     [selectedConsultationModeId]
@@ -140,6 +146,7 @@ export default function App() {
     activeToolCalls,
     activeAgentRoute,
     weatherData,
+    locationData,
     activeSessionId,
     conversationSessions,
     pendingFollowUpRecords,
@@ -150,6 +157,7 @@ export default function App() {
     loadConversationSession,
     deleteConversationSession,
     resetChat,
+    retryLocation,
     pendingFollowUp,
     setPendingFollowUp,
     urgencyLevel,
@@ -943,6 +951,8 @@ export default function App() {
                     onOpenConversation={handleOpenConversation}
                     onSelectHouseholdProfile={handleSelectHouseholdProfile}
                     onManageProfiles={() => handleOpenWorkspaceSection('profile')}
+                    locationCity={locationData?.city || undefined}
+                    onRetryLocation={retryLocation}
                   />
                 </div>
                 <div className="sticky bottom-0 bg-white/80 backdrop-blur-md border-t border-slate-100 px-4 pb-4">

@@ -31,6 +31,36 @@ export function hasGivenFeedback(sessionId: string): boolean {
   return getAllFeedbacks().some(f => f.sessionId === sessionId);
 }
 
+export function cleanOldPendingFollowups(): number {
+  try {
+    const feedbacks = getAllFeedbacks();
+    const existingIds = new Set(feedbacks.map(f => f.sessionId));
+
+    const sessionsRaw = localStorage.getItem('conversation_sessions');
+    if (!sessionsRaw) return 0;
+
+    const sessions = JSON.parse(sessionsRaw);
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    let cleaned = 0;
+
+    for (const session of sessions) {
+      if (!existingIds.has(session.id)) {
+        const sessionTime = new Date(session.createdAt || session.updatedAt).getTime();
+        if (sessionTime < sevenDaysAgo) {
+          saveFeedback({
+            sessionId: session.id,
+            outcome: 'other',
+            outcomeNote: '超过7天未反馈，自动归档',
+            feedbackAt: Date.now(),
+          });
+          cleaned++;
+        }
+      }
+    }
+    return cleaned;
+  } catch { return 0; }
+}
+
 export const OUTCOME_BADGES: Record<SessionOutcome, { label: string; className: string }> = {
   visited_hospital: { label: '已就诊', className: 'bg-blue-50 text-blue-700' },
   observing: { label: '观察中', className: 'bg-amber-50 text-amber-700' },

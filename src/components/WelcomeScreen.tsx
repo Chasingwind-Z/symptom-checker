@@ -32,6 +32,8 @@ interface WelcomeScreenProps {
   onOpenConversation: (sessionId: string) => void
   onSelectHouseholdProfile: (record: HouseholdProfileRecord) => void
   onManageProfiles: () => void
+  locationCity?: string
+  onRetryLocation?: () => void
 }
 
 const DEFAULT_PROFILE_CITY = '中国大陆'
@@ -90,6 +92,8 @@ export function WelcomeScreen({
   onSelectHouseholdProfile: _onSelectHouseholdProfile,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onManageProfiles: _onManageProfiles,
+  locationCity,
+  onRetryLocation,
 }: WelcomeScreenProps) {
   const [checkedInToday] = useState(() => {
     try {
@@ -163,7 +167,8 @@ export function WelcomeScreen({
         weatherText={weather ? `${weather.temp}℃ ${weather.text}` : (weatherSummary?.tags?.[0] || '天气加载中')}
         checkedIn={checkedInToday}
         pendingFollowUps={pendingFollowUpCount > 0 ? pendingFollowUpCount : undefined}
-        locationText={localCityLabel || '定位中'}
+        locationText={locationCity || localCityLabel || undefined}
+        onRetryLocation={onRetryLocation}
         onOpenMap={_onToggleMap}
       />
 

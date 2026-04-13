@@ -15,7 +15,7 @@ import { createAgentOrchestration } from '../agents/orchestrator';
 import type { AgentMemoryContext } from '../agents/types';
 import { quickTriage, getMaxFollowups, type UrgencyLevel } from '../lib/quickTriage';
 import { primeMedicalKnowledgeCorpus, searchMedicalKnowledge } from '../lib/medicalKnowledge';
-import { requestGeolocation, fetchWeather } from '../lib/geolocation';
+import { getLocation, fetchWeather } from '../lib/geolocation';
 import { loadCloudConversationSessions, persistCaseRecord } from '../lib/healthData';
 import { saveTrackingEntry } from '../lib/symptomTracking';
 import { submitAnonymousReport } from '../lib/epidemicDataEngine';
@@ -512,17 +512,12 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
 
     const initWeather = async () => {
       try {
-        const loc = await requestGeolocation();
+        const loc = await getLocation();
         setLocationData(loc);
         const weather = await fetchWeather(loc.lat, loc.lon);
         if (weather) setWeatherData(weather);
       } catch {
-        try {
-          const weather = await fetchWeather(39.92, 116.41);
-          if (weather) setWeatherData(weather);
-        } catch {
-          // 天气获取失败时静默降级
-        }
+        // 天气获取失败时静默降级
       }
     };
 
@@ -1059,6 +1054,17 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     setFollowupCount(0);
   }, []);
 
+  const retryLocation = useCallback(async () => {
+    try {
+      const loc = await getLocation();
+      setLocationData(loc);
+      const weather = await fetchWeather(loc.lat, loc.lon);
+      if (weather) setWeatherData(weather);
+    } catch {
+      // silent
+    }
+  }, []);
+
   return {
     messages,
     isLoading,
@@ -1086,6 +1092,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     deleteConversationSession,
     restoreConversationSession,
     resetChat,
+    retryLocation,
     pendingFollowUp,
     setPendingFollowUp,
   };

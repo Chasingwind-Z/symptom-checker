@@ -74,7 +74,7 @@ export function InfoBar({ weather, profileCity, chronicConditions, onOpenMap }: 
   const displayCity = profileCity?.trim() && profileCity !== '中国大陆' ? profileCity.trim() : ''
   const weatherTags = buildProfileAwareWeatherTags(weather, chronicConditions)
   const humidity = weather?.humidity?.trim()
-  const shortTip = weather ? shortenTip(weather.suggestion) : '位置获取中，点击查看附近资源'
+  const shortTip = weather ? shortenTip(weather.suggestion) : ''
   const Container = onOpenMap ? 'button' : 'div'
 
   return (
@@ -97,9 +97,12 @@ export function InfoBar({ weather, profileCity, chronicConditions, onOpenMap }: 
           {displayCity && <span className="ml-0.5 font-normal text-slate-400">· {displayCity}</span>}
         </span>
 
-        <span className="flex-shrink-0 text-slate-200">·</span>
-
-        <span className="flex-shrink-0 text-slate-500">{shortTip}</span>
+        {shortTip && (
+          <>
+            <span className="flex-shrink-0 text-slate-200">·</span>
+            <span className="flex-shrink-0 text-slate-500">{shortTip}</span>
+          </>
+        )}
 
         {humidity && (
           <>

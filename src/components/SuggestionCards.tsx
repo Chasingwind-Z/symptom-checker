@@ -1,20 +1,39 @@
 import { Brain, Thermometer, HeartPulse, Stethoscope, Activity, AlertCircle, Pill, Wind, Droplets, Moon, Flower2, Sparkles } from 'lucide-react';
 import type { Suggestion } from '../services/suggestions/generator';
 
-const ICON_MAP: Record<string, React.ReactNode> = {
-  Brain: <Brain size={28} className="text-blue-600" />,
-  Thermometer: <Thermometer size={28} className="text-red-500" />,
-  HeartPulse: <HeartPulse size={28} className="text-red-500" />,
-  Stethoscope: <Stethoscope size={28} className="text-emerald-500" />,
-  Activity: <Activity size={28} className="text-violet-500" />,
-  AlertCircle: <AlertCircle size={28} className="text-amber-500" />,
-  Pill: <Pill size={28} className="text-blue-500" />,
-  Wind: <Wind size={28} className="text-cyan-500" />,
-  Droplets: <Droplets size={28} className="text-blue-400" />,
-  Moon: <Moon size={28} className="text-indigo-500" />,
-  Flower2: <Flower2 size={28} className="text-pink-500" />,
-  Sparkles: <Sparkles size={28} className="text-amber-400" />,
-};
+const EMERGENCY_KEYWORDS = ['急诊', '严重', '紧急', '抽搐', '120'];
+
+const BLUE = 'text-blue-600';
+const ORANGE = 'text-orange-500';
+
+function buildIconMap(color: string): Record<string, React.ReactNode> {
+  return {
+    Brain: <Brain size={28} className={color} />,
+    Thermometer: <Thermometer size={28} className={color} />,
+    HeartPulse: <HeartPulse size={28} className={color} />,
+    Stethoscope: <Stethoscope size={28} className={color} />,
+    Activity: <Activity size={28} className={color} />,
+    AlertCircle: <AlertCircle size={28} className={color} />,
+    Pill: <Pill size={28} className={color} />,
+    Wind: <Wind size={28} className={color} />,
+    Droplets: <Droplets size={28} className={color} />,
+    Moon: <Moon size={28} className={color} />,
+    Flower2: <Flower2 size={28} className={color} />,
+    Sparkles: <Sparkles size={28} className={color} />,
+  };
+}
+
+const ICON_MAP_BLUE = buildIconMap(BLUE);
+const ICON_MAP_ORANGE = buildIconMap(ORANGE);
+
+function isEmergency(title: string): boolean {
+  return EMERGENCY_KEYWORDS.some(k => title.includes(k));
+}
+
+function getIcon(s: Suggestion): React.ReactNode {
+  const map = isEmergency(s.title) ? ICON_MAP_ORANGE : ICON_MAP_BLUE;
+  return map[s.icon] || <Brain size={28} className={isEmergency(s.title) ? ORANGE : BLUE} />;
+}
 
 interface SuggestionCardsProps {
   suggestions: Suggestion[];
@@ -37,7 +56,7 @@ export function SuggestionCards({ suggestions, onSelect, pendingFollowup, onOpen
             onClick={() => onSelect(s.query)}
             className="group rounded-2xl border border-slate-200 bg-white p-3 sm:p-5 text-left shadow-sm hover:border-blue-400 hover:shadow-lg transition-all min-h-[44px]"
           >
-            <div className="mb-2 sm:mb-3">{ICON_MAP[s.icon] || <Brain size={28} className="text-blue-600" />}</div>
+            <div className="mb-2 sm:mb-3">{getIcon(s)}</div>
             <p className="text-sm font-semibold text-slate-900 leading-snug">{s.title}</p>
             <p className="text-xs text-slate-400 mt-1">{s.subtitle}</p>
           </button>
