@@ -6,8 +6,20 @@ import { callGateway, hasGatewayRoute } from './serverGateway';
 // See supabase/functions/ai-proxy/index.ts for the proxy implementation.
 
 const DIRECT_BASE_URL = import.meta.env.VITE_AI_BASE_URL as string | undefined;
-const MODEL = import.meta.env.VITE_AI_MODEL as string | undefined;
+const DEFAULT_MODEL = import.meta.env.VITE_AI_MODEL as string | undefined;
 const API_KEY = import.meta.env.VITE_AI_API_KEY as string | undefined;
+
+/** Auto-switch to omni model when messages contain image content */
+function selectModel(messages: ChatMessage[]): string | undefined {
+  const hasImages = messages.some(
+    (m) =>
+      Array.isArray(m.content) &&
+      m.content.some((c: ChatContentPart) => c.type === 'image_url')
+  );
+  const base = DEFAULT_MODEL || 'mimo-v2-pro';
+  if (hasImages) return 'mimo-v2-omni';
+  return base;
+}
 
 export interface ChatToolDefinition {
   type: 'function';
@@ -162,7 +174,7 @@ function buildChatRequestBody(
   options: ChatCompletionOptions & { stream: boolean }
 ) {
   return {
-    ...(MODEL ? { model: MODEL } : {}),
+    model: selectModel(messages),
     messages,
     stream: options.stream,
     temperature: options.temperature ?? 0.3,
