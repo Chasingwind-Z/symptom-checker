@@ -45,6 +45,7 @@ import type {
 import type { WeatherData, LocationData } from '../lib/geolocation';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import { subscribeToSupabaseAuth } from '../lib/supabase';
+import { selectModel as routeModel, getUserModelPreference, type ModelTier } from '../lib/modelRouter';
 
 type StoredChatImageAttachment = Pick<
   ChatImageAttachment,
@@ -431,6 +432,8 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
   const [pendingFollowUp, setPendingFollowUp] = useState<{ date: string; note: string } | null>(null);
   const [activeAgentRoute, setActiveAgentRoute] = useState<AgentRoute | null>(null);
   const [urgencyLevel, setUrgencyLevel] = useState<UrgencyLevel>('green');
+  const [lastModelTier, setLastModelTier] = useState<Exclude<ModelTier, 'auto'>>('pro');
+  const [lastModelReason, setLastModelReason] = useState<string>('');
   const [followupCount, setFollowupCount] = useState(0);
   const maxFollowups = getMaxFollowups(urgencyLevel);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -731,6 +734,17 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
         // Compute urgency for this turn (use latest state for first message, or current state)
         const currentUrgency = messages.length === 0 ? quickTriage(displayText) : urgencyLevel;
         const currentMaxFollowups = getMaxFollowups(currentUrgency);
+
+        // Route to the appropriate model tier
+        const hasImages = attachments.length > 0;
+        const modelResult = routeModel({
+          hasImages,
+          userPreference: getUserModelPreference(),
+          urgencyLevel: currentUrgency,
+          messageCount: messages.length,
+        });
+        setLastModelTier(modelResult.tier);
+        setLastModelReason(modelResult.reason);
 
         const orchestration = createAgentOrchestration({
           userText: displayText,
@@ -1083,6 +1097,8 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
     activeFollowUpRecord,
     followUpResponseOptions: FOLLOW_UP_RESPONSE_OPTIONS,
     urgencyLevel,
+    lastModelTier,
+    lastModelReason,
     followupCount,
     maxFollowups,
     sendMessage,

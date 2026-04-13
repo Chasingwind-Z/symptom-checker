@@ -176,6 +176,8 @@ export default function App() {
     pendingFollowUp,
     setPendingFollowUp,
     urgencyLevel,
+    lastModelTier,
+    lastModelReason,
     followupCount,
     maxFollowups,
   } = useChat(chatMemoryContext);
@@ -1003,6 +1005,8 @@ export default function App() {
                     onClearSelectedMode={handleClearSelectedConsultationMode}
                     focusSignal={welcomeFocusSignal}
                     messagesCount={messages.length}
+                    modelTier={lastModelTier}
+                    modelReason={lastModelReason}
                   />
                 </div>
               </div>
@@ -1205,6 +1209,8 @@ export default function App() {
             isConsulting={isConsulting}
             hasDiagnosis={!!diagnosisResult}
             messagesCount={messages.length}
+            modelTier={lastModelTier}
+            modelReason={lastModelReason}
           />
         )}
       </div>

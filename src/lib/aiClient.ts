@@ -1,4 +1,5 @@
 import { callGateway, hasGatewayRoute } from './serverGateway';
+import { selectModel as routeModel, getUserModelPreference } from './modelRouter';
 
 // Production: replace direct API call with Supabase Edge Function proxy
 // const AI_ENDPOINT = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/ai-proxy'
@@ -6,19 +7,27 @@ import { callGateway, hasGatewayRoute } from './serverGateway';
 // See supabase/functions/ai-proxy/index.ts for the proxy implementation.
 
 const DIRECT_BASE_URL = import.meta.env.VITE_AI_BASE_URL as string | undefined;
-const DEFAULT_MODEL = import.meta.env.VITE_AI_MODEL as string | undefined;
 const API_KEY = import.meta.env.VITE_AI_API_KEY as string | undefined;
 
-/** Auto-switch to omni model when messages contain image content */
-function selectModel(messages: ChatMessage[]): string | undefined {
+function selectModel(messages: ChatMessage[], urgencyLevel?: string, messageCount?: number): string {
   const hasImages = messages.some(
     (m) =>
       Array.isArray(m.content) &&
       m.content.some((c: ChatContentPart) => c.type === 'image_url')
   );
-  const base = DEFAULT_MODEL || 'mimo-v2-pro';
-  if (hasImages) return 'mimo-v2-omni';
-  return base;
+
+  const result = routeModel({
+    hasImages,
+    userPreference: getUserModelPreference(),
+    urgencyLevel: urgencyLevel as 'red' | 'yellow' | 'green' | undefined,
+    messageCount,
+  });
+
+  if (localStorage.getItem('debug.location') === 'true') {
+    console.info('[model-router]', result);
+  }
+
+  return result.modelId;
 }
 
 export interface ChatToolDefinition {

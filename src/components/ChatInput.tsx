@@ -12,6 +12,8 @@ import { ImagePlus, Loader2, Mic, MicOff, Send, X } from 'lucide-react';
 import type { ChatImageAttachment, SendMessageInput } from '../types';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import { SymptomDescriptionHelper } from './SymptomDescriptionHelper';
+import { ModelSelector } from './ModelSelector';
+import type { ModelTier } from '../lib/modelRouter';
 
 export interface ChatInputLayoutMetrics {
   height: number;
@@ -40,6 +42,10 @@ interface ChatInputProps {
    *  'inline' – normal-flow card used on the home/welcome screen. */
   variant?: 'floating' | 'inline';
   messagesCount?: number;
+  /** Currently active model tier for display */
+  modelTier?: Exclude<ModelTier, 'auto'>;
+  /** Reason the current model was selected */
+  modelReason?: string;
 }
 
 const MAX_IMAGE_ATTACHMENTS = 3;
@@ -175,6 +181,8 @@ export function ChatInput({
   isConsulting = false,
   hasDiagnosis = false,
   messagesCount,
+  modelTier = 'pro',
+  modelReason,
 }: ChatInputProps) {
   const isInline = variant === 'inline';
   const [internalValue, setInternalValue] = useState('');
@@ -643,6 +651,12 @@ export function ChatInput({
                     </span>
                   </div>
                 </div>
+
+                <ModelSelector
+                  currentTier={modelTier}
+                  currentReason={modelReason}
+                  onChange={() => { /* Preference saved to localStorage automatically, next message uses new pref */ }}
+                />
 
                 <button
                   type="button"
