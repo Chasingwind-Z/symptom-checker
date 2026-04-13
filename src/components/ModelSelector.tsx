@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Zap, Brain, Eye, Sparkles } from 'lucide-react';
 import { MODEL_TIERS, getUserModelPreference, setUserModelPreference, type ModelTier } from '../lib/modelRouter';
 
@@ -17,6 +17,19 @@ interface ModelSelectorProps {
 export function ModelSelector({ currentTier, currentReason, onChange }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [preference, setPreference] = useState<ModelTier>(getUserModelPreference);
+  const [menuPos, setMenuPos] = useState<{ bottom: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const handleOpen = useCallback(() => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({
+        bottom: window.innerHeight - rect.top + 4,
+        left: rect.left,
+      });
+    }
+    setOpen(v => !v);
+  }, []);
 
   const handleSelect = (tier: ModelTier) => {
     setPreference(tier);
@@ -30,7 +43,8 @@ export function ModelSelector({ currentTier, currentReason, onChange }: ModelSel
   return (
     <div className="relative inline-flex">
       <button
-        onClick={() => setOpen(!open)}
+        ref={btnRef}
+        onClick={handleOpen}
         className="flex items-center gap-1 rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 transition-colors"
         title={currentReason || config.description}
       >
@@ -40,12 +54,12 @@ export function ModelSelector({ currentTier, currentReason, onChange }: ModelSel
         )}
       </button>
 
-      {open && (
+      {open && menuPos && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-[70]" onClick={() => setOpen(false)} />
           <div
-            className="absolute left-0 bottom-full mb-2 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[200px] z-[60]"
-            style={{ maxHeight: '60vh', overflowY: 'auto' }}
+            className="fixed z-[70] bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[200px] max-h-[50vh] overflow-y-auto"
+            style={{ bottom: `${menuPos.bottom}px`, left: `${menuPos.left}px` }}
           >
             {/* Auto option */}
             <button
