@@ -691,7 +691,7 @@ export function ChatInput({
               </div>
             </div>
 
-            {!isInline && (
+            {!isInline && !hasDiagnosis && (
               <div className="flex items-center justify-center gap-1.5 mt-1">
                 <p className="text-xs text-slate-400 text-center">
                   仅供参考，不替代医生诊断或处方
