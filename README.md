@@ -230,9 +230,15 @@ npx tsx scripts/seed-all.ts    # 需要 Supabase + pgvector
 
 ---
 
-## 致谢
+## 致谢 / Acknowledgments
 
-- 人体选择器采用医学插图风格设计
+### 人体图资源
+本产品使用的人体解剖图来自 Wikimedia Commons，由 Goran_tek-en 创作，采用 CC BY-SA 4.0 授权。
+
+- [Male front 3d-shaded human illustration](https://commons.wikimedia.org/wiki/File:Male_front_3d-shaded_human_illustration.svg)
+- [Male back 3d-shaded human illustration](https://commons.wikimedia.org/wiki/File:Male_back_3d-shaded_human_illustration.svg)
+
+License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
 
 ## 📄 License
 

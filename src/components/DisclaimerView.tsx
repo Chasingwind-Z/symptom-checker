@@ -68,7 +68,7 @@ export function DisclaimerView({ onBack }: DisclaimerViewProps) {
           </Section>
         </div>
 
-        <p className="text-xs text-slate-400 mt-2">人体图：医学插图风格原创设计</p>
+        <p className="text-xs text-slate-400 mt-2">人体图：Goran_tek-en / Wikimedia Commons (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">CC BY-SA 4.0</a>)</p>
       </div>
     </div>
   );
