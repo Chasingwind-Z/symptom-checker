@@ -9,8 +9,9 @@ interface SymptomDescriptionHelperProps {
 }
 
 const PART_LABELS: Record<string, string> = {
-  head: '头部', throat: '咽喉', chest: '胸部', abdomen: '腹部',
-  back: '腰背', limbs: '四肢', skin: '皮肤', other: '其他',
+  head: '头颈', chest: '胸部', abdomen: '腹部',
+  arms: '手臂', back: '背部', legs: '腿部',
+  skin: '皮肤', other: '其他',
 };
 
 const SYMPTOM_TYPES = [

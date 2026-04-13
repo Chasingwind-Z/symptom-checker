@@ -208,7 +208,8 @@ npm run dev             # http://localhost:5173
 | `VITE_SUPABASE_URL` | ✅ | Supabase 项目地址 |
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase 前端公钥 |
 | `VITE_AMAP_JS_KEY` | 推荐 | 高德地图 Key |
-| `VITE_QWEATHER_KEY` | 推荐 | 和风天气 Key |
+| `VITE_QWEATHER_KEY` | 推荐 | 和风天气 Key（首页天气健康提醒必需，[申请地址](https://dev.qweather.com/)） |
+| `VITE_QWEATHER_HOST` | 可选 | 和风天气 API 地址，默认 `devapi.qweather.com`（商业版改为 `api.qweather.com`） |
 | `VITE_JD_UNION_ID` | 可选 | 京东联盟推广位 ID |
 | `VITE_TAVILY_API_KEY` | 可选 | 联网搜索增强 |
 
@@ -232,13 +233,8 @@ npx tsx scripts/seed-all.ts    # 需要 Supabase + pgvector
 
 ## 致谢 / Acknowledgments
 
-### 人体图资源
-本产品使用的人体解剖图来自 Wikimedia Commons，由 Goran_tek-en 创作，采用 CC BY-SA 4.0 授权。
-
-- [Male front 3d-shaded human illustration](https://commons.wikimedia.org/wiki/File:Male_front_3d-shaded_human_illustration.svg)
-- [Male back 3d-shaded human illustration](https://commons.wikimedia.org/wiki/File:Male_back_3d-shaded_human_illustration.svg)
-
-License: [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
+### 人体图组件
+身体部位选择器使用 [react-body-highlighter](https://www.npmjs.com/package/react-body-highlighter)（MIT）实现肌肉分区高亮与交互。
 
 ## 📄 License
 
