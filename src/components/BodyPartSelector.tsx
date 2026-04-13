@@ -58,14 +58,22 @@ export function BodyPartSelector({ selected, onToggle }: BodyPartSelectorProps) 
       </div>
 
       {/* Body model */}
+      {/* Hover feedback for unselected muscles */}
+      <style>{`
+        .body-model-wrapper svg polygon,
+        .body-model-wrapper svg path {
+          transition: fill 0.2s ease;
+          cursor: pointer;
+        }
+      `}</style>
       <div className="body-model-wrapper">
         <Model
           data={data}
           type={side}
           style={{ width: '240px', padding: '0.5rem' }}
           onClick={handleMuscleClick}
-          highlightedColors={['#93c5fd', '#3b82f6', '#1e40af']}
-          bodyColor="#f1f5f9"
+          highlightedColors={['#60a5fa', '#3b82f6', '#1e40af']}
+          bodyColor="#e2e8f0"
         />
       </div>
 
