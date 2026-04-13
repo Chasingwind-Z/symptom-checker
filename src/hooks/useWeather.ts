@@ -20,8 +20,8 @@ export function useWeather(lat?: number, lon?: number, city?: string) {
   useEffect(() => {
     if (!lat && !lon && !city) return;
 
-    const qweatherKey = import.meta.env.VITE_QWEATHER_KEY;
-    const qweatherHost = (import.meta.env.VITE_QWEATHER_HOST as string | undefined) || 'devapi.qweather.com';
+    const qweatherKey = (import.meta.env.VITE_QWEATHER_KEY as string | undefined)?.trim();
+    const qweatherHost = ((import.meta.env.VITE_QWEATHER_HOST as string | undefined) || 'devapi.qweather.com').trim();
 
     if (!qweatherKey) {
       debugLog('No QWEATHER_KEY configured');
