@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Zap, Brain, Eye, Sparkles } from 'lucide-react';
 import { MODEL_TIERS, getUserModelPreference, setUserModelPreference, type ModelTier } from '../lib/modelRouter';
 
@@ -17,20 +18,18 @@ interface ModelSelectorProps {
 export function ModelSelector({ currentTier, currentReason, onChange }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [preference, setPreference] = useState<ModelTier>(getUserModelPreference);
-  const [menuPos, setMenuPos] = useState<{ bottom: number; left: number } | null>(null);
-  const [isMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
   const btnRef = useRef<HTMLButtonElement>(null);
 
+  // Sync preference from localStorage on mount (in case changed elsewhere)
+  useEffect(() => {
+    const handler = () => setPreference(getUserModelPreference());
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
+
   const handleOpen = useCallback(() => {
-    if (btnRef.current && !isMobile) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setMenuPos({
-        bottom: window.innerHeight - rect.top + 4,
-        left: rect.left,
-      });
-    }
     setOpen(v => !v);
-  }, [isMobile]);
+  }, []);
 
   const handleSelect = (tier: ModelTier) => {
     setPreference(tier);
@@ -40,77 +39,79 @@ export function ModelSelector({ currentTier, currentReason, onChange }: ModelSel
   };
 
   const config = MODEL_TIERS[currentTier];
+  const displayConfig = preference === 'auto'
+    ? config
+    : MODEL_TIERS[preference as Exclude<ModelTier, 'auto'>] ?? config;
+  const displayLabel = preference === 'auto'
+    ? `${config.emoji} 自动`
+    : `${displayConfig.emoji} ${displayConfig.label}`;
 
-  const menuItems = (
+  const menuContent = open && createPortal(
     <>
-      {/* Auto option */}
-      <button
-        onClick={() => handleSelect('auto')}
-        className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-slate-50 ${
-          preference === 'auto' ? 'text-blue-600 font-medium' : 'text-slate-700'
-        }`}
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0"
+        style={{ zIndex: 9998 }}
+        onClick={() => setOpen(false)}
+      />
+      {/* Bottom sheet menu */}
+      <div
+        className="fixed inset-x-0 bottom-0 rounded-t-2xl bg-white shadow-2xl border border-slate-200 p-4 pb-8"
+        style={{ zIndex: 9999 }}
       >
-        <Sparkles size={13} className="text-blue-400" />
-        <div className="text-left">
-          <p className="font-medium">自动选择</p>
-          <p className="text-slate-400">根据场景智能切换</p>
-        </div>
-      </button>
+        <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4" />
 
-      <div className="h-px bg-slate-100 my-0.5" />
-
-      {/* Manual options */}
-      {(Object.entries(MODEL_TIERS) as [Exclude<ModelTier, 'auto'>, typeof MODEL_TIERS[keyof typeof MODEL_TIERS]][]).map(([tier, cfg]) => (
+        {/* Auto option */}
         <button
-          key={tier}
-          onClick={() => handleSelect(tier)}
-          className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-slate-50 ${
-            preference === tier ? 'text-blue-600 font-medium' : 'text-slate-700'
+          onClick={() => handleSelect('auto')}
+          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm ${
+            preference === 'auto' ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-700 hover:bg-slate-50'
           }`}
         >
-          {TIER_ICONS[tier]}
+          <Sparkles size={16} className="text-blue-400 shrink-0" />
           <div className="text-left">
-            <p className="font-medium">{cfg.emoji} {cfg.label}</p>
-            <p className="text-slate-400">{cfg.description}</p>
+            <p className="font-medium">自动选择</p>
+            <p className="text-xs text-slate-400 mt-0.5">根据场景智能切换模型</p>
           </div>
         </button>
-      ))}
-    </>
+
+        <div className="h-px bg-slate-100 my-1.5" />
+
+        {/* Manual options */}
+        {(Object.entries(MODEL_TIERS) as [Exclude<ModelTier, 'auto'>, typeof MODEL_TIERS[keyof typeof MODEL_TIERS]][]).map(([tier, cfg]) => (
+          <button
+            key={tier}
+            onClick={() => handleSelect(tier)}
+            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm ${
+              preference === tier ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            <span className="shrink-0">{TIER_ICONS[tier]}</span>
+            <div className="text-left">
+              <p className="font-medium">{cfg.emoji} {cfg.label}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{cfg.description}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </>,
+    document.body,
   );
 
   return (
-    <div className="relative inline-flex">
+    <>
       <button
         ref={btnRef}
         onClick={handleOpen}
-        className="flex items-center gap-1 rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 transition-colors"
+        className="flex items-center gap-1 shrink-0 rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 transition-colors whitespace-nowrap"
         title={currentReason || config.description}
       >
-        {config.emoji} {config.label}
+        {displayLabel}
         {preference === 'auto' && (
           <Sparkles size={10} className="text-blue-400" />
         )}
       </button>
-
-      {open && (
-        <>
-          <div
-            className={`fixed inset-0 z-[80] ${isMobile ? 'bg-black/20' : ''}`}
-            onClick={() => setOpen(false)}
-          />
-          <div
-            className={`fixed z-[80] bg-white shadow-2xl border border-slate-200 ${
-              isMobile
-                ? 'inset-x-0 bottom-0 rounded-t-2xl p-4 pb-8'
-                : 'rounded-xl py-1.5 min-w-[220px] max-h-[50vh] overflow-y-auto'
-            }`}
-            style={!isMobile && menuPos ? { bottom: `${menuPos.bottom}px`, left: `${menuPos.left}px` } : undefined}
-          >
-            {isMobile && <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-4" />}
-            {menuItems}
-          </div>
-        </>
-      )}
-    </div>
+      {menuContent}
+    </>
   );
 }

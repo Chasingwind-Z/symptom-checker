@@ -32,15 +32,8 @@ export function useWeather(lat?: number, lon?: number, city?: string) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 8000);
 
-    const qweatherKey = (import.meta.env.VITE_QWEATHER_KEY as string | undefined)?.trim();
-    if (!qweatherKey) {
-      debugLog('No QWEATHER_KEY configured');
-      setState({ status: 'failed', error: 'No weather key' });
-      return;
-    }
-
-    // Use Vercel rewrite proxy (/api/weather → devapi.qweather.com) to avoid CORS
-    const url = `/api/weather?location=${encodeURIComponent(locationParam)}&key=${qweatherKey}`;
+    // Serverless function at /api/weather handles key + host — no secrets exposed to browser
+    const url = `/api/weather?location=${encodeURIComponent(locationParam)}`;
 
     fetch(url, { signal: controller.signal })
       .then((r) => r.json())
