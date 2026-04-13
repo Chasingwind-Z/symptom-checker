@@ -40,6 +40,10 @@ export function BodyPartSelector({ selected, onToggle }: BodyPartSelectorProps) 
 
   return (
     <div className="flex flex-col items-center">
+      <p className="text-xs text-slate-500 mb-2 text-center">
+        点击身体部位选择不适位置
+      </p>
+
       {/* View toggle */}
       <div className="flex gap-2 mb-4">
         {(['anterior', 'posterior'] as const).map(s => (
@@ -77,16 +81,22 @@ export function BodyPartSelector({ selected, onToggle }: BodyPartSelectorProps) 
         />
       </div>
 
-      {/* Selected chips */}
-      {selected.filter(id => id in BODY_REGIONS).length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5 justify-center max-w-xs">
-          {selected.filter((id): id is RegionId => id in BODY_REGIONS).map(id => (
-            <span key={id} className="px-3 py-1 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200">
-              {BODY_REGIONS[id].label}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* Quick-select chips */}
+      <div className="flex flex-wrap gap-1.5 mt-3 justify-center max-w-[280px]">
+        {Object.entries(BODY_REGIONS).map(([id, region]) => (
+          <button
+            key={id}
+            onClick={() => onToggle(id)}
+            className={`rounded-full px-2.5 py-1 text-xs transition-all ${
+              selected.includes(id)
+                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                : 'bg-white text-slate-500 border border-slate-200 hover:border-blue-200'
+            }`}
+          >
+            {region.label}
+          </button>
+        ))}
+      </div>
 
       {/* Skin / Other */}
       <div className="flex gap-2 mt-4">

@@ -43,11 +43,14 @@ export function ModelSelector({ currentTier, currentReason, onChange }: ModelSel
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-full left-0 mb-1 bg-white rounded-xl shadow-lg border border-slate-200 py-1 min-w-[180px] z-50">
+          <div
+            className="absolute left-0 bottom-full mb-2 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 min-w-[200px] z-[60]"
+            style={{ maxHeight: '60vh', overflowY: 'auto' }}
+          >
             {/* Auto option */}
             <button
               onClick={() => handleSelect('auto')}
-              className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-slate-50 ${
+              className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-slate-50 ${
                 preference === 'auto' ? 'text-blue-600 font-medium' : 'text-slate-700'
               }`}
             >
@@ -65,7 +68,7 @@ export function ModelSelector({ currentTier, currentReason, onChange }: ModelSel
               <button
                 key={tier}
                 onClick={() => handleSelect(tier)}
-                className={`flex items-center gap-2.5 w-full px-3 py-2 text-xs hover:bg-slate-50 ${
+                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-slate-50 ${
                   preference === tier ? 'text-blue-600 font-medium' : 'text-slate-700'
                 }`}
               >

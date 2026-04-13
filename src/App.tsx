@@ -86,20 +86,7 @@ const LazyResultCard = lazy(() =>
   }))
 );
 
-// Temporary diagnostic — remove after weather is confirmed working
-if (typeof window !== 'undefined') {
-  console.info('[env-check] VITE_QWEATHER_KEY exists:', !!import.meta.env.VITE_QWEATHER_KEY);
-  console.info('[env-check] VITE_QWEATHER_KEY length:', (import.meta.env.VITE_QWEATHER_KEY as string)?.length || 0);
-}
-
 export default function App() {
-  // Temporary diagnostic — remove after weather is confirmed working
-  if (typeof window !== 'undefined') {
-    console.info('[env-check] VITE_QWEATHER_KEY exists:', !!import.meta.env.VITE_QWEATHER_KEY);
-    console.info('[env-check] VITE_QWEATHER_KEY length:', (import.meta.env.VITE_QWEATHER_KEY as string)?.length || 0);
-    console.info('[env-check] VITE_AI_MODEL:', import.meta.env.VITE_AI_MODEL);
-  }
-
   const workspace = useHealthWorkspace();
   const network = useNetworkStatus();
   const pwa = usePwaInstall();

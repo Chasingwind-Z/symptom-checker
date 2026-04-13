@@ -20,15 +20,6 @@ export function useWeather(lat?: number, lon?: number, city?: string) {
   useEffect(() => {
     if (!lat && !lon && !city) return;
 
-    const qweatherKey = (import.meta.env.VITE_QWEATHER_KEY as string | undefined)?.trim();
-    const qweatherHost = ((import.meta.env.VITE_QWEATHER_HOST as string | undefined) || 'devapi.qweather.com').trim();
-
-    if (!qweatherKey) {
-      debugLog('No QWEATHER_KEY configured');
-      setState({ status: 'failed', error: '未配置天气API' });
-      return;
-    }
-
     setState({ status: 'loading' });
 
     const locationParam =
@@ -41,9 +32,8 @@ export function useWeather(lat?: number, lon?: number, city?: string) {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 5000);
 
-    // In dev mode use Vite proxy to avoid CORS issues
-    const baseUrl = import.meta.env.DEV ? '/api/qweather' : `https://${qweatherHost}`;
-    const url = `${baseUrl}/v7/weather/now?location=${encodeURIComponent(locationParam)}&key=${qweatherKey}`;
+    // Use Vercel serverless proxy to avoid CORS issues with QWeather API
+    const url = `/api/weather?location=${encodeURIComponent(locationParam)}`;
 
     fetch(url, { signal: controller.signal })
       .then((r) => r.json())
