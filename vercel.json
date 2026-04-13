@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/api/weather",
+      "destination": "https://devapi.qweather.com/v7/weather/now"
+    }
+  ],
   "headers": [
     {
       "source": "/manifest.json",
