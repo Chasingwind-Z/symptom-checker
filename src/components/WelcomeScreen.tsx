@@ -15,7 +15,7 @@ import { SuggestionCards } from './SuggestionCards'
 interface WelcomeScreenProps {
   onApplyStarterText: (text: string) => void
   selectedModeId?: ConsultationModeId | null
-  onSelectMode: (modeId: ConsultationModeId) => void
+  onSelectMode: (modeId: ConsultationModeId | null) => void
   profile?: ProfileDraft | null
   weather?: WeatherData | null
   weatherTemp?: string
@@ -90,11 +90,11 @@ export function WelcomeScreen({
     return { hour: now.getHours(), month: now.getMonth() + 1 };
   });
 
-  const currentPopulation = MODE_TO_POPULATION[selectedModeId || 'self'] || 'self';
+  const currentPopulation: Population | null = selectedModeId ? (MODE_TO_POPULATION[selectedModeId] || 'self') : null;
 
   const [smartSuggestions, setSmartSuggestions] = useState(() =>
     generateSuggestions({
-      population: currentPopulation,
+      population: currentPopulation ?? 'self',
       hour: timeContext.hour,
       month: timeContext.month,
       recentQueries: [],
@@ -107,7 +107,7 @@ export function WelcomeScreen({
     window.setTimeout(() => {
       setSmartSuggestions(
         generateSuggestions({
-          population: currentPopulation,
+          population: currentPopulation ?? 'self',
           hour: timeContext.hour,
           month: timeContext.month,
           recentQueries: [],
@@ -118,7 +118,7 @@ export function WelcomeScreen({
   }, [currentPopulation, timeContext, userProfile]);
 
   const explanation = useMemo(() => generateExplanation({
-    population: currentPopulation,
+    population: currentPopulation ?? 'self',
     hour: timeContext.hour,
     month: timeContext.month,
     recentQueries: [],
@@ -159,6 +159,10 @@ export function WelcomeScreen({
       <PopulationTabs
         value={currentPopulation}
         onChange={(p) => {
+          if (p === null) {
+            onSelectMode(null);
+            return;
+          }
           const modeId = POPULATION_TO_MODE[p] || 'self';
           onSelectMode(modeId);
         }}

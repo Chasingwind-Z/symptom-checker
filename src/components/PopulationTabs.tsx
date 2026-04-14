@@ -8,8 +8,8 @@ const TABS: { id: Population; emoji: string; label: string; subtitle?: string }[
 ];
 
 interface PopulationTabsProps {
-  value: Population;
-  onChange: (p: Population) => void;
+  value: Population | null;
+  onChange: (p: Population | null) => void;
 }
 
 export function PopulationTabs({ value, onChange }: PopulationTabsProps) {
@@ -18,7 +18,7 @@ export function PopulationTabs({ value, onChange }: PopulationTabsProps) {
       {TABS.map(tab => (
         <button
           key={tab.id}
-          onClick={() => onChange(tab.id)}
+          onClick={() => onChange(value === tab.id ? null : tab.id)}
           className={`flex items-center gap-1 sm:gap-1.5 rounded-full px-3 sm:px-4 py-2 text-sm font-medium whitespace-nowrap transition-all min-h-[44px] ${
             value === tab.id
               ? 'bg-blue-600 text-white shadow-sm'

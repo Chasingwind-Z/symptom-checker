@@ -296,7 +296,7 @@ export default function App() {
     setWelcomeFocusSignal((current) => current + 1);
   }, []);
 
-  const handleSelectConsultationMode = useCallback((modeId: ConsultationModeId) => {
+  const handleSelectConsultationMode = useCallback((modeId: ConsultationModeId | null) => {
     setSelectedConsultationModeId(modeId);
   }, []);
 
