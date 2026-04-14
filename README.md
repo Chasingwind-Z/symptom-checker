@@ -21,6 +21,23 @@
 
 ---
 
+## 🎬 演示
+
+<!-- 
+  替换下面的占位图为实际 GIF 演示。
+  推荐录制工具：ScreenToGif (Windows) / Kap (Mac) / 浏览器 F12 录制
+  建议尺寸：800x500，时长 15-30 秒
+  录制内容：输入症状 → AI 追问 → 分诊结果 → 证据展示
+-->
+
+<div align="center">
+  <img src="docs/demo.gif" alt="健康助手演示" width="720" />
+  <br />
+  <em>输入症状 → 智能追问 → 30 秒给出分诊建议 + 就医指引</em>
+</div>
+
+---
+
 ## 💡 为什么做这个
 
 市面上的 AI 健康工具有一个共同的问题：它们像医生一样说话——"建议就医""请咨询专业医生"。
@@ -162,21 +179,24 @@ Top 5 chunks 注入 LLM context
 - 智能建议卡片
 - 问诊进度条
 - 照料者决策语言
+- 📷 多模态图片分析
 
 </td><td>
 
 **📊 健康管理**
 - 慢病指标记录
 - 家庭交叉感染预警
-- 复诊追踪
+- 复诊追踪 + 删除 / 忽略 / 暂缓
 - 每日健康打卡
 - 跨会话记忆
 - 天气健康提醒
+- 疾控动态看板
 
 </td><td>
 
 **🛠️ 工具与分享**
 - 就诊准备卡
+- 导出就诊报告 (PDF)
 - 用药支持摘要
 - 附近药房定位
 - 照料者分享
@@ -185,6 +205,18 @@ Top 5 chunks 注入 LLM context
 
 </td></tr>
 </table>
+
+---
+
+## 🆕 最近更新
+
+| 功能 | 说明 |
+|------|------|
+| 🧠 **智能模型路由** | 类 ChatGPT 自适应路由：简单问题自动走 flash（快），复杂问题走 pro（深度推理），图片走 omni（多模态） |
+| 📷 **全程图片上传** | 问诊过程中随时可上传皮疹、伤口、药盒等图片辅助分析 |
+| 🗑️ **回访记录管理** | 回访弹窗支持"稍后再问 / 不再提醒 / 删除记录"，工作区所有记录均可删除 |
+| 🏥 **疾控动态** | "健康趋势"更名为"疾控动态"，更准确反映社区疫情监控定位 |
+| 📋 **快捷操作** | 诊断结果页默认展开证据 tab，新增"导出报告""查看摘要"一键入口 |
 
 ---
 
@@ -209,7 +241,7 @@ npm run dev             # http://localhost:5173
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase 前端公钥 |
 | `VITE_AMAP_JS_KEY` | 推荐 | 高德地图 Key |
 | `VITE_QWEATHER_KEY` | 推荐 | 和风天气 Key（首页天气健康提醒必需，[申请地址](https://dev.qweather.com/)） |
-| `VITE_QWEATHER_HOST` | 可选 | 和风天气 API 地址，默认 `devapi.qweather.com`（商业版改为 `api.qweather.com`） |
+| `QWEATHER_API_HOST` | 推荐 | 和风天气专属 API Host（从 [控制台设置](https://console.qweather.com/setting) 复制，格式如 `abc123.qweatherapi.com`）<br>别名：`VITE_QWEATHER_HOST` 也可 |
 | `VITE_JD_UNION_ID` | 可选 | 京东联盟推广位 ID |
 | `VITE_TAVILY_API_KEY` | 可选 | 联网搜索增强 |
 
