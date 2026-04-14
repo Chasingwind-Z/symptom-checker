@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ClipboardEvent,
   type KeyboardEvent,
 } from 'react';
 import { ImagePlus, Loader2, Mic, MicOff, Send, X } from 'lucide-react';
@@ -419,6 +420,50 @@ export function ChatInput({
     }
   };
 
+  const handlePaste = useCallback(
+    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (!item.type.startsWith('image/')) continue;
+
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        if (attachmentCount >= MAX_IMAGE_ATTACHMENTS) {
+          setUploadError(`最多同时附加 ${MAX_IMAGE_ATTACHMENTS} 张图片，请先移除不需要的图片。`);
+          return;
+        }
+        if (file.size > MAX_IMAGE_SIZE_BYTES) {
+          setUploadError('粘贴的图片超过 4MB，请压缩后重试。');
+          return;
+        }
+
+        readFileAsDataUrl(file)
+          .then((dataUrl) => {
+            setSelectedAttachments((prev) => [
+              ...prev,
+              {
+                id: `image-${Date.now()}`,
+                kind: 'image',
+                name: file.name || 'pasted-image.png',
+                mimeType: file.type || 'image/png',
+                sizeBytes: file.size,
+                previewUrl: dataUrl,
+                dataUrl,
+              },
+            ]);
+            setUploadError('');
+          })
+          .catch(() => setUploadError('粘贴图片失败，请重试。'));
+        return;
+      }
+    },
+    [attachmentCount],
+  );
+
   const containerStyle: CSSProperties & Record<'--desktop-sidebar-width', string> = isInline
     ? { '--desktop-sidebar-width': '0px' }
     : {
@@ -621,6 +666,7 @@ export function ChatInput({
                     value={value}
                     onChange={(e) => updateDraft(e.target.value)}
                     onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
                     onFocus={() => setIsInputFocused(true)}
                     onBlur={() => setIsInputFocused(false)}
                     disabled={isLoading}
