@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { ArrowLeft, Check, LogIn, User } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ArrowLeft, Camera, Check, LogIn, User } from 'lucide-react';
 import type { ProfileDraft } from '../lib/healthData';
+import { getSupabaseClient } from '../lib/supabase';
 
 const AVATAR_GRADIENTS = [
   'from-blue-400 to-cyan-500',
@@ -32,7 +33,12 @@ interface UserProfilePageProps {
 export function UserProfilePage({ profile, onSave, onClose, isLoggedIn = true, onOpenAuth }: UserProfilePageProps) {
   const [draft, setDraft] = useState<ProfileDraft>(() => ({ ...profile }));
   const [saved, setSaved] = useState(false);
-  const [customCity, setCustomCity] = useState('');
+  // Initialize customCity from profile if it's not in the standard list
+  const [customCity, setCustomCity] = useState(() =>
+    profile.city && !CHINA_MAJOR_CITIES.includes(profile.city) ? profile.city : ''
+  );
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const gradientIndex = draft.avatarGradient ?? 0;
   const initial = draft.displayName.trim()
@@ -44,10 +50,42 @@ export function UserProfilePage({ profile, onSave, onClose, isLoggedIn = true, o
     setSaved(false);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+
+    const client = getSupabaseClient();
+    if (!client) return;
+
+    setAvatarUploading(true);
+    try {
+      // Compress to 200x200 JPEG
+      const compressed = await compressAvatar(file, 200);
+      const path = `avatars/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.jpg`;
+      const { error } = await client.storage
+        .from('avatars')
+        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true });
+
+      if (!error) {
+        const { data: urlData } = client.storage.from('avatars').getPublicUrl(path);
+        handleField('avatarUrl', urlData.publicUrl);
+      }
+    } catch {
+      // Silently fail — user still has gradient avatar
+    } finally {
+      setAvatarUploading(false);
+      // Reset file input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = () => {
     const finalDraft = { ...draft, profileMode: 'custom' as const };
-    if (customCity && draft.city === '__other') {
-      finalDraft.city = customCity;
+    // Replace sentinel value with actual custom city text
+    if (finalDraft.city === '__other' && customCity.trim()) {
+      finalDraft.city = customCity.trim();
+    } else if (finalDraft.city === '__other') {
+      finalDraft.city = '';
     }
     onSave(finalDraft);
     setSaved(true);
@@ -93,28 +131,70 @@ export function UserProfilePage({ profile, onSave, onClose, isLoggedIn = true, o
       {/* Avatar Section */}
       <section className="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
         <div className="flex flex-col items-center gap-4">
-          <div
-            className={`flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[gradientIndex]} text-3xl font-bold text-white shadow-md`}
-          >
-            {initial || <User size={32} />}
+          {/* Avatar display: uploaded image or gradient initial */}
+          <div className="relative">
+            {draft.avatarUrl ? (
+              <img
+                src={draft.avatarUrl}
+                alt="头像"
+                className="h-20 w-20 rounded-full object-cover shadow-md"
+              />
+            ) : (
+              <div
+                className={`flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${AVATAR_GRADIENTS[gradientIndex]} text-3xl font-bold text-white shadow-md`}
+              >
+                {initial || <User size={32} />}
+              </div>
+            )}
+            {/* Upload button overlay */}
+            <label className="absolute bottom-0 right-0 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors">
+              {avatarUploading ? (
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+              ) : (
+                <Camera size={14} className="text-slate-500" />
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+                disabled={avatarUploading}
+              />
+            </label>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-2">
-            {AVATAR_GRADIENTS.map((g, i) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => handleField('avatarGradient', i)}
-                className={`h-8 w-8 rounded-full bg-gradient-to-br ${g} transition-all ${
-                  i === gradientIndex
-                    ? 'ring-2 ring-offset-2 ring-blue-500 scale-110'
-                    : 'opacity-70 hover:opacity-100'
-                }`}
-                aria-label={`选择渐变色 ${i + 1}`}
-              />
-            ))}
-          </div>
-          <p className="text-xs text-slate-400">点击选择头像渐变色</p>
+          {/* Gradient color picker (fallback when no uploaded avatar) */}
+          {!draft.avatarUrl && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {AVATAR_GRADIENTS.map((g, i) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => handleField('avatarGradient', i)}
+                  className={`h-8 w-8 rounded-full bg-gradient-to-br ${g} transition-all ${
+                    i === gradientIndex
+                      ? 'ring-2 ring-offset-2 ring-blue-500 scale-110'
+                      : 'opacity-70 hover:opacity-100'
+                  }`}
+                  aria-label={`选择渐变色 ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Remove uploaded avatar to go back to gradient */}
+          {draft.avatarUrl ? (
+            <button
+              type="button"
+              onClick={() => handleField('avatarUrl', undefined as unknown as string)}
+              className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+            >
+              移除头像，使用默认渐变色
+            </button>
+          ) : (
+            <p className="text-xs text-slate-400">点击 📷 上传头像，或选择渐变色</p>
+          )}
         </div>
       </section>
 
@@ -156,10 +236,9 @@ export function UserProfilePage({ profile, onSave, onClose, isLoggedIn = true, o
             {(draft.city === '__other' || (draft.city && !CHINA_MAJOR_CITIES.includes(draft.city))) && (
               <input
                 type="text"
-                value={draft.city === '__other' ? customCity : draft.city}
+                value={customCity}
                 onChange={(e) => {
                   setCustomCity(e.target.value);
-                  if (draft.city !== '__other') handleField('city', e.target.value);
                 }}
                 placeholder="请输入城市名"
                 className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
@@ -175,7 +254,7 @@ export function UserProfilePage({ profile, onSave, onClose, isLoggedIn = true, o
               aria-label="选择出生年份"
             >
               <option value="">请选择</option>
-              {Array.from({ length: 100 }, (_, i) => 2026 - i).map(year => (
+              {Array.from({ length: 101 }, (_, i) => 2026 - i).map(year => (
                 <option key={year} value={year}>{year}年</option>
               ))}
             </select>
@@ -273,4 +352,30 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
       {children}
     </div>
   );
+}
+
+/** Compress an image file to a square JPEG blob */
+function compressAvatar(file: File, maxSize: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = maxSize;
+      canvas.height = maxSize;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas not supported'));
+      // Center-crop to square
+      const minDim = Math.min(img.width, img.height);
+      const sx = (img.width - minDim) / 2;
+      const sy = (img.height - minDim) / 2;
+      ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, maxSize, maxSize);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('Blob conversion failed'))),
+        'image/jpeg',
+        0.85,
+      );
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = URL.createObjectURL(file);
+  });
 }

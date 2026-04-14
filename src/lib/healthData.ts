@@ -19,6 +19,7 @@ export interface ProfileDraft {
   careFocus: string;
   profileMode: 'custom' | 'demo';
   avatarGradient?: number;
+  avatarUrl?: string;
 }
 
 export interface CaseHistoryItem {
