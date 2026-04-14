@@ -17,11 +17,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     process.env.VITE_QWEATHER_API_HOST;
 
   if (!key) {
-    return res.status(500).json({ error: 'Weather API key not configured' });
+    return res.status(500).json({
+      error: 'Weather API key not configured',
+      hint: 'Set VITE_QWEATHER_KEY in Vercel Environment Variables',
+    });
   }
   if (!location) {
     return res.status(400).json({ error: 'Missing location param' });
   }
+
+  // Log env var availability for debugging (values not exposed)
+  console.log(`[weather] env check: key=${key ? 'set' : 'missing'}, customHost=${customHost || 'missing'}, ` +
+    `QWEATHER_API_HOST=${process.env.QWEATHER_API_HOST ? 'set' : '-'}, ` +
+    `VITE_QWEATHER_HOST=${process.env.VITE_QWEATHER_HOST ? 'set' : '-'}`
+  );
 
   const loc = encodeURIComponent(String(location));
 
@@ -100,6 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(502).json({
     error: 'Weather API unavailable',
-    debug: 'All strategies failed. Set QWEATHER_API_HOST env var to your custom host from console.qweather.com/setting.',
+    debug: `All strategies failed. customHost=${customHost || 'not set'}`,
+    hint: 'Check Vercel Environment Variables: VITE_QWEATHER_KEY and VITE_QWEATHER_HOST (or QWEATHER_API_HOST)',
   });
 }

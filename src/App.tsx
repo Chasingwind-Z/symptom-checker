@@ -524,7 +524,7 @@ export default function App() {
               ? () => {
                   void handleDeleteCaseRecord(matchedCase.id, matchedCase.chiefComplaint)
                 }
-              : undefined,
+              : () => deleteFollowUpRecord(record.id),
         });
       });
 
