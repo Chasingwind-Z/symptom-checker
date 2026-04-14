@@ -5,6 +5,7 @@ import { ConversationHistoryPanel } from './ConversationHistoryPanel'
 import { HealthSettingsPanel } from './HealthSettingsPanel'
 import { LazySurfaceFallback } from './LazySurfaceFallback'
 import { MedicineBoxPanel } from './MedicineBoxPanel'
+import { UserProfilePage } from './UserProfilePage'
 import {
   RecordsCenterPanel,
   type RecordsCenterFollowUpItem,
@@ -136,6 +137,13 @@ export function WorkspaceView({
 
       {workspaceSection === 'profile' && (
         <div className="space-y-4">
+          <UserProfilePage
+            profile={profile}
+            onSave={(updated) => {
+              void onSaveProfile(updated);
+            }}
+            onClose={() => onSelectSection('records')}
+          />
           <Suspense
             fallback={
               <LazySurfaceFallback

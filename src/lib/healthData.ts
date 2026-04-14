@@ -18,6 +18,7 @@ export interface ProfileDraft {
   currentMedications: string;
   careFocus: string;
   profileMode: 'custom' | 'demo';
+  avatarGradient?: number;
 }
 
 export interface CaseHistoryItem {

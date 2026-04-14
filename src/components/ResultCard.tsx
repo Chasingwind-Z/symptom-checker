@@ -1392,6 +1392,21 @@ export function ResultCard({
             </div>
           )}
         </div>
+        {/* ── Agent collaboration footer ── */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-4 pt-3 border-t border-slate-100">
+          <span className="text-xs text-slate-400 mr-1">本次分析由多模块协作：</span>
+          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-xs">🏥 分诊</span>
+          {evidenceCards.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 text-xs">📚 证据</span>
+          )}
+          {tieredHospitals.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-xs">🗺️ 导诊</span>
+          )}
+          {webSources.length > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 text-xs">🌐 联网</span>
+          )}
+          <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-xs">🧠 记忆</span>
+        </div>
       </div>
       <AnimatePresence>
         {showVisitCard && (

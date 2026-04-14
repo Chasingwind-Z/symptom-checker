@@ -27,6 +27,7 @@ supabase/.temp/
 
 # Dev planning files
 plan.md
+optimization-prompt*.md
 PLAN.md
 
 # Claude Code local settings
