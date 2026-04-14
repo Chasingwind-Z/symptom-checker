@@ -18,8 +18,8 @@ export function sendLocalNotification(title: string, body: string, url?: string)
 
   const notification = new Notification(title, {
     body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/pwa-192.png',
+    badge: '/pwa-192.png',
     tag: 'health-assistant',
   });
 

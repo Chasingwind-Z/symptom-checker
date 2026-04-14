@@ -1,5 +1,5 @@
-const CACHE_NAME = 'symptom-checker-pwa-v1';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/pwa-192.png', '/pwa-512.png'];
+const CACHE_NAME = 'symptom-checker-pwa-v2';
+const APP_SHELL = ['/', '/manifest.json', '/manifest.webmanifest', '/favicon.svg', '/pwa-192.png', '/pwa-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
