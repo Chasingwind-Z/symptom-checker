@@ -637,14 +637,15 @@ function buildAlertReasons(
   breakdown: RiskBreakdown,
   topSymptoms: string[],
   trend: 'up' | 'stable' | 'down',
-  trendPercent: number
+  trendPercent: number,
+  timeRange: 7 | 14 | 30 = 7
 ): string[] {
   const reasons = [`${topSymptoms.slice(0, 2).join('、')}相关匿名信号较平日明显抬升`]
 
   if (trend === 'up') {
-    reasons.push(`近 7 日趋势上行 ${trendPercent}%`)
+    reasons.push(`近 ${timeRange} 日趋势上行 ${trendPercent}%`)
   } else if (trend === 'stable') {
-    reasons.push('近 7 日趋势保持高位波动')
+    reasons.push(`近 ${timeRange} 日趋势保持高位波动`)
   } else {
     reasons.push('整体热度有所回落，仍需持续观察')
   }
@@ -672,6 +673,7 @@ function createDistrictRiskData(params: {
   dataLabel?: string
   sourceNote?: string
   cityName?: string
+  timeRange?: 7 | 14 | 30
 }): DistrictRiskData {
   const riskScore = Math.round(sumRiskBreakdown(params.riskBreakdown) * 10) / 10
   const seasonalSignal = getSeasonalSignal()
@@ -697,7 +699,8 @@ function createDistrictRiskData(params: {
       params.riskBreakdown,
       params.topSymptoms,
       params.trend,
-      params.trendPercent
+      params.trendPercent,
+      params.timeRange
     ),
     sourceNote:
       params.sourceNote ??
@@ -717,7 +720,8 @@ function classifyRiskLevel(score: number): 'low' | 'medium' | 'high' | 'critical
 function generateDistrictData(
   district: string,
   daySeed: number,
-  cityName: string = getActiveCity()
+  cityName: string = getActiveCity(),
+  timeRange: 7 | 14 | 30 = 7
 ): DistrictRiskData {
   const dSeed = getDistrictSeed(district)
   const base = daySeed + dSeed
@@ -728,10 +732,12 @@ function generateDistrictData(
   const isTopDistrict = cityProfile.hotspotDistricts[0] === district
   const isSecondDistrict = cityProfile.hotspotDistricts[1] === district
   const seasonalBoost = getSeasonalBoostFactors()
+  const smoothing = timeRange === 7 ? 1.0 : timeRange === 14 ? 0.7 : 0.4
+  const seasonalBiasOffset = timeRange === 7 ? 0 : timeRange === 14 ? 1.5 : 3
 
   if (isTopDistrict) {
     const weeklyData: number[] = []
-    for (let d = 6; d >= 0; d--) {
+    for (let d = timeRange - 1; d >= 0; d--) {
       const pastSeed = getDaySeedOffset(-d) + dSeed
       weeklyData.push(Math.round((58 + seededRandom(pastSeed, 7) * 28) * cityProfile.densityBoost))
     }
@@ -742,23 +748,24 @@ function generateDistrictData(
       coughDrugIndex: Math.round((68 + cityProfile.mobilityBoost * 6) * respiratoryBoost * seasonalBoost.respiratory),
       giDrugIndex: Math.round((seededRandom(base, 3) * 28 + 28) * giBoost * seasonalBoost.gi),
       trend: 'up',
-      trendPercent: Math.round(24 + cityProfile.mobilityBoost * 14),
+      trendPercent: Math.round((24 + cityProfile.mobilityBoost * 14) * smoothing),
       topSymptoms: cityProfile.symptomPool.slice(0, 3),
       weeklyData,
       riskBreakdown: {
-        symptomReports: Math.round(34 * cityProfile.densityBoost),
-        trendChange: Math.round(14 + cityProfile.mobilityBoost * 4),
+        symptomReports: Math.round(34 * cityProfile.densityBoost + seasonalBiasOffset),
+        trendChange: Math.round((14 + cityProfile.mobilityBoost * 4) * smoothing),
         environment: Math.round(8 + cityProfile.respiratoryBias * 3),
         followUp: Math.round(11 + cityProfile.mobilityBoost * 4),
       },
       sourceNote: `${cityProfile.citySummary} 当前重点观察 ${district} 的片区变化。`,
       cityName,
+      timeRange,
     })
   }
 
   if (isSecondDistrict) {
     const weeklyData: number[] = []
-    for (let d = 6; d >= 0; d--) {
+    for (let d = timeRange - 1; d >= 0; d--) {
       const pastSeed = getDaySeedOffset(-d) + dSeed
       weeklyData.push(Math.round((42 + seededRandom(pastSeed, 7) * 24) * cityProfile.densityBoost))
     }
@@ -769,17 +776,18 @@ function generateDistrictData(
       coughDrugIndex: Math.round((seededRandom(base, 2) * 20 + 38) * respiratoryBoost * seasonalBoost.respiratory),
       giDrugIndex: Math.round(52 * giBoost * seasonalBoost.gi),
       trend: 'up',
-      trendPercent: Math.round(14 + cityProfile.mobilityBoost * 8),
+      trendPercent: Math.round((14 + cityProfile.mobilityBoost * 8) * smoothing),
       topSymptoms: cityProfile.symptomPool.slice(1, 4),
       weeklyData,
       riskBreakdown: {
-        symptomReports: Math.round(26 * cityProfile.densityBoost),
-        trendChange: Math.round(10 + cityProfile.mobilityBoost * 3),
+        symptomReports: Math.round(26 * cityProfile.densityBoost + seasonalBiasOffset),
+        trendChange: Math.round((10 + cityProfile.mobilityBoost * 3) * smoothing),
         environment: Math.round(7 + cityProfile.giBias * 2),
         followUp: Math.round(10 + cityProfile.mobilityBoost * 3),
       },
       sourceNote: `${cityProfile.citySummary} ${district} 当前更适合结合官方入口与本地趋势一起看。`,
       cityName,
+      timeRange,
     })
   }
 
@@ -789,11 +797,12 @@ function generateDistrictData(
 
   const trendRaw = seededRandom(base, 4)
   let trend: 'up' | 'stable' | 'down'
+  const stableThreshold = timeRange === 30 ? 0.45 : timeRange === 14 ? 0.38 : 0.33
   if (trendRaw < 0.33) trend = 'down'
-  else if (trendRaw < 0.66) trend = 'stable'
+  else if (trendRaw < 0.33 + stableThreshold) trend = 'stable'
   else trend = 'up'
 
-  const trendPercent = Math.round(seededRandom(base, 5) * (16 + cityProfile.mobilityBoost * 4) + 2)
+  const trendPercent = Math.round(seededRandom(base, 5) * (16 + cityProfile.mobilityBoost * 4) * smoothing + 2)
   const baseRisk = DISTRICT_BASE_RISK[district]
   const densityBase = baseRisk != null
     ? baseRisk * (0.8 + seededRandom(base, 6) * 0.4)
@@ -808,7 +817,7 @@ function generateDistrictData(
   }
 
   const weeklyData: number[] = []
-  for (let d = 6; d >= 0; d--) {
+  for (let d = timeRange - 1; d >= 0; d--) {
     const pastSeed = getDaySeedOffset(-d) + dSeed
     const ps = Math.min(
       55,
@@ -827,14 +836,15 @@ function generateDistrictData(
       totalReports * 0.07 +
         feverDrugIndex * 0.18 +
         coughDrugIndex * 0.12 +
-        giDrugIndex * 0.1
+        giDrugIndex * 0.1 +
+        seasonalBiasOffset
     ),
     trendChange:
       trend === 'up'
-        ? Math.min(18, 6 + Math.round(trendPercent * 0.45))
+        ? Math.min(18, Math.round((6 + Math.round(trendPercent * 0.45)) * smoothing))
         : trend === 'stable'
-        ? Math.min(11, 4 + Math.round(trendPercent * 0.18))
-        : Math.max(2, 5 - Math.round(trendPercent * 0.12)),
+        ? Math.min(11, Math.round((4 + Math.round(trendPercent * 0.18)) * smoothing))
+        : Math.max(2, Math.round((5 - Math.round(trendPercent * 0.12)) * smoothing)),
     environment: Math.round(seededRandom(base, 8) * 7 + 3 + (coughDrugIndex > 45 ? 2 : 0)),
     followUp: Math.round(seededRandom(base, 9) * 6 + 2 + (totalReports > 80 ? 2 : 0) + cityProfile.mobilityBoost),
   }
@@ -851,6 +861,7 @@ function generateDistrictData(
     weeklyData,
     riskBreakdown,
     cityName,
+    timeRange,
   })
 }
 
@@ -860,12 +871,12 @@ function getDaySeedOffset(offset: number): number {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()
 }
 
-export function getDistrictRiskData(cityName: string = getActiveCity()): DistrictRiskData[] {
+export function getDistrictRiskData(cityName: string = getActiveCity(), timeRange: 7 | 14 | 30 = 7): DistrictRiskData[] {
   const daySeed = getDaySeed()
-  return getDistricts(cityName).map((district) => generateDistrictData(district, daySeed, cityName))
+  return getDistricts(cityName).map((district) => generateDistrictData(district, daySeed, cityName, timeRange))
 }
 
-export async function getDistrictRiskDataAsync(city: string = getActiveCity()): Promise<DistrictRiskData[]> {
+export async function getDistrictRiskDataAsync(city: string = getActiveCity(), timeRange: 7 | 14 | 30 = 7): Promise<DistrictRiskData[]> {
   try {
     const agg = await fetchCityAggregation(city)
     if (agg && agg.totalReports > 0) {
@@ -896,11 +907,11 @@ export async function getDistrictRiskDataAsync(city: string = getActiveCity()): 
       })
     }
   } catch { /* fall through to seeded fallback */ }
-  return getDistrictRiskData(city)
+  return getDistrictRiskData(city, timeRange)
 }
 
-export function getCityOverview(cityName: string = getActiveCity()): CityOverview {
-  const districts = mergeLocalReports(getDistrictRiskData(cityName))
+export function getCityOverview(cityName: string = getActiveCity(), timeRange: 7 | 14 | 30 = 7): CityOverview {
+  const districts = mergeLocalReports(getDistrictRiskData(cityName, timeRange))
   const totalReports = districts.reduce((sum, district) => sum + district.totalReports, 0)
   const alertDistricts = districts.filter(
     district => district.riskLevel === 'high' || district.riskLevel === 'critical'

@@ -132,12 +132,12 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('detecting')
   const supportedCities = getSupportedCities()
   const cityConfig = getActiveCityConfig()
-  const cityOverview = useMemo(() => getCityOverview(currentCity), [currentCity])
-  const districtData = useMemo<DistrictRiskData[]>(
-    () => mergeLocalReports(getDistrictRiskData(currentCity)),
-    [currentCity]
-  )
   const [timeRange, setTimeRange] = useState<7 | 14 | 30>(7)
+  const cityOverview = useMemo(() => getCityOverview(currentCity, timeRange), [currentCity, timeRange])
+  const districtData = useMemo<DistrictRiskData[]>(
+    () => mergeLocalReports(getDistrictRiskData(currentCity, timeRange)),
+    [currentCity, timeRange]
+  )
   const [symptomFilter, setSymptomFilter] = useState<string>('全部')
   const filteredDistrictData = useMemo(() => {
     if (symptomFilter === '全部') return districtData

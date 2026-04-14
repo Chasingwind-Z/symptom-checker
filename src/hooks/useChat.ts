@@ -885,11 +885,18 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       ];
 
       try {
+        // Detect user-requested web search (🔍 prefix or explicit keywords)
+        const wantsWebSearch = displayText.startsWith('🔍') ||
+          displayText.includes('帮我搜') || displayText.includes('搜索最新');
+        const effectiveToolChoice = wantsWebSearch
+          ? { type: 'function' as const, function: { name: 'search_web' } }
+          : orchestration.preferredToolName
+            ? { type: 'function' as const, function: { name: orchestration.preferredToolName } }
+            : 'auto' as const;
+
         const result = await runToolAwareChat(history, {
           tools: scopedTools,
-          toolChoice: orchestration.preferredToolName
-            ? { type: 'function', function: { name: orchestration.preferredToolName } }
-            : 'auto',
+          toolChoice: effectiveToolChoice,
           maxToolRounds: 4,
           executeTool: async (toolCall) => {
             const toolResult = await executeAgentTool(

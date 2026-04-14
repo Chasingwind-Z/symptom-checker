@@ -9,7 +9,7 @@ import {
   type ClipboardEvent,
   type KeyboardEvent,
 } from 'react';
-import { ImagePlus, Loader2, Mic, MicOff, Send, X } from 'lucide-react';
+import { Globe, ImagePlus, Loader2, Mic, MicOff, Send, X } from 'lucide-react';
 import type { ChatImageAttachment, SendMessageInput } from '../types';
 import { AI_VISION_ENABLED } from '../lib/aiCapabilities';
 import { SymptomDescriptionHelper } from './SymptomDescriptionHelper';
@@ -658,6 +658,25 @@ export function ChatInput({
                       {attachmentCount}
                     </span>
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const prefix = '🔍 ';
+                    updateDraft((prev) => prev.startsWith(prefix) ? prev : prefix + prev);
+                    textareaRef.current?.focus();
+                  }}
+                  disabled={isLoading}
+                  className={`inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border transition-all focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                    value.startsWith('🔍')
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
+                      : 'border-slate-200 bg-white text-slate-500 hover:border-emerald-200 hover:text-emerald-600'
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                  title="联网搜索最新信息"
+                  aria-label="联网搜索"
+                >
+                  <Globe size={18} />
                 </button>
 
                 <div className="min-w-0 flex-1">
