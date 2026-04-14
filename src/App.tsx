@@ -52,7 +52,7 @@ import {
 import {
   buildCombinedMedicalNotes,
 } from './lib/personalization';
-import { saveAppointment } from './lib/followUpRecords';
+import { saveAppointment, deleteFollowUpRecord } from './lib/followUpRecords';
 import { requestPushPermission, scheduleFollowUpNotification } from './lib/pushNotification';
 import { saveFeedback, hasGivenFeedback, cleanOldPendingFollowups } from './lib/sessionFeedback';
 import { SessionFeedback } from './components/SessionFeedback';
@@ -470,6 +470,7 @@ export default function App() {
               onClick: () => handleOpenConversation(matchedSession.id),
             }
           : undefined,
+        onDelete: () => deleteFollowUpRecord(record.id),
       };
     });
   }, [

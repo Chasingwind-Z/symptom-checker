@@ -36,6 +36,7 @@ export interface RecordsCenterFollowUpItem {
   isActive?: boolean;
   primaryAction?: RecordsCenterAction;
   secondaryAction?: RecordsCenterAction;
+  onDelete?: () => void;
 }
 
 export interface RecordsCenterSummaryItem {
@@ -239,12 +240,25 @@ export function RecordsCenterPanel({
                         <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.summary}</p>
                       </div>
 
-                      {item.metaLabel && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
-                          <Clock3 size={11} />
-                          {item.metaLabel}
-                        </span>
-                      )}
+                      <div className="flex flex-col items-end gap-2">
+                        {item.onDelete && (
+                          <button
+                            type="button"
+                            onClick={item.onDelete}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
+                            aria-label={`删除记录 ${item.title}`}
+                            title="删除记录"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                        {item.metaLabel && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
+                            <Clock3 size={11} />
+                            {item.metaLabel}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {hasMeta && (

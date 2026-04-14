@@ -162,6 +162,11 @@ export function subscribeToFollowUpRecords(listener: () => void) {
   };
 }
 
+export function deleteFollowUpRecord(recordId: string): void {
+  const records = readStoredFollowUpRecords().filter((r) => r.id !== recordId);
+  writeStoredFollowUpRecords(records);
+}
+
 export function readFollowUpRecords(): FollowUpRecord[] {
   return readStoredFollowUpRecords().map(toFollowUpRecord);
 }

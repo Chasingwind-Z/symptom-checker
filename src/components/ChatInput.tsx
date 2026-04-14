@@ -587,7 +587,6 @@ export function ChatInput({
               }`}
             >
               <div className="flex items-end gap-2">
-                {!isConsulting && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -615,7 +614,6 @@ export function ChatInput({
                     </span>
                   )}
                 </button>
-                )}
 
                 <div className="min-w-0 flex-1">
                   <textarea
