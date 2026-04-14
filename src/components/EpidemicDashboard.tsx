@@ -152,11 +152,16 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
     [filteredDistrictData]
   )
   const dailyTrend = useMemo(() => {
-    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-    return days.map((label, i) => ({
-      label,
-      count: ((i + 3) * 7 + timeRange) % 50 + 5,
-    }))
+    const result: { label: string; count: number }[] = []
+    const now = new Date()
+    for (let i = timeRange - 1; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      const label = `${d.getMonth() + 1}/${d.getDate()}`
+      const seed = (d.getDate() * 7 + d.getMonth() * 13) % 50
+      result.push({ label, count: seed + 5 })
+    }
+    return result
   }, [timeRange])
   const maxTrendCount = useMemo(() => Math.max(...dailyTrend.map(d => d.count), 1), [dailyTrend])
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null)
@@ -1377,16 +1382,19 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
             {/* 每日上报趋势 */}
             <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
               <p className="text-xs font-medium text-white/60 mb-3">每日上报趋势</p>
-              <div className="flex items-end gap-2 h-20">
-                {dailyTrend.map((day, i) => (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                    <div
-                      className="w-full rounded-t bg-blue-400 transition-all"
-                      style={{ height: `${(day.count / maxTrendCount) * 100}%` }}
-                    />
-                    <span className="text-[9px] text-white/40">{day.label}</span>
-                  </div>
-                ))}
+              <div className="flex items-end gap-px h-20">
+                {dailyTrend.map((day, i) => {
+                  const showLabel = timeRange <= 7 || (timeRange === 14 && i % 2 === 0) || (timeRange === 30 && i % 5 === 0)
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                      <div
+                        className="w-full rounded-t bg-blue-400 transition-all"
+                        style={{ height: `${(day.count / maxTrendCount) * 100}%` }}
+                      />
+                      {showLabel && <span className="text-[8px] text-white/40 truncate w-full text-center">{day.label}</span>}
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
