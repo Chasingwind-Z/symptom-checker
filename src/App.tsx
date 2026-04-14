@@ -944,8 +944,8 @@ export default function App() {
                     draftValue={welcomeDraftValue}
                     onDraftChange={setWelcomeDraftValue}
                     placeholderOverride={selectedConsultationMode?.placeholder}
-                    selectedModeLabel={selectedConsultationMode?.label}
-                    selectedModeSummary={selectedConsultationMode?.summary}
+                    selectedModeLabel={selectedConsultationModeId && selectedConsultationModeId !== 'self' ? selectedConsultationMode?.label : undefined}
+                    selectedModeSummary={selectedConsultationModeId && selectedConsultationModeId !== 'self' ? selectedConsultationMode?.summary : undefined}
                     onClearSelectedMode={handleClearSelectedConsultationMode}
                     focusSignal={welcomeFocusSignal}
                     messagesCount={messages.length}
@@ -1147,8 +1147,8 @@ export default function App() {
             withDesktopSidebar
             desktopSidebarWidth={desktopSidebarWidth}
             onLayoutChange={handleChatInputLayoutChange}
-            selectedModeLabel={selectedConsultationMode?.label}
-            selectedModeSummary={selectedConsultationMode?.summary}
+            selectedModeLabel={selectedConsultationModeId && selectedConsultationModeId !== 'self' ? selectedConsultationMode?.label : undefined}
+            selectedModeSummary={selectedConsultationModeId && selectedConsultationModeId !== 'self' ? selectedConsultationMode?.summary : undefined}
             onClearSelectedMode={handleClearSelectedConsultationMode}
             isConsulting={isConsulting}
             hasDiagnosis={!!diagnosisResult}
