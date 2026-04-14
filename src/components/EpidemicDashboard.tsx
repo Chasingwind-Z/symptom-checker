@@ -110,11 +110,11 @@ const formatAccuracyLabel = (accuracyMeters: number | null) => {
   return `${(accuracyMeters / 1000).toFixed(1)} 公里`
 }
 
-const getMapLoadingNote = (city: string) =>
-  `${city}分区趋势图正在加载，你仍可先查看重点片区、7 日曲线和官方来源。`
+const getMapLoadingNote = (city: string, days: number) =>
+  `${city}分区趋势图正在加载，你仍可先查看重点片区、${days} 日曲线和官方来源。`
 
-const getMapFallbackNote = (city: string) =>
-  `${city}地图暂未显示，已保留分区摘要、重点片区和 7 日变化，不影响继续核对趋势。`
+const getMapFallbackNote = (city: string, days: number) =>
+  `${city}地图暂未显示，已保留分区摘要、重点片区和 ${days} 日变化，不影响继续核对趋势。`
 
 export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
   const mapKey = (import.meta.env.VITE_AMAP_JS_KEY as string | undefined)?.trim() ?? ''
@@ -169,7 +169,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
     mapKey ? 'loading' : 'fallback'
   )
   const [mapNote, setMapNote] = useState(
-    mapKey ? getMapLoadingNote(currentCity) : getMapFallbackNote(currentCity)
+    mapKey ? getMapLoadingNote(currentCity, timeRange) : getMapFallbackNote(currentCity, timeRange)
   )
   const mapContainerRef = useRef<HTMLDivElement>(null)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -210,7 +210,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
     mapRef.current?.destroy?.()
     mapRef.current = null
     setMapStatus(mapKey ? 'loading' : 'fallback')
-    setMapNote(mapKey ? getMapLoadingNote(city) : getMapFallbackNote(city))
+    setMapNote(mapKey ? getMapLoadingNote(city, timeRange) : getMapFallbackNote(city, timeRange))
   }
 
   function focusDetectedCity(source: CitySelectionSource = 'detected') {
@@ -362,7 +362,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
         setMapStatus('ready')
       } catch {
         setMapStatus('fallback')
-        setMapNote(getMapFallbackNote(currentCity))
+        setMapNote(getMapFallbackNote(currentCity, timeRange))
       }
     }
 
@@ -383,7 +383,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
         existing.addEventListener('load', initMap)
         existing.addEventListener('error', () => {
           setMapStatus('fallback')
-          setMapNote(getMapFallbackNote(currentCity))
+          setMapNote(getMapFallbackNote(currentCity, timeRange))
         })
       } else {
         const script = document.createElement('script')
@@ -392,7 +392,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
         script.onload = initMap
         script.onerror = () => {
           setMapStatus('fallback')
-          setMapNote(getMapFallbackNote(currentCity))
+          setMapNote(getMapFallbackNote(currentCity, timeRange))
         }
         document.head.appendChild(script)
       }
@@ -467,7 +467,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
     {
       id: 'trend',
       label: '趋势 / 参考',
-      title: `${currentCity}各区热力与 7 日变化`,
+      title: `${currentCity}各区热力与 ${timeRange} 日变化`,
       badge: '观察口径',
       summary: '综合社区分诊、购药咨询和季节因子，用来看同城不同片区是升温、持平还是回落。',
       note: '用于比较相对变化，不等同于官方通报病例数。',
@@ -491,7 +491,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
   ]
   const readingGuide = [
     `先看官方 / 公共来源，确认 ${currentCity} 最新公开建议、就医入口和疾病背景。`,
-    `再看 ${currentCity} 各区热力与 7 日曲线，判断是局部抬升、持续关注还是逐步回落。`,
+    `再看 ${currentCity} 各区热力与 ${timeRange} 日曲线，判断是局部抬升、持续关注还是逐步回落。`,
     '最后结合社区信号和个人症状；如持续高热、胸痛或呼吸困难，请直接线下就医。',
   ]
   const breakdownItems = activeDistrict
@@ -503,7 +503,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
           description: '来自本地匿名自查与社区分诊，帮助判断片区体感是否升温',
         },
         {
-          label: '近 7 日变化',
+          label: `近 ${timeRange} 日变化`,
           value: activeDistrict.riskBreakdown.trendChange,
           color: '#A78BFA',
           description: '观察近一周走势，判断当前是抬升、持平还是回落',
@@ -671,7 +671,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
       return '你已关闭位置偏好；地图只按手动选择的城市展示分区趋势，不读取精准位置。'
     }
 
-    return '地图展示的是按区汇总的近 7 日相对变化；定位只用于推荐支持城市和更近片区，不显示精确地址。'
+    return `地图展示的是按区汇总的近 ${timeRange} 日相对变化；定位只用于推荐支持城市和更近片区，不显示精确地址。`
   })()
   const showDetectedCityAction =
     locationStatus === 'detected' &&
@@ -686,8 +686,8 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
     activeDistrictName !== detectedDistrict
   const mapUsageNote =
     locationStatus === 'detected' && detectedDistrict && detectedCity === currentCity
-      ? `地图展示的是 ${currentCity} 各区近 7 日相对变化；当前位置只用于提示你更靠近 ${detectedDistrict}。`
-      : '地图展示的是按区汇总的近 7 日相对变化；定位只用于推荐支持城市和更近片区，不显示精确地址。'
+      ? `地图展示的是 ${currentCity} 各区近 ${timeRange} 日相对变化；当前位置只用于提示你更靠近 ${detectedDistrict}。`
+      : `地图展示的是按区汇总的近 ${timeRange} 日相对变化；定位只用于推荐支持城市和更近片区，不显示精确地址。`
   const sourceLayerBadges = [
     { label: '官方 / 公共来源', className: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-200' },
     { label: '趋势 / 参考', className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-200' },
@@ -715,7 +715,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
         {
           id: 'trend',
           tier: '趋势 / 参考',
-          title: `${activeDistrict.district}近 7 日热力与购药变化`,
+          title: `${activeDistrict.district}近 ${timeRange} 日热力与购药变化`,
           summary: `趋势参考分 ${Math.round(activeDistrict.riskScore)}，${getTrendLabel(activeDistrict.trend)} ${formatTrendDelta(activeDistrict.trend, activeDistrict.trendPercent)}。`,
           note: '用于比较同城片区变化，不等同于官方病例统计。',
           wrapperClass: 'border-cyan-500/20 bg-cyan-500/5',
@@ -926,8 +926,8 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                   </span>
                 </div>
                 <p className="text-white/75 text-xs mt-1 leading-relaxed">
-                  近 7 日 {focusDistrict.district} 的 {focusDistrict.topSymptoms.slice(0, 2).join('、')} 相关反馈持续抬升，
-                  当前主要由社区症状反馈 {focusDistrict.riskBreakdown.symptomReports} 分和近 7 日变化{' '}
+                  近 {timeRange} 日 {focusDistrict.district} 的 {focusDistrict.topSymptoms.slice(0, 2).join('、')} 相关反馈持续抬升，
+                  当前主要由社区症状反馈 {focusDistrict.riskBreakdown.symptomReports} 分和近 {timeRange} 日变化{' '}
                   {focusDistrict.riskBreakdown.trendChange} 分带动。建议先核对官方 / 公共资料，再结合分区趋势与社区、药房信号判断。
                 </p>
               </div>
@@ -957,7 +957,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Map size={16} className="text-white/60" />
-                    <span className="text-white font-medium text-sm">{currentCity}各区近 7 日趋势热力图</span>
+                    <span className="text-white font-medium text-sm">{currentCity}各区近 {timeRange} 日趋势热力图</span>
                     <span className="text-white/30 text-xs hidden md:inline">趋势 / 参考 · 点击片区查看分区说明</span>
                     {activeDistrict && (
                       <span
@@ -1028,7 +1028,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
                       </span>
                     </div>
                     <p className="text-xs text-white/65 mt-1 leading-relaxed">
-                      {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，近 7 日变化
+                      {focusDistrict.topSymptoms.slice(0, 2).join('、')}主导，近 {timeRange} 日变化
                       {formatTrendDelta(focusDistrict.trend, focusDistrict.trendPercent)}，建议结合下方三类信息分层综合判断。
                     </p>
                   </div>
@@ -1226,7 +1226,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
 
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div className="rounded-xl bg-slate-950/40 border border-white/10 p-3">
-                    <p className="text-white/40 text-xs">近 7 日本地参考分</p>
+                    <p className="text-white/40 text-xs">近 {timeRange} 日本地参考分</p>
                     <p className="text-2xl font-bold text-white mt-1">{Math.round(activeDistrict.riskScore)}</p>
                     <p className="text-xs mt-1" style={{ color: getRiskColor(activeDistrict.riskLevel) }}>
                       {getTrendLabel(activeDistrict.trend)} · {activeDistrict.trendPercent}%
@@ -1308,7 +1308,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={16} className="text-white/60" />
                 <span className="text-white font-medium text-sm">
-                  {activeDistrictName ? `${activeDistrictName} · 7 日购药趋势` : '点击片区查看 7 日趋势'}
+                  {activeDistrictName ? `${activeDistrictName} · ${timeRange} 日购药趋势` : `点击片区查看 ${timeRange} 日趋势`}
                 </span>
               </div>
               <div style={{ height: '140px' }}>
