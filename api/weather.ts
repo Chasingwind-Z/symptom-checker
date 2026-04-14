@@ -10,8 +10,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { location } = req.query;
   const key = process.env.VITE_QWEATHER_KEY;
-  // Custom API host from QWeather console (e.g. "abc123.qweatherapi.com")
-  const customHost = process.env.QWEATHER_API_HOST;
+  // Support multiple env var names for the custom API host
+  const customHost =
+    process.env.QWEATHER_API_HOST ||
+    process.env.VITE_QWEATHER_HOST ||
+    process.env.VITE_QWEATHER_API_HOST;
 
   if (!key) {
     return res.status(500).json({ error: 'Weather API key not configured' });

@@ -742,6 +742,7 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
           userPreference: getUserModelPreference(),
           urgencyLevel: currentUrgency,
           messageCount: messages.length,
+          lastUserMessage: displayText,
         });
         setLastModelTier(modelResult.tier);
         setLastModelReason(modelResult.reason);

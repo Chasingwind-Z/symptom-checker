@@ -16,11 +16,22 @@ function selectModel(messages: ChatMessage[], urgencyLevel?: string, messageCoun
       m.content.some((c: ChatContentPart) => c.type === 'image_url')
   );
 
+  // Extract the last user message text for complexity estimation
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+  const lastUserText = lastUserMsg
+    ? typeof lastUserMsg.content === 'string'
+      ? lastUserMsg.content
+      : Array.isArray(lastUserMsg.content)
+        ? lastUserMsg.content.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map((p) => p.text).join('')
+        : ''
+    : undefined;
+
   const result = routeModel({
     hasImages,
     userPreference: getUserModelPreference(),
     urgencyLevel: urgencyLevel as 'red' | 'yellow' | 'green' | undefined,
     messageCount,
+    lastUserMessage: lastUserText,
   });
 
   if (localStorage.getItem('debug.location') === 'true') {
