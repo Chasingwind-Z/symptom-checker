@@ -1137,6 +1137,10 @@ export function ResultCard({
             </div>
 
             {officialSourcePreference !== 'official-first' && officialSourceSection}
+
+            <div className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-400 flex items-center gap-1.5">
+              📚 知识库：400+ 条医学知识 · 来源：中文精选 + MedlinePlus + CDC · 持续更新中
+            </div>
           </div>
         )}
 

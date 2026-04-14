@@ -292,7 +292,10 @@ export default function App() {
   );
 
   const handleApplyStarterText = useCallback((text: string) => {
-    setWelcomeDraftValue(text);
+    setWelcomeDraftValue((prev) => {
+      const prefix = prev.startsWith('🔍') ? '🔍 ' : '';
+      return prefix + text;
+    });
     setWelcomeFocusSignal((current) => current + 1);
   }, []);
 

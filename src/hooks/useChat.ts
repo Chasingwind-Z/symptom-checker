@@ -885,9 +885,15 @@ export function useChat(memoryContext?: AgentMemoryContext | null) {
       ];
 
       try {
-        // Detect user-requested web search (🔍 prefix or explicit keywords)
+        // Detect web search intent: manual (🔍 prefix) or auto (timely/epidemic/drug keywords)
+        const TIMELY_KEYWORDS = ['最近', '最新', '新出的', '今年', '上个月', '听说', '新闻'];
+        const EPIDEMIC_KEYWORDS = ['流感', '疫情', '传染', '爆发', '流行', '甲流', '乙流', '新冠'];
+        const DRUG_KEYWORDS = ['能不能吃', '副作用', '说明书', '禁忌', '相互作用'];
         const wantsWebSearch = displayText.startsWith('🔍') ||
-          displayText.includes('帮我搜') || displayText.includes('搜索最新');
+          displayText.includes('帮我搜') || displayText.includes('搜索最新') ||
+          TIMELY_KEYWORDS.some(kw => displayText.includes(kw)) ||
+          EPIDEMIC_KEYWORDS.some(kw => displayText.includes(kw)) ||
+          DRUG_KEYWORDS.some(kw => displayText.includes(kw));
         const effectiveToolChoice = wantsWebSearch
           ? { type: 'function' as const, function: { name: 'search_web' } }
           : orchestration.preferredToolName

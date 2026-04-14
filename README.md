@@ -115,6 +115,41 @@
 └──────────────────────────────────────────────────┘
 ```
 
+### 🤖 多 Agent 协作架构
+
+本项目采用 6-Agent 协作模式完成医疗分诊，每个 Agent 各司其职：
+
+| Agent | 职责 | 使用的工具 |
+|-------|------|-----------|
+| 🎯 **协调器** | 路由分发、多 Agent 结果聚合 | 全部 Agent 调度 |
+| 🏥 **分诊 Agent** | 4 轮结构化问诊 + 红黄绿分级 | `search_symptom_knowledge` |
+| 📚 **证据 Agent** | 补充医学证据、引用来源 | `search_symptom_knowledge` `search_web` |
+| 🗺️ **导诊 Agent** | 匹配附近医院、科室推荐 | `search_hospitals` `get_weather` |
+| 📊 **公卫 Agent** | 区域疫情分析、季节性预警 | `get_epidemic_snapshot` `search_web` |
+| 🧠 **记忆 Agent** | 跨会话上下文延续 | 用户档案、历史记录 |
+
+**工作流程：**
+```
+用户输入 → 协调器分析意图 → 模型路由（flash/pro/omni）
+  ├→ 分诊 Agent（必选）→ 风险等级判断
+  ├→ 证据 Agent → RAG 知识库 + 联网搜索
+  ├→ 导诊 Agent → 医院科室匹配
+  ├→ 公卫 Agent → 区域疫情叠加
+  └→ 记忆 Agent → 历史上下文注入
+        ↓
+  协调器聚合 → 结构化分诊报告
+```
+
+**工具链（Function Calling）：**
+
+| 工具 | 功能 | 数据源 |
+|------|------|--------|
+| `search_symptom_knowledge` | RAG 知识检索 | Supabase pgvector |
+| `search_web` | 联网搜索（自动+手动） | Tavily API |
+| `search_hospitals` | 附近医院搜索 | 高德地图 POI |
+| `get_weather` | 实时天气健康提醒 | 和风天气 |
+| `get_epidemic_snapshot` | 区域疫情快照 | 本地数据引擎 |
+
 ---
 
 ## 📚 知识库

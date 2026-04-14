@@ -143,6 +143,8 @@ export function WorkspaceView({
               void onSaveProfile(updated);
             }}
             onClose={() => onSelectSection('records')}
+            isLoggedIn={!!sessionEmail}
+            onOpenAuth={onOpenAuth}
           />
           <Suspense
             fallback={

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Check, User } from 'lucide-react';
+import { ArrowLeft, Check, LogIn, User } from 'lucide-react';
 import type { ProfileDraft } from '../lib/healthData';
 
 const AVATAR_GRADIENTS = [
@@ -13,15 +13,26 @@ const AVATAR_GRADIENTS = [
 
 const GENDER_OPTIONS = ['男', '女', '其他', '不愿透露'];
 
+const CHINA_MAJOR_CITIES = [
+  '北京', '上海', '广州', '深圳', '杭州', '南京',
+  '苏州', '成都', '武汉', '重庆', '西安', '长沙',
+  '天津', '郑州', '青岛', '大连', '沈阳', '合肥',
+  '济南', '福州', '厦门', '昆明', '贵阳', '南宁',
+  '海口', '拉萨', '乌鲁木齐', '呼和浩特', '兰州', '银川',
+];
+
 interface UserProfilePageProps {
   profile: ProfileDraft;
   onSave: (updated: ProfileDraft) => void;
   onClose: () => void;
+  isLoggedIn?: boolean;
+  onOpenAuth?: () => void;
 }
 
-export function UserProfilePage({ profile, onSave, onClose }: UserProfilePageProps) {
+export function UserProfilePage({ profile, onSave, onClose, isLoggedIn = true, onOpenAuth }: UserProfilePageProps) {
   const [draft, setDraft] = useState<ProfileDraft>(() => ({ ...profile }));
   const [saved, setSaved] = useState(false);
+  const [customCity, setCustomCity] = useState('');
 
   const gradientIndex = draft.avatarGradient ?? 0;
   const initial = draft.displayName.trim()
@@ -34,9 +45,36 @@ export function UserProfilePage({ profile, onSave, onClose }: UserProfilePagePro
   };
 
   const handleSave = () => {
-    onSave({ ...draft, profileMode: 'custom' });
+    const finalDraft = { ...draft, profileMode: 'custom' as const };
+    if (customCity && draft.city === '__other') {
+      finalDraft.city = customCity;
+    }
+    onSave(finalDraft);
     setSaved(true);
   };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={onClose} className="rounded-full p-2 text-slate-500 hover:bg-slate-100 transition-colors">
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-lg font-semibold text-slate-900">个人资料</h1>
+        </div>
+        <div className="flex flex-col items-center gap-4 py-12 rounded-3xl border border-slate-200 bg-white/95 shadow-sm">
+          <User size={48} className="text-slate-300" />
+          <p className="text-sm text-slate-500">登录后可编辑个人资料和健康档案</p>
+          {onOpenAuth && (
+            <button onClick={onOpenAuth} className="inline-flex items-center gap-2 rounded-xl bg-blue-500 px-6 py-2.5 text-sm font-medium text-white hover:bg-blue-600 transition-colors">
+              <LogIn size={16} />
+              登录 / 注册
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -95,26 +133,52 @@ export function UserProfilePage({ profile, onSave, onClose }: UserProfilePagePro
           </FieldRow>
 
           <FieldRow label="城市">
-            <input
-              type="text"
-              value={draft.city}
-              onChange={(e) => handleField('city', e.target.value)}
-              placeholder="请输入城市"
+            <select
+              value={CHINA_MAJOR_CITIES.includes(draft.city) ? draft.city : draft.city ? '__other' : ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === '__other') {
+                  handleField('city', '__other');
+                } else {
+                  handleField('city', v);
+                  setCustomCity('');
+                }
+              }}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
-            />
+              aria-label="选择城市"
+            >
+              <option value="">请选择城市</option>
+              {CHINA_MAJOR_CITIES.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+              <option value="__other">其他城市</option>
+            </select>
+            {(draft.city === '__other' || (draft.city && !CHINA_MAJOR_CITIES.includes(draft.city))) && (
+              <input
+                type="text"
+                value={draft.city === '__other' ? customCity : draft.city}
+                onChange={(e) => {
+                  setCustomCity(e.target.value);
+                  if (draft.city !== '__other') handleField('city', e.target.value);
+                }}
+                placeholder="请输入城市名"
+                className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
+              />
+            )}
           </FieldRow>
 
           <FieldRow label="出生年份">
-            <input
-              type="number"
+            <select
               value={draft.birthYear ?? ''}
-              onChange={(e) => {
-                const v = e.target.value;
-                handleField('birthYear', v === '' ? null : Number(v));
-              }}
-              placeholder="例如 1990"
+              onChange={(e) => handleField('birthYear', e.target.value === '' ? null : Number(e.target.value))}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
-            />
+              aria-label="选择出生年份"
+            >
+              <option value="">请选择</option>
+              {Array.from({ length: 100 }, (_, i) => 2026 - i).map(year => (
+                <option key={year} value={year}>{year}年</option>
+              ))}
+            </select>
           </FieldRow>
 
           <FieldRow label="性别">
