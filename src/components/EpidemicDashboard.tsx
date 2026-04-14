@@ -736,7 +736,7 @@ export function EpidemicDashboard({ onBack, onOpenB2B }: Props) {
           <div>
             <div className="flex items-center gap-3 flex-wrap">
               <span className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
-              <span className="text-white font-bold text-xl">{currentCity} · 本地健康趋势参考</span>
+              <span className="text-white font-bold text-xl">{currentCity} · 本地疾控动态</span>
             </div>
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <span className="bg-white/10 text-white/70 text-xs px-2 py-0.5 rounded-full">

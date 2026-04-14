@@ -10,7 +10,6 @@ interface InfoBarProps {
   weather: WeatherData | null;
   profileCity?: string | null;
   chronicConditions?: string | null;
-  onOpenMap?: () => void;
 }
 
 function buildProfileAwareWeatherTags(weather: WeatherData | null, chronicConditions?: string | null) {
@@ -69,24 +68,16 @@ function shortenTip(tip?: string) {
     .trim()
 }
 
-export function InfoBar({ weather, profileCity, chronicConditions, onOpenMap }: InfoBarProps) {
+export function InfoBar({ weather, profileCity, chronicConditions }: InfoBarProps) {
   const weatherSummary = buildWeatherExperienceSummary(weather)
   const displayCity = profileCity?.trim() && profileCity !== '中国大陆' ? profileCity.trim() : ''
   const weatherTags = buildProfileAwareWeatherTags(weather, chronicConditions)
   const humidity = weather?.humidity?.trim()
   const shortTip = weather ? shortenTip(weather.suggestion) : ''
-  const Container = onOpenMap ? 'button' : 'div'
 
   return (
-    <Container
-      {...(onOpenMap
-        ? {
-            type: 'button',
-            onClick: onOpenMap,
-            title: '查看健康地图与附近资源',
-          }
-        : {})}
-      className="w-full bg-gradient-to-r from-slate-50 via-blue-50 to-sky-50 border-b border-slate-200 px-4 py-1.5 text-left transition-colors hover:bg-sky-50/80"
+    <div
+      className="w-full bg-gradient-to-r from-slate-50 via-blue-50 to-sky-50 border-b border-slate-200 px-4 py-1.5 text-left"
     >
       <div className="flex items-center gap-2 overflow-x-auto text-xs">
         <span className="flex flex-shrink-0 items-center gap-1 font-medium text-slate-700">
@@ -132,6 +123,6 @@ export function InfoBar({ weather, profileCity, chronicConditions, onOpenMap }: 
           <span className="hidden sm:inline">{displayCity || '基于位置'}</span>
         </span>
       </div>
-    </Container>
+    </div>
   );
 }

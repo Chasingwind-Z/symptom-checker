@@ -21,6 +21,7 @@ const ALL_OPTIONS: { tier: SelectableTier; emoji: string; label: string; desc: s
 export function ModelSelector({ currentTier, currentReason, onChange }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [preference, setPreference] = useState<ModelTier>(getUserModelPreference);
+  const [justSwitched, setJustSwitched] = useState(false);
   const [menuPos, setMenuPos] = useState<{ bottom: number; right: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -46,6 +47,8 @@ export function ModelSelector({ currentTier, currentReason, onChange }: ModelSel
     setUserModelPreference(tier);
     onChange(tier);
     setOpen(false);
+    setJustSwitched(true);
+    window.setTimeout(() => setJustSwitched(false), 1500);
   };
 
   const current = ALL_OPTIONS.find(o => o.tier === preference) ?? ALL_OPTIONS[0];
@@ -97,6 +100,7 @@ export function ModelSelector({ currentTier, currentReason, onChange }: ModelSel
         title={currentReason || config.description}
       >
         {current.emoji} {current.label}
+        {justSwitched && <span className="text-xs text-emerald-500 ml-0.5">✓</span>}
         <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {menuContent}

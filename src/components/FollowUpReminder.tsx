@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
 import type { SymptomTrackingEntry } from '../types'
-import { getPendingFollowUp, updateFollowUpStatus } from '../lib/symptomTracking'
+import { getPendingFollowUp, updateFollowUpStatus, deleteTrackingEntry, snoozeFollowUp } from '../lib/symptomTracking'
 
 function formatDaysAgo(timestamp: number): string {
   const days = Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24))
@@ -58,6 +58,24 @@ export function FollowUpReminder({ onStartConsultation }: Props) {
     animateOut()
   }, [animateOut])
 
+  const handleSkip = useCallback(() => {
+    if (!entry) return
+    snoozeFollowUp(entry.id)
+    animateOut()
+  }, [entry, animateOut])
+
+  const handleIgnore = useCallback(() => {
+    if (!entry) return
+    updateFollowUpStatus(entry.id, 'dismissed')
+    animateOut()
+  }, [entry, animateOut])
+
+  const handleDelete = useCallback(() => {
+    if (!entry) return
+    deleteTrackingEntry(entry.id)
+    animateOut()
+  }, [entry, animateOut])
+
   if (dismissed || !entry) return null
 
   const symptomsText = entry.symptoms.join('、')
@@ -83,6 +101,19 @@ export function FollowUpReminder({ onStartConsultation }: Props) {
             aria-label="关闭"
           >
             <X size={16} />
+          </button>
+        </div>
+
+        {/* Action bar */}
+        <div className="flex items-center justify-end gap-2 mb-2 text-xs text-slate-400">
+          <button onClick={handleSkip} className="hover:text-slate-600 transition-colors">
+            稍后再问
+          </button>
+          <button onClick={handleIgnore} className="hover:text-amber-600 transition-colors">
+            不再提醒
+          </button>
+          <button onClick={handleDelete} className="hover:text-red-500 transition-colors">
+            删除记录
           </button>
         </div>
 

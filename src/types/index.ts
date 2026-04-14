@@ -196,7 +196,7 @@ export interface SymptomTrackingEntry {
   symptoms: string[]
   severity: 'mild' | 'moderate' | 'severe'
   level: 'green' | 'yellow' | 'orange' | 'red'
-  followUpStatus: 'pending' | 'better' | 'same' | 'worse'
+  followUpStatus: 'pending' | 'better' | 'same' | 'worse' | 'dismissed' | 'snoozed'
   followUpTimestamp?: number
   notes?: string
 }

@@ -48,9 +48,18 @@ export function getRecentTracking(limit = 5): SymptomTrackingEntry[] {
   return loadEntries().slice(0, limit)
 }
 
+export function snoozeFollowUp(entryId: string): void {
+  const entries = loadEntries()
+  const entry = entries.find((e) => e.id === entryId)
+  if (entry) {
+    entry.timestamp = Date.now()
+    persistEntries(entries)
+  }
+}
+
 export function updateFollowUpStatus(
   entryId: string,
-  status: 'better' | 'same' | 'worse'
+  status: 'better' | 'same' | 'worse' | 'dismissed'
 ): void {
   const entries = loadEntries()
   const entry = entries.find((e) => e.id === entryId)
@@ -89,7 +98,9 @@ export function getPendingFollowUp(): SymptomTrackingEntry | null {
   const FOLLOW_UP_DELAY = 48 * 60 * 60 * 1000 // 48 hours
 
   return entries.find(
-    (e) => e.followUpStatus === 'pending' && now - e.timestamp >= FOLLOW_UP_DELAY
+    (e) =>
+      e.followUpStatus === 'pending' &&
+      now - e.timestamp >= FOLLOW_UP_DELAY
   ) ?? null
 }
 

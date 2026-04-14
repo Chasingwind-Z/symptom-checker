@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import type { CaseHistoryItem, ProfileDraft } from '../lib/healthData'
+import { useState, useMemo, useEffect } from 'react'
+import type { ProfileDraft } from '../lib/healthData'
 import type { WeatherData } from '../lib/geolocation'
 import type { ConversationSession } from '../types'
 import type { Population } from '../types'
@@ -7,32 +7,22 @@ import {
   MODE_TO_POPULATION,
   type ConsultationModeId,
 } from '../lib/consultationModes'
-import type { HouseholdProfileRecord } from '../lib/healthWorkspaceInsights'
 import { generateSuggestions, generateExplanation } from '../services/suggestions/generator'
 import { StatusStrip } from './StatusStrip'
 import { PopulationTabs } from './PopulationTabs'
 import { SuggestionCards } from './SuggestionCards'
 
 interface WelcomeScreenProps {
-  onStartConsultation: () => void
   onApplyStarterText: (text: string) => void
   selectedModeId?: ConsultationModeId | null
   onSelectMode: (modeId: ConsultationModeId) => void
-  onToggleMap: () => void
-  onOpenEpidemicDashboard?: () => void
-  sessionEmail?: string | null
   profile?: ProfileDraft | null
   weather?: WeatherData | null
   weatherTemp?: string
   weatherCondition?: string
   pendingFollowUpCount?: number
-  householdProfiles?: HouseholdProfileRecord[]
-  switchingHouseholdProfileId?: string | null
-  recentCases?: CaseHistoryItem[]
   recentSessions: ConversationSession[]
   onOpenConversation: (sessionId: string) => void
-  onSelectHouseholdProfile: (record: HouseholdProfileRecord) => void
-  onManageProfiles: () => void
   locationCity?: string
   onRetryLocation?: () => void
 }
@@ -67,34 +57,16 @@ function wasUpdatedWithinOneDay(value: string) {
 
 
 export function WelcomeScreen({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onStartConsultation: _onStartConsultation,
   onApplyStarterText,
   selectedModeId,
   onSelectMode,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onToggleMap: _onToggleMap,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onOpenEpidemicDashboard: _onOpenEpidemicDashboard,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  sessionEmail: _sessionEmail,
   profile,
   weather,
   weatherTemp,
   weatherCondition,
   pendingFollowUpCount = 0,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  householdProfiles: _householdProfiles = [],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  switchingHouseholdProfileId: _switchingHouseholdProfileId,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  recentCases: _recentCases = [],
   recentSessions,
   onOpenConversation,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onSelectHouseholdProfile: _onSelectHouseholdProfile,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  onManageProfiles: _onManageProfiles,
   locationCity,
   onRetryLocation,
 }: WelcomeScreenProps) {
@@ -131,19 +103,19 @@ export function WelcomeScreen({
   );
 
   // Re-generate when population changes
-  const [prevPopulation, setPrevPopulation] = useState(currentPopulation);
-  if (prevPopulation !== currentPopulation) {
-    setPrevPopulation(currentPopulation);
-    setSmartSuggestions(
-      generateSuggestions({
-        population: currentPopulation,
-        hour: timeContext.hour,
-        month: timeContext.month,
-        recentQueries: [],
-        userProfile,
-      })
-    );
-  }
+  useEffect(() => {
+    window.setTimeout(() => {
+      setSmartSuggestions(
+        generateSuggestions({
+          population: currentPopulation,
+          hour: timeContext.hour,
+          month: timeContext.month,
+          recentQueries: [],
+          userProfile,
+        })
+      );
+    }, 0);
+  }, [currentPopulation, timeContext, userProfile]);
 
   const explanation = useMemo(() => generateExplanation({
     population: currentPopulation,
@@ -175,7 +147,6 @@ export function WelcomeScreen({
         pendingFollowUps={pendingFollowUpCount > 0 ? pendingFollowUpCount : undefined}
         locationText={locationCity || localCityLabel || undefined}
         onRetryLocation={onRetryLocation}
-        onOpenMap={_onToggleMap}
       />
 
       {/* Compact header */}

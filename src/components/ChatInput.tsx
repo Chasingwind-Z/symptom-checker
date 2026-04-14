@@ -46,6 +46,8 @@ interface ChatInputProps {
   modelTier?: Exclude<ModelTier, 'auto'>;
   /** Reason the current model was selected */
   modelReason?: string;
+  /** Called when user manually selects a model tier */
+  onModelChange?: (tier: ModelTier) => void;
 }
 
 const MAX_IMAGE_ATTACHMENTS = 3;
@@ -183,6 +185,7 @@ export function ChatInput({
   messagesCount,
   modelTier = 'pro',
   modelReason,
+  onModelChange,
 }: ChatInputProps) {
   const isInline = variant === 'inline';
   const [internalValue, setInternalValue] = useState('');
@@ -655,7 +658,7 @@ export function ChatInput({
                 <ModelSelector
                   currentTier={modelTier}
                   currentReason={modelReason}
-                  onChange={() => { /* Preference saved to localStorage automatically, next message uses new pref */ }}
+                  onChange={(tier) => onModelChange?.(tier)}
                 />
 
                 <button

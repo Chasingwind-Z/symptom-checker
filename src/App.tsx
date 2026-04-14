@@ -44,7 +44,6 @@ import { getRecommendedHospitals } from './lib/mockHospitals';
 import { getUserLocation, searchNearbyHospitals } from './lib/nearbyHospitals';
 import {
   buildProfileCompletionGuide,
-  type HouseholdProfileRecord,
 } from './lib/healthWorkspaceInsights';
 import {
   loadExperienceSettings,
@@ -201,7 +200,6 @@ export default function App() {
   const [workspaceSection, setWorkspaceSection] = useState<SidebarSection>('records');
   const [experienceSettings, setExperienceSettings] = useState(loadExperienceSettings);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [switchingHouseholdProfileId, setSwitchingHouseholdProfileId] = useState<string | null>(null);
   const [sidebarOverlayOpen, setSidebarOverlayOpen] = useState(false);
   const [chatInputLayout, setChatInputLayout] = useState<ChatInputLayoutMetrics>({
     height: 148,
@@ -293,10 +291,6 @@ export default function App() {
     [sendMessage]
   );
 
-  const handleStartConsultation = useCallback(() => {
-    setWelcomeFocusSignal((current) => current + 1);
-  }, []);
-
   const handleApplyStarterText = useCallback((text: string) => {
     setWelcomeDraftValue(text);
     setWelcomeFocusSignal((current) => current + 1);
@@ -305,34 +299,6 @@ export default function App() {
   const handleSelectConsultationMode = useCallback((modeId: ConsultationModeId) => {
     setSelectedConsultationModeId(modeId);
   }, []);
-
-  const handleSelectHouseholdProfile = useCallback(
-    async (record: HouseholdProfileRecord) => {
-      setSwitchingHouseholdProfileId(record.id)
-
-      try {
-        await workspace.updateProfile(record.profile)
-
-        const age = record.profile.birthYear
-          ? new Date().getFullYear() - record.profile.birthYear
-          : null
-        const nextMode: ConsultationModeId =
-          age !== null && age < 18
-            ? 'child'
-            : age !== null && age >= 60
-              ? 'elderly'
-              : record.profile.chronicConditions.trim()
-                ? 'chronic'
-                : 'self'
-
-        setSelectedConsultationModeId(nextMode)
-        setWelcomeDraftValue('')
-      } finally {
-        setSwitchingHouseholdProfileId(null)
-      }
-    },
-    [workspace]
-  )
 
   const handleClearSelectedConsultationMode = useCallback(() => {
     setSelectedConsultationModeId(null);
@@ -759,7 +725,7 @@ export default function App() {
         : null;
 
   useEffect(() => {
-    document.title = `${currentPage === 'map' ? '健康地图' : currentPage === 'b2b' ? '企业健康看板' : currentPage === 'disclaimer' ? '使用须知与免责声明' : pageHeader.title} · 健康助手`;
+    document.title = `${currentPage === 'map' ? '疾控动态' : currentPage === 'b2b' ? '企业健康看板' : currentPage === 'disclaimer' ? '使用须知与免责声明' : pageHeader.title} · 健康助手`;
   }, [currentPage, pageHeader.title]);
 
   if (effectivePage === 'map') {
@@ -901,7 +867,6 @@ export default function App() {
             weather={mergedWeatherData}
             profileCity={localCity}
             chronicConditions={workspace.profile.chronicConditions}
-            onOpenMap={handleOpenMap}
           />
         )}
 
@@ -956,25 +921,16 @@ export default function App() {
               <div className="flex flex-col min-h-[calc(100vh-64px)]">
                 <div className="flex-1 overflow-y-auto px-4 py-6">
                   <WelcomeScreen
-                    onStartConsultation={handleStartConsultation}
                     onApplyStarterText={handleApplyStarterText}
                     selectedModeId={selectedConsultationModeId}
                     onSelectMode={handleSelectConsultationMode}
-                    onToggleMap={handleOpenMap}
-                    onOpenEpidemicDashboard={handleOpenMap}
-                    sessionEmail={workspace.sessionEmail}
                     profile={workspace.profile}
                     weather={mergedWeatherData}
                     weatherTemp={unifiedWeather.status === 'success' ? unifiedWeather.temp : undefined}
                     weatherCondition={unifiedWeather.status === 'success' ? unifiedWeather.text : undefined}
                     pendingFollowUpCount={pendingFollowUpRecords.length}
-                    householdProfiles={workspace.householdProfiles}
-                    switchingHouseholdProfileId={switchingHouseholdProfileId}
-                    recentCases={workspace.recentCases}
                     recentSessions={conversationSessions}
                     onOpenConversation={handleOpenConversation}
-                    onSelectHouseholdProfile={handleSelectHouseholdProfile}
-                    onManageProfiles={() => handleOpenWorkspaceSection('profile')}
                     locationCity={mergedLocationCity}
                     onRetryLocation={mergedRetryLocation}
                   />

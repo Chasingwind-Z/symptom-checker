@@ -6,11 +6,10 @@ interface StatusStripProps {
   checkedIn?: boolean;
   pendingFollowUps?: number;
   locationText?: string;
-  onOpenMap?: () => void;
   onRetryLocation?: () => void;
 }
 
-export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, locationText, onOpenMap: _onOpenMap, onRetryLocation }: StatusStripProps) {
+export function StatusStrip({ weatherText, checkedIn, pendingFollowUps, locationText, onRetryLocation }: StatusStripProps) {
   if (localStorage.getItem('debug.location') === 'true') {
     console.info('[statusstrip] props', { weatherText, locationText, checkedIn, pendingFollowUps });
   }

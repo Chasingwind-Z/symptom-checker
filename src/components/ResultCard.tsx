@@ -363,7 +363,7 @@ export function ResultCard({
     () => filterHospitalsByRisk(hospitals, result.level),
     [hospitals, result.level],
   );
-  const [activeTab, setActiveTab] = useState<TabId | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId | null>('evidence');
   const [shareCopied, setShareCopied] = useState(false);
   const [showVisitCard, setShowVisitCard] = useState(false);
   const [reportState, setReportState] = useState<'pending' | 'done' | 'declined'>('pending');
@@ -901,6 +901,16 @@ export function ResultCard({
                 ? '生成老人就诊卡（截图给医生）'
                 : '准备就诊（截图给医生）'}
           </button>
+          <div className="flex gap-3 mt-3">
+            <button onClick={() => setActiveTab('report')}
+              className="text-xs text-blue-500 hover:underline">
+              📄 导出就诊报告
+            </button>
+            <button onClick={() => setShowVisitCard(true)}
+              className="text-xs text-blue-500 hover:underline">
+              📋 查看就诊摘要
+            </button>
+          </div>
         </div>
 
         {/* ── LAYER 2: Tab Bar ── */}
@@ -1367,14 +1377,14 @@ export function ResultCard({
                 <div>
                   <p className="text-emerald-800 font-medium text-sm">已记录到本地</p>
                   <p className="text-emerald-600 text-xs mt-1 leading-relaxed">
-                    症状数据已保存在您的设备上，用于个人健康趋势追踪和本地社区预警参考。数据不会离开您的设备。
+                    症状数据已保存在您的设备上，用于本地社区疾控预警参考。数据不会离开您的设备。
                   </p>
                   {onToggleMap && (
                     <button
                       onClick={onToggleMap}
                       className="text-emerald-600 text-xs mt-2 hover:underline cursor-pointer flex items-center gap-1"
                     >
-                      查看社区疾病预警地图 →
+                      查看疾控动态 →
                     </button>
                   )}
                 </div>

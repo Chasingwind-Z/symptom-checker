@@ -1,5 +1,4 @@
 import {
-  Activity,
   CheckCircle2,
   Download,
   LayoutGrid,
@@ -8,6 +7,7 @@ import {
   Plus,
   Settings2,
   Stethoscope,
+  TrendingUp,
 } from 'lucide-react';
 import type { RiskLevel } from '../types';
 
@@ -110,8 +110,8 @@ export function Header({
               onClick={onToggleMap}
               className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              <Activity size={14} />
-              <span className="hidden sm:inline">健康趋势</span>
+              <TrendingUp size={14} />
+              <span className="hidden sm:inline">疾控动态</span>
             </button>
           )}
           {onOpenAuth && !isSignedIn && (

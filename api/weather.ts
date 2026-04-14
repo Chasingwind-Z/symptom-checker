@@ -39,9 +39,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.setHeader('Access-Control-Allow-Origin', '*');
           return res.status(200).json(data);
         }
+        console.log(`[weather] Strategy 1 (custom host) failed: code=${data.code}`);
+      } else {
+        console.log(`[weather] Strategy 1 (custom host) failed: status=${resp.status}`);
       }
-    } catch {
-      // Fall through to legacy hosts
+    } catch (err) {
+      console.log(`[weather] Strategy 1 (custom host) error:`, err);
     }
   }
 
@@ -58,8 +61,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.setHeader('Access-Control-Allow-Origin', '*');
           return res.status(200).json(data);
         }
+        console.log(`[weather] Strategy 2 (${host} legacy) failed: code=${data.code}`);
+      } else {
+        console.log(`[weather] Strategy 2 (${host} legacy) failed: status=${resp.status}`);
       }
-    } catch {
+    } catch (err) {
+      console.log(`[weather] Strategy 2 (${host} legacy) error:`, err);
       continue;
     }
   }
@@ -78,8 +85,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.setHeader('Access-Control-Allow-Origin', '*');
           return res.status(200).json(data);
         }
+        console.log(`[weather] Strategy 3 (${host} header) failed: code=${data.code}`);
+      } else {
+        console.log(`[weather] Strategy 3 (${host} header) failed: status=${resp.status}`);
       }
-    } catch {
+    } catch (err) {
+      console.log(`[weather] Strategy 3 (${host} header) error:`, err);
       continue;
     }
   }
